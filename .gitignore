@@ -28,3 +28,7 @@ deno.lock
 *.log
 .vscode/
 .idea/
+
+# ── Xcode project is generated from ios/project.yml ───────────────────────
+ios/*.xcodeproj
+ios/AlbusCore/.build/
