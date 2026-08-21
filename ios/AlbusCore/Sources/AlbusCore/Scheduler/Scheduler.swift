@@ -1,0 +1,243 @@
+import Foundation
+
+/// Places work into real time, and re-places it when reality diverges.
+///
+/// Design constraints, in priority order:
+///
+/// 1. **Only move what must move.** A student who misses one session and
+///    watches their whole week rearrange stops trusting the app immediately.
+///    Everything that can stay, stays; `movedCount` exists so this is
+///    measurable rather than assumed.
+/// 2. **Never move the past.** Completed and in-progress work is a record.
+/// 3. **Fixed commitments are walls**, routed around and never through.
+/// 4. **Respect declared capacity.** Overfilling a day to make the arithmetic
+///    work is how a planner becomes an app people avoid opening.
+/// 5. **Deterministic.** Same inputs, same output. Non-determinism reads to a
+///    user as the app being broken and makes bugs unreproducible.
+/// 6. **Overload is an output, not an error.**
+///
+/// Pure and synchronous: no clock, no database, no network. `now` is injected
+/// so every case below is reproducible in a test.
+public struct Scheduler: Sendable {
+
+    /// Guards against pathological inputs producing an unbounded loop.
+    private static let maxDaysAhead = 400
+    /// Work below this is not worth a calendar block of its own.
+    private static let minimumSliceMinutes = 15
+
+    private let calendar: Calendar
+
+    public init(calendar: Calendar = Scheduler.defaultCalendar) {
+        self.calendar = calendar
+    }
+
+    /// A fixed calendar rather than `.current`: the scheduler's output must not
+    /// depend on ambient device state.
+    public static var defaultCalendar: Calendar {
+        var c = Calendar(identifier: .gregorian)
+        c.timeZone = .current
+        c.firstWeekday = 1
+        return c
+    }
+
+    // MARK: - Entry point
+
+    /// - Parameters:
+    ///   - items: work needing placement.
+    ///   - existing: sessions already on the calendar. Completed, active and
+    ///     elapsed ones are preserved; the rest may be re-placed.
+    ///   - commitments: immovable blocks.
+    public func schedule(
+        items: [ScheduleItem],
+        existing: [PlannedSession] = [],
+        commitments: [FixedCommitment] = [],
+        availability: Availability = .default,
+        now: Date
+    ) -> ScheduleResult {
+
+        // History and in-flight work are pinned. So is anything that has
+        // already started, even if still marked scheduled — rewriting a block
+        // a student is sitting in front of is the same betrayal as rewriting
+        // one they finished.
+        let pinned = existing.filter { $0.state.isImmutable || $0.start <= now }
+        let movable = existing.filter { !($0.state.isImmutable || $0.start <= now) }
+
+        // Work already represented by a pinned session is done or being done.
+        let pinnedItemIDs = Set(pinned.map(\.itemID))
+        let pending = items
+            .filter { !pinnedItemIDs.contains($0.id) }
+            .sorted(by: Self.priorityOrder)
+
+        // Walls: things the scheduler must not overlap. Pinned sessions count.
+        var occupied: [DateInterval] = commitments.compactMap { c in
+            c.end > c.start ? DateInterval(start: c.start, end: c.end) : nil
+        }
+        occupied += pinned.compactMap { s in
+            s.end > s.start ? DateInterval(start: s.start, end: s.end) : nil
+        }
+
+        // Capacity already consumed per day by pinned work.
+        var usedPerDay: [Date: TimeInterval] = [:]
+        for session in pinned {
+            let day = calendar.startOfDay(for: session.start)
+            usedPerDay[day, default: 0] += session.duration
+        }
+
+        var placed: [PlannedSession] = []
+        var unplaceable: [ScheduleItem] = []
+
+        // Preserve identity for work that is simply being re-placed, so the UI
+        // can animate a move instead of a delete plus an insert.
+        let previousByItem = Dictionary(movable.map { ($0.itemID, $0) },
+                                        uniquingKeysWith: { a, _ in a })
+
+        for item in pending {
+            if let slot = findSlot(for: item,
+                                   occupied: occupied,
+                                   usedPerDay: usedPerDay,
+                                   availability: availability,
+                                   now: now) {
+                let previous = previousByItem[item.id]
+                placed.append(PlannedSession(
+                    id: previous?.id ?? UUID(),
+                    itemID: item.id,
+                    assignmentID: item.assignmentID,
+                    start: slot.start,
+                    end: slot.end,
+                    state: .scheduled
+                ))
+                occupied.append(slot)
+                usedPerDay[calendar.startOfDay(for: slot.start), default: 0] += slot.duration
+            } else {
+                unplaceable.append(item)
+            }
+        }
+
+        let moved = placed.reduce(into: 0) { count, session in
+            guard let previous = previousByItem[session.itemID] else { return }
+            if previous.start != session.start { count += 1 }
+        }
+
+        let all = (pinned + placed).sorted { $0.start < $1.start }
+
+        return ScheduleResult(
+            sessions: all,
+            unplaceable: unplaceable,
+            workload: Self.workload(placed: placed,
+                                    unplaceable: unplaceable,
+                                    availability: availability,
+                                    calendar: calendar),
+            movedCount: moved
+        )
+    }
+
+    // MARK: - Ordering
+
+    /// Earliest deadline first; within an assignment, keep the author's order.
+    /// Total and deterministic — ties broken by id so equal work never shuffles
+    /// between runs.
+    private static func priorityOrder(_ a: ScheduleItem, _ b: ScheduleItem) -> Bool {
+        if a.deadline != b.deadline { return a.deadline < b.deadline }
+        if a.assignmentID != b.assignmentID {
+            return a.assignmentID.uuidString < b.assignmentID.uuidString
+        }
+        if a.ordinal != b.ordinal { return a.ordinal < b.ordinal }
+        return a.id.uuidString < b.id.uuidString
+    }
+
+    // MARK: - Placement
+
+    private func findSlot(
+        for item: ScheduleItem,
+        occupied: [DateInterval],
+        usedPerDay: [Date: TimeInterval],
+        availability: Availability,
+        now: Date
+    ) -> DateInterval? {
+
+        guard item.deadline > now else { return nil }
+
+        var day = calendar.startOfDay(for: now)
+        let lastDay = calendar.startOfDay(for: item.deadline)
+
+        var daysExamined = 0
+        while day <= lastDay && daysExamined < Self.maxDaysAhead {
+            defer {
+                day = calendar.date(byAdding: .day, value: 1, to: day) ?? day.addingTimeInterval(86_400)
+                daysExamined += 1
+            }
+
+            let weekday = calendar.component(.weekday, from: day)
+            if availability.excludedWeekdays.contains(weekday) { continue }
+
+            let remaining = TimeInterval(availability.dailyCapacityMinutes * 60)
+                - (usedPerDay[day] ?? 0)
+            if remaining < item.duration { continue }
+
+            guard let windowStart = calendar.date(bySettingHour: availability.windowStartHour,
+                                                  minute: 0, second: 0, of: day),
+                  let windowEnd = calendar.date(bySettingHour: availability.windowEndHour == 24 ? 23 : availability.windowEndHour,
+                                                minute: availability.windowEndHour == 24 ? 59 : 0,
+                                                second: 0, of: day)
+            else { continue }
+
+            // Never schedule into the past, and never past the deadline.
+            let earliest = max(windowStart, now)
+            let latest = min(windowEnd, item.deadline)
+            guard latest > earliest, latest.timeIntervalSince(earliest) >= item.duration else { continue }
+
+            if let slot = firstGap(from: earliest, to: latest,
+                                   duration: item.duration, occupied: occupied) {
+                return slot
+            }
+        }
+        return nil
+    }
+
+    /// Earliest gap of at least `duration` between `start` and `end`.
+    private func firstGap(from start: Date, to end: Date,
+                          duration: TimeInterval, occupied: [DateInterval]) -> DateInterval? {
+        // Only blocks overlapping this window matter.
+        let relevant = occupied
+            .filter { $0.end > start && $0.start < end }
+            .sorted { $0.start < $1.start }
+
+        var cursor = start
+        for block in relevant {
+            if block.start.timeIntervalSince(cursor) >= duration {
+                return DateInterval(start: cursor, duration: duration)
+            }
+            cursor = max(cursor, block.end)
+            if cursor >= end { return nil }
+        }
+        return end.timeIntervalSince(cursor) >= duration
+            ? DateInterval(start: cursor, duration: duration)
+            : nil
+    }
+
+    // MARK: - Workload
+
+    /// Derived from whether the plan actually fits, not from a separate model.
+    /// Anything that could not be placed means cooked, by definition.
+    static func workload(placed: [PlannedSession],
+                         unplaceable: [ScheduleItem],
+                         availability: Availability,
+                         calendar: Calendar) -> WorkloadState {
+        if !unplaceable.isEmpty { return .cooked }
+        guard availability.dailyCapacityMinutes > 0 else {
+            return placed.isEmpty ? .calm : .cooked
+        }
+
+        var perDay: [Date: TimeInterval] = [:]
+        for session in placed {
+            perDay[calendar.startOfDay(for: session.start), default: 0] += session.duration
+        }
+        guard let heaviest = perDay.values.max() else { return .calm }
+
+        let capacity = TimeInterval(availability.dailyCapacityMinutes * 60)
+        let load = heaviest / capacity
+        if load >= 0.85 { return .cooked }
+        if load >= 0.55 { return .busy }
+        return .calm
+    }
+}

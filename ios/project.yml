@@ -1,0 +1,51 @@
+# Xcode project definition.
+#
+# Generated with `xcodegen generate` rather than committed as a .pbxproj:
+# that file is machine-written, merges badly, and hides real changes in noise.
+# This is the source of truth — regenerate after editing.
+#
+# SIGNING IS DELIBERATELY UNSET. The app builds and runs in the simulator as
+# is. To run on a device or ship, set DEVELOPMENT_TEAM to the Apple Team ID
+# (10 characters, under Membership in the developer account).
+name: Albus
+options:
+  bundleIdPrefix: com.felipegutierrez
+  deploymentTarget:
+    iOS: "18.0"
+  createIntermediateGroups: true
+
+packages:
+  AlbusCore:
+    path: AlbusCore
+
+settings:
+  base:
+    SWIFT_VERSION: "6.0"
+    ENABLE_USER_SCRIPT_SANDBOXING: YES
+    # No team set on purpose — see the note above.
+    CODE_SIGN_STYLE: Automatic
+    CODE_SIGNING_ALLOWED: NO
+
+targets:
+  Albus:
+    type: application
+    platform: iOS
+    sources:
+      - path: App/Albus
+    dependencies:
+      - package: AlbusCore
+    info:
+      path: App/Albus/Info.plist
+      properties:
+        CFBundleDisplayName: Albus
+        UILaunchScreen: {}
+        UISupportedInterfaceOrientations:
+          - UIInterfaceOrientationPortrait
+        # The app talks only to Supabase over HTTPS; no cleartext exceptions.
+        NSAppTransportSecurity:
+          NSAllowsArbitraryLoads: false
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.felipegutierrez.albus
+        TARGETED_DEVICE_FAMILY: "1"
+        INFOPLIST_KEY_UIStatusBarStyle: UIStatusBarStyleDarkContent

@@ -66,6 +66,15 @@ jobs:
           fi
           echo "append-only respected"
 
+  core-tests:
+    name: Core logic tests
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      - name: swift test
+        working-directory: ios/AlbusCore
+        run: swift test
+
   ios-build:
     name: iOS build
     runs-on: macos-15
@@ -73,11 +82,23 @@ jobs:
       - uses: actions/checkout@v4
       - id: probe
         run: |
-          if ls ios/*.xcodeproj ios/*.xcworkspace >/dev/null 2>&1; then
+          if [ -f ios/project.yml ]; then
             echo "found=true" >> "$GITHUB_OUTPUT"
           else
             echo "found=false" >> "$GITHUB_OUTPUT"
-            echo "No Xcode project yet — skipping (added in build-plan P0)."
+            echo "No iOS project yet — skipping."
           fi
       - if: steps.probe.outputs.found == 'true'
-        run: xcodebuild -scheme Albus -destination 'platform=iOS Simulator,name=iPhone 16' build
+        run: brew install xcodegen
+      - if: steps.probe.outputs.found == 'true'
+        working-directory: ios
+        # Generated from project.yml rather than committed, so CI regenerates
+        # it to catch a spec that no longer produces a valid project.
+        run: xcodegen generate --spec project.yml
+      - if: steps.probe.outputs.found == 'true'
+        working-directory: ios
+        run: |
+          xcodebuild -project Albus.xcodeproj -scheme Albus \
+            -destination 'platform=iOS Simulator,name=iPhone 17 Pro' \
+            build | xcpretty || xcodebuild -project Albus.xcodeproj -scheme Albus \
+            -destination 'platform=iOS Simulator,name=iPhone 17 Pro' build
