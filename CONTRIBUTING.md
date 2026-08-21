@@ -1,5 +1,19 @@
 # Working on Albus
 
+## First, install the hooks
+
+```bash
+./scripts/install-hooks.sh
+```
+
+**Do this in every clone.** `core.hooksPath` is local repository config — it is
+not committed and does not survive `git clone`, so a fresh clone has no
+protection against pushing straight to `main`. The script is idempotent.
+
+A server-side workflow (`main guard`) also fails any commit that reaches `main`
+without a pull request. It cannot prevent the push — nothing on this plan can —
+but it makes one loud instead of silent.
+
 ## The one rule
 
 **`main` is protected.** No direct commits, no direct pushes, no force-pushes.

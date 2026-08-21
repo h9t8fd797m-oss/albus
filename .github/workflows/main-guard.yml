@@ -1,0 +1,40 @@
+name: main guard
+
+# Server-side backstop for branch protection.
+#
+# GitHub's branch protection and rulesets both require a paid plan on private
+# repos, and the local pre-push hook only exists on machines where someone has
+# run scripts/install-hooks.sh — a fresh clone has no protection at all.
+#
+# This runs on GitHub, so it cannot be cloned away or disabled locally. It does
+# not prevent a direct push (nothing on this plan can), but it makes one loud
+# and permanent instead of silent.
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  direct-push:
+    name: Commit reached main via a pull request
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check the pushed commit belongs to a merged PR
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SHA: ${{ github.sha }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          count=$(gh api "repos/$REPO/commits/$SHA/pulls" \
+                    -H "Accept: application/vnd.github+json" --jq 'length')
+          if [ "$count" -gt 0 ]; then
+            echo "commit $SHA arrived via a pull request"
+            exit 0
+          fi
+          echo "::error::Commit $SHA was pushed directly to main, bypassing review."
+          echo "::error::If deliberate, note it on the commit. If not, revert it."
+          exit 1

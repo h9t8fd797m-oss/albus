@@ -32,19 +32,29 @@ jobs:
       - name: Assert RLS on every created table
         run: |
           set -euo pipefail
+          # Checked PER TABLE, not per file. The previous version asked only
+          # whether the file contained the phrase anywhere, so a migration that
+          # created two tables and protected one passed — an unprotected table
+          # could be smuggled in beside a protected one.
           fail=0
           for f in supabase/migrations/*.sql; do
-            # tables created explicitly by name
             while read -r t; do
               [ -z "$t" ] && continue
-              # RLS may be enabled inline or via the do-block loop
-              if ! grep -qE "enable row level security" "$f"; then
-                echo "::error file=$f::table '$t' created but no RLS enabled in this migration"
-                fail=1
+              # (a) protected directly
+              if grep -qEi "alter table (only )?public\.${t}\b[^;]*enable row level security" "$f"; then
+                continue
               fi
-            done < <(grep -oE 'create table public\.[a-z_]+' "$f" | sed 's/create table public\.//')
+              # (b) protected by a do-block that loops over a list of names
+              if grep -q "enable row level security" "$f" && grep -qE "'${t}'" "$f"; then
+                continue
+              fi
+              echo "::error file=$f::table '$t' is created but never has RLS enabled"
+              fail=1
+            done < <(grep -oE "create table (if not exists )?public\.[a-z_]+" "$f" \
+                     | sed -E "s/.*public\.//")
           done
-          exit $fail
+          if [ "$fail" -ne 0 ]; then exit 1; fi
+          echo "every created table has RLS"
 
   migration-order:
     name: Migrations are append-only
