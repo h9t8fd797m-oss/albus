@@ -99,14 +99,11 @@ jobs:
         working-directory: ios
         # The runner's Xcode decides which simulators exist, and it lags behind
         # local. Hardcoding a device name means CI breaks whenever either side
-        # moves, so resolve one at run time instead.
+        # moves, so resolve one at run time instead. Plain shell on purpose:
+        # embedded multi-line scripts break out of the YAML block scalar.
         run: |
           set -euo pipefail
-          UDID=$(xcrun simctl list devices available --json \
-            | python3 -c "import json,sys;
-d=json.load(sys.stdin)['devices']
-c=[x for rt,v in d.items() if 'iOS' in rt for x in v if x.get('isAvailable') and 'iPhone' in x['name']]
-print(c[-1]['udid'] if c else '')")
-          if [ -z "$UDID" ]; then echo '::error::no iPhone simulator on this runner'; exit 1; fi
+          UDID=$(xcrun simctl list devices available | grep -m1 "iPhone" | sed -E "s/.*\(([0-9A-F-]{36})\).*/\1/")
+          if [ -z "$UDID" ]; then echo "::error::no iPhone simulator on this runner"; exit 1; fi
           echo "using simulator $UDID"
           xcodebuild test -project Albus.xcodeproj -scheme Albus -destination "id=$UDID"
