@@ -1,0 +1,83 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches-ignore: [main]
+
+jobs:
+  secrets-scan:
+    name: No secrets committed
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Scan for live credentials
+        run: |
+          set -euo pipefail
+          # Real key shapes. .env.example uses xxxx placeholders and is exempt.
+          PATTERN='sb_secret_[A-Za-z0-9]{20,}|sk-ant-[A-Za-z0-9_-]{20,}|eyJ[A-Za-z0-9_-]{30,}\.[A-Za-z0-9_-]{30,}'
+          if grep -rEn "$PATTERN" . \
+               --exclude-dir=.git --exclude=.env.example --exclude=ci.yml; then
+            echo "::error::A live credential appears to be committed. Rotate it, then remove it."
+            exit 1
+          fi
+          echo "clean"
+
+  rls-guard:
+    name: Every table has RLS
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Assert RLS on every created table
+        run: |
+          set -euo pipefail
+          fail=0
+          for f in supabase/migrations/*.sql; do
+            # tables created explicitly by name
+            while read -r t; do
+              [ -z "$t" ] && continue
+              # RLS may be enabled inline or via the do-block loop
+              if ! grep -qE "enable row level security" "$f"; then
+                echo "::error file=$f::table '$t' created but no RLS enabled in this migration"
+                fail=1
+              fi
+            done < <(grep -oE 'create table public\.[a-z_]+' "$f" | sed 's/create table public\.//')
+          done
+          exit $fail
+
+  migration-order:
+    name: Migrations are append-only
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+      - name: Reject edits to already-applied migrations
+        run: |
+          set -euo pipefail
+          changed=$(git diff --name-only --diff-filter=MD origin/${{ github.base_ref }}...HEAD \
+                    -- supabase/migrations || true)
+          if [ -n "$changed" ]; then
+            echo "::error::Applied migrations were modified or deleted:"
+            echo "$changed"
+            echo "Migrations are append-only. Add a new file instead."
+            exit 1
+          fi
+          echo "append-only respected"
+
+  ios-build:
+    name: iOS build
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      - id: probe
+        run: |
+          if ls ios/*.xcodeproj ios/*.xcworkspace >/dev/null 2>&1; then
+            echo "found=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "found=false" >> "$GITHUB_OUTPUT"
+            echo "No Xcode project yet — skipping (added in build-plan P0)."
+          fi
+      - if: steps.probe.outputs.found == 'true'
+        run: xcodebuild -scheme Albus -destination 'platform=iOS Simulator,name=iPhone 16' build

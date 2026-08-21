@@ -1,0 +1,30 @@
+# ── secrets ───────────────────────────────────────────────────────────────
+.env
+.env.*
+!.env.example
+*.xcconfig
+!Shared.xcconfig
+Secrets.plist
+supabase/.temp/
+supabase/.branches/
+
+# ── macOS / Xcode ─────────────────────────────────────────────────────────
+.DS_Store
+xcuserdata/
+*.xcuserstate
+DerivedData/
+build/
+*.ipa
+*.dSYM.zip
+.swiftpm/
+Packages/
+
+# ── node / deno (edge functions) ──────────────────────────────────────────
+node_modules/
+npm-debug.log*
+deno.lock
+
+# ── misc ──────────────────────────────────────────────────────────────────
+*.log
+.vscode/
+.idea/

@@ -1,0 +1,47 @@
+project_id = "ssvehwhblgqtvqkfbkbj"
+
+[api]
+enabled = true
+port = 54321
+schemas = ["public"]
+extra_search_path = ["public", "extensions"]
+max_rows = 1000
+
+[db]
+port = 54322
+major_version = 17
+
+[auth]
+enabled = true
+site_url = "albus://auth-callback"
+additional_redirect_urls = ["albus://auth-callback"]
+
+# Sessions: short access tokens, rotating refresh tokens with reuse detection.
+jwt_expiry = 3600
+enable_refresh_token_rotation = true
+refresh_token_reuse_interval = 10
+
+# No account on first launch — every user starts anonymous.
+enable_anonymous_sign_ins = true
+
+# Manual linking lets an anonymous user become permanent at purchase
+# WITHOUT losing their row, so nothing has to be migrated.
+enable_manual_linking = true
+
+# Email/password is not used. Apple Sign-In is added at the paywall.
+[auth.email]
+enable_signup = false
+enable_confirmations = false
+
+[auth.external.apple]
+enabled = false   # flip on when the Apple Developer account is configured
+
+# Anonymous sign-ins are rate limited per IP by Supabase (30/hr).
+# Turn CAPTCHA on before launch — see docs/security-model.md.
+[auth.captcha]
+enabled = false
+provider = "hcaptcha"
+
+[edge_runtime]
+enabled = true
+policy = "per_worker"
