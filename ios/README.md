@@ -62,3 +62,33 @@ tab bar needs, so no screen has to remember either concern.
 **Views never name a colour.** Everything comes from `Tokens`. Subject colour
 is a property of the course, not the card that shows it: HIST is red on every
 screen, and a view maps the enum rather than picking.
+
+
+---
+
+## ⚠️ CAPTCHA ships with the onboarding screen
+
+When you build onboarding, **that is the moment to add CAPTCHA** — it is the
+last known security gap and it is blocked on this screen existing.
+
+**Why it cannot be turned on earlier.** The instant
+`[auth.captcha] enabled = true` is set in `supabase/config.toml`, Supabase
+rejects every sign-up that does not carry a CAPTCHA token. Albus creates an
+anonymous account on first launch, so enabling it before the client can present
+a challenge breaks every new install immediately.
+
+**What to do, in order:**
+
+1. Add the challenge to the first onboarding screen (hCaptcha is what
+   `config.toml` is currently set to; Cloudflare Turnstile is also supported
+   and cheaper at volume — decide then).
+2. Pass the token to `signInAnonymously` via `options.captchaToken`.
+3. Set the provider secret: `supabase secrets set HCAPTCHA_SECRET=...`
+4. Flip `enabled = true` in `config.toml`, then `supabase config push`.
+5. **Verify a fresh install can still sign up** before merging. This is the
+   step that catches a broken token flow, and skipping it means shipping an app
+   nobody can open.
+
+**Until then**, account farming is bounded by a global spend fuse
+(`app_config.global_ai_calls_per_hour`) plus per-IP sign-up limits. The
+residual risk is cost, not data — see `docs/security-model.md` § 6.
