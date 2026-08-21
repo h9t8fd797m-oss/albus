@@ -106,6 +106,27 @@ the function's writes. `EXECUTE` is revoked from `public`, `anon` and
 
 ## 6. Abuse
 
+**Account farming is bounded by a global fuse.** Per-user limits cap what one
+account can spend; nothing capped what a thousand accounts could. Anonymous
+sign-up is the entire onboarding, so it cannot be removed, and CAPTCHA cannot
+be enabled until the client can present a challenge — Supabase rejects every
+sign-up without a token the moment it is switched on.
+
+`check_and_record_ai_usage` therefore checks a **global ceiling before the
+per-user ones**: total AI calls across every account in the last hour, read
+from `app_config` so it can be raised without a migration. A flood of fresh
+accounts, each individually within its allowance, still stops at a known
+number. It is a fuse, not a quota — it should never fire in normal operation.
+
+Per-IP anonymous sign-ups were also lowered from 30/hour to 10. A genuine
+student needs one; a shared school NAT might need a handful.
+
+**Custom errors use SQLSTATE class Q**, not P0002/P0003/P0004. Those are
+PostgreSQL's own `no_data_found`, `too_many_rows` and `assert_failure` — and
+`exception when others` deliberately cannot catch `assert_failure`, so the
+circuit breaker was originally uncatchable and tore through exception blocks.
+
+
 Anonymous sign-up is rate-limited by Supabase to 30/hour per IP. Every
 abandoned first launch still leaves a row, and Supabase does not clean these
 up, so `reap_abandoned_anonymous_users(30)` deletes anonymous users older than
