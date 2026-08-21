@@ -1,0 +1,40 @@
+#!/usr/bin/env bash
+# Refuses any push to main.
+#
+# GitHub's server-side branch protection needs a paid plan on private repos,
+# so this hook is the enforcement. It stops the realistic failure — a habitual
+# `git push` on the wrong branch — for both the human and any agent working
+# in this repo.
+#
+# Deliberate bypass, when you actually mean it:
+#   ALBUS_ALLOW_MAIN_PUSH=1 git push origin main
+set -euo pipefail
+
+PROTECTED="refs/heads/main"
+
+while read -r _local_ref _local_sha remote_ref _remote_sha; do
+  [ "$remote_ref" = "$PROTECTED" ] || continue
+
+  if [ "${ALBUS_ALLOW_MAIN_PUSH:-}" = "1" ]; then
+    echo "pre-push: ALBUS_ALLOW_MAIN_PUSH=1 — allowing this push to main."
+    continue
+  fi
+
+  branch=$(git branch --show-current 2>/dev/null || echo "your-branch")
+  cat >&2 <<MSG
+
+  ✋  Refusing to push to main.
+
+  main only changes through a reviewed pull request. Try:
+
+      git push -u origin ${branch}
+      gh pr create --fill
+
+  If you genuinely mean to push main:
+      ALBUS_ALLOW_MAIN_PUSH=1 git push origin main
+
+MSG
+  exit 1
+done
+
+exit 0

@@ -23,8 +23,13 @@ echo "==> Protecting main"
 # enforce_admins:true means this applies to you too — that is the point.
 # required_approving_review_count is 0 because you are a solo maintainer and
 # cannot approve your own PR; the PR + status checks are the gate.
+# Server-side protection needs GitHub Pro on a private repo. If it 403s we
+# fall back to the pre-push hook, which is already committed in .githooks/.
 gh api -X PUT "repos/$OWNER/$REPO_NAME/branches/main/protection" \
-  -H "Accept: application/vnd.github+json" --input - <<'JSON'
+  -H "Accept: application/vnd.github+json" --input - <<'JSON' || {
+  echo "!! Branch protection unavailable (private repo on the Free plan)."
+  echo "   Local pre-push hook is enforcing it instead: git config core.hooksPath .githooks"
+}
 {
   "required_status_checks": {
     "strict": true,
