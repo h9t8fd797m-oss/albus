@@ -144,6 +144,30 @@ message.
 
 ## Payments
 
+> **Superseded: payments will go through RevenueCat.**
+>
+> RevenueCat's SDK handles the purchase and its servers verify with Apple, so
+> the direct JWS verification below is no longer the intended path. The two
+> Apple endpoints and `_shared/appstore.ts` (~320 lines) are inert but left in
+> place — the decision is recent, and they are a working fallback.
+>
+> **`APPLE_ALLOW_SANDBOX` is now `false`**, which closes the only route by
+> which those endpoints could grant anything.
+>
+> **What survives the switch, and is the reason this was not wasted work:**
+> `entitlements`, `subscription_transactions`, and `apply_subscription_state`
+> are provider-agnostic. RevenueCat's webhook carries the same facts under
+> different names, so integration means a new signature check feeding the same
+> function — the replay protection, expiry handling and tier-driven rate limits
+> all carry over unchanged.
+>
+> **The one real difference:** RevenueCat authenticates its webhook with a
+> shared secret in an `Authorization` header, not a signature chain. That must
+> be compared in constant time, and the endpoint must reject everything else.
+> It also passes your Supabase user id as `app_user_id`, which removes the
+> "unlinked notification" case entirely.
+
+
 Two paths, one source of truth.
 
 **`receipt`** takes a StoreKit 2 signed transaction from the client and

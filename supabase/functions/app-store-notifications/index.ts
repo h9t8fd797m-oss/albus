@@ -1,3 +1,12 @@
+// ⚠️  SUPERSEDED — payments move to RevenueCat.
+//
+// This verifies Apple JWS transactions directly. RevenueCat performs that
+// verification on its own servers, so this path will not be used. Kept for now
+// rather than deleted: the decision is recent, and if RevenueCat is ever
+// dropped this is a working direct-to-Apple implementation.
+//
+// Do not extend it. When RevenueCat lands, either delete this or repoint it —
+// see docs/backend.md § Payments.
 // app-store-notifications/index.ts
 //
 // Apple's App Store Server Notifications V2 webhook: renewals, cancellations,
