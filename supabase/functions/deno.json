@@ -1,0 +1,10 @@
+{
+  "lock": false,
+  "tasks": {
+    "check": "deno check breakdown/index.ts chat/index.ts receipt/index.ts",
+    "test": "deno test --allow-none _tests/",
+    "lint": "deno lint _shared/ breakdown/ chat/ receipt/"
+  },
+  "fmt": { "lineWidth": 100 },
+  "lint": { "rules": { "tags": ["recommended"] } }
+}
