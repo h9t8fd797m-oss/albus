@@ -74,7 +74,10 @@ cd ios && xcodebuild test -project Albus.xcodeproj -scheme Albus \
 
 ## Branching
 
-`main` is protected. Every change goes through a pull request:
+`main` is protected. **Run `./scripts/install-hooks.sh` in every clone** —
+`core.hooksPath` is not committed, so a fresh clone starts unprotected.
+
+Every change goes through a pull request:
 
 ```bash
 git checkout -b feat/what-it-does
