@@ -38,8 +38,9 @@ public enum SessionState: String, Sendable, Codable, CaseIterable {
     case scheduled, active, completed, missed, skipped
 
     /// Completed and in-progress work is history. The scheduler reads it to
-    /// know what time is gone, and never rewrites it.
-    var isImmutable: Bool {
+    /// know what time is gone, and never rewrites it. Public because the
+    /// persistence layer must honour the same rule when reconciling.
+    public var isImmutable: Bool {
         self == .completed || self == .active
     }
 }

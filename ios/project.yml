@@ -49,3 +49,27 @@ targets:
         PRODUCT_BUNDLE_IDENTIFIER: com.felipegutierrez.albus
         TARGETED_DEVICE_FAMILY: "1"
         INFOPLIST_KEY_UIStatusBarStyle: UIStatusBarStyleDarkContent
+
+  AlbusTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources:
+      - path: App/AlbusTests
+    dependencies:
+      - target: Albus
+      - package: AlbusCore
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: YES
+
+schemes:
+  Albus:
+    build:
+      targets:
+        Albus: all
+        AlbusTests: [test]
+    test:
+      targets:
+        - AlbusTests
+    run:
+      config: Debug

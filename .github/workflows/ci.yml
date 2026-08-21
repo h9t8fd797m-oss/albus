@@ -76,7 +76,7 @@ jobs:
         run: swift test
 
   ios-build:
-    name: iOS build
+    name: iOS build and tests
     runs-on: macos-15
     steps:
       - uses: actions/checkout@v4
@@ -98,7 +98,5 @@ jobs:
       - if: steps.probe.outputs.found == 'true'
         working-directory: ios
         run: |
-          xcodebuild -project Albus.xcodeproj -scheme Albus \
-            -destination 'platform=iOS Simulator,name=iPhone 17 Pro' \
-            build | xcpretty || xcodebuild -project Albus.xcodeproj -scheme Albus \
-            -destination 'platform=iOS Simulator,name=iPhone 17 Pro' build
+          xcodebuild test -project Albus.xcodeproj -scheme Albus \
+            -destination 'platform=iOS Simulator,name=iPhone 17 Pro'
