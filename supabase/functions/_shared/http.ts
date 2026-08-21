@@ -37,6 +37,20 @@ export function mapPostgresError(message: string): HttpError {
   if (message.includes("NOT_AUTHENTICATED")) {
     return new HttpError(401, "NOT_AUTHENTICATED");
   }
+  if (message.includes("RATE_LIMIT_HOURLY")) {
+    return new HttpError(
+      429,
+      "RATE_LIMIT_HOURLY",
+      "Too many requests in the last hour. Try again shortly.",
+    );
+  }
+  if (message.includes("RATE_LIMIT_DAILY")) {
+    return new HttpError(
+      429,
+      "RATE_LIMIT_DAILY",
+      "You have reached today's limit. It resets tomorrow.",
+    );
+  }
   if (message.includes("SUBTASKS_REQUIRED") || message.includes("TOO_MANY_SUBTASKS")) {
     return new HttpError(422, "INVALID_PLAN");
   }

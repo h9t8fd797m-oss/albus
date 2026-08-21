@@ -5,7 +5,7 @@
 
 import { requireUser } from "../_shared/auth.ts";
 import { errorResponse, HttpError, jsonResponse, mapPostgresError } from "../_shared/http.ts";
-import { assertCanGeneratePlan, recordUsage } from "../_shared/quota.ts";
+import { assertCanGeneratePlan } from "../_shared/quota.ts";
 import { loadRubric } from "../_shared/curriculum.ts";
 import { generateBreakdown } from "../_shared/anthropic.ts";
 import {
@@ -105,6 +105,16 @@ Deno.serve(async (req) => {
     };
 
     const model = selectModel(promptInput);
+
+    // Reserve a usage slot atomically before spending anything. The active-plan
+    // cap bounds how much work a user can have open; this bounds how fast they
+    // can burn tokens, which is the axis that actually costs money.
+    const { data: usageId, error: rateError } = await caller.db.rpc(
+      "check_and_record_ai_usage",
+      { p_kind: "breakdown", p_model: model },
+    );
+    if (rateError) throw mapPostgresError(rateError.message);
+
     const generated = await generateBreakdown(
       model,
       buildSystemPrompt(rubric),
@@ -149,15 +159,20 @@ Deno.serve(async (req) => {
     );
     if (error) throw mapPostgresError(error.message);
 
-    // Fire and forget: usage accounting must never fail a student's request.
-    recordUsage(
-      caller.id,
-      "breakdown",
-      generated.model,
-      generated.inputTokens,
-      generated.outputTokens,
-    )
-      .catch((e) => console.warn("usage logging failed:", e));
+    if (usageId) {
+      // Fire and forget: token accounting must never fail a student's request.
+      void (async () => {
+        try {
+          await caller.db.rpc("record_ai_usage_tokens", {
+            p_usage_id: usageId,
+            p_input_tokens: generated.inputTokens,
+            p_output_tokens: generated.outputTokens,
+          });
+        } catch (e) {
+          console.warn("token accounting failed:", e);
+        }
+      })();
+    }
 
     return jsonResponse({
       assignment_id: assignmentId,

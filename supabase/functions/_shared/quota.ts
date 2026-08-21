@@ -47,20 +47,3 @@ export async function assertCanGeneratePlan(caller: Caller): Promise<void> {
     );
   }
 }
-
-export async function recordUsage(
-  userId: string,
-  kind: "breakdown" | "chat",
-  model: string,
-  inputTokens?: number,
-  outputTokens?: number,
-): Promise<void> {
-  const { error } = await adminClient().from("ai_usage").insert({
-    user_id: userId,
-    kind,
-    model,
-    input_tokens: inputTokens ?? null,
-    output_tokens: outputTokens ?? null,
-  });
-  if (error) throw new Error(error.message);
-}
