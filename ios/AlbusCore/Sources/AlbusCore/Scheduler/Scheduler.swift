@@ -22,8 +22,6 @@ public struct Scheduler: Sendable {
 
     /// Guards against pathological inputs producing an unbounded loop.
     private static let maxDaysAhead = 400
-    /// Work below this is not worth a calendar block of its own.
-    private static let minimumSliceMinutes = 15
 
     private let calendar: Calendar
 
@@ -91,6 +89,11 @@ public struct Scheduler: Sendable {
         let previousByItem = Dictionary(movable.map { ($0.itemID, $0) },
                                         uniquingKeysWith: { a, _ in a })
 
+        // Placement is O(items x days x blocks): every candidate day rescans the
+        // occupied list, which grows as work is placed. Deliberately left
+        // simple — 400 items schedule in ~0.14s, and a real student has closer
+        // to 50. An interval tree would be faster and harder to trust, and
+        // this is the code where being obviously correct matters most.
         for item in pending {
             if let slot = findSlot(for: item,
                                    occupied: occupied,
