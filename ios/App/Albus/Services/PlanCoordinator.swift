@@ -36,7 +36,9 @@ final class PlanCoordinator {
     /// between a slow moment and losing what they typed.
     func addAssignment(title: String, taskType: String, deadline: Date,
                        estimatedMinutes: Int, course: Course?,
-                       context: ModelContext, now: Date = .now) async {
+                       context: ModelContext,
+                       availability: Availability = .default,
+                       now: Date = .now) async {
         status = .planning
 
         let assignment = Assignment(
@@ -67,7 +69,7 @@ final class PlanCoordinator {
                 ))
             }
             save(context, "insert steps")
-            reschedule(context: context, now: now)
+            reschedule(context: context, availability: availability, now: now)
             status = .idle
 
         } catch let failure as PlanService.Failure {
@@ -90,7 +92,9 @@ final class PlanCoordinator {
     /// durations and a task type, never the title, so the learning signal holds
     /// nothing about what the student is studying.
     func setCompleted(_ subtask: Subtask, _ completed: Bool,
-                      context: ModelContext, now: Date = .now) {
+                      context: ModelContext,
+                      availability: Availability = .default,
+                      now: Date = .now) {
         guard (subtask.completedAt != nil) != completed else { return }
 
         if completed {
@@ -110,7 +114,7 @@ final class PlanCoordinator {
         }
 
         save(context, "toggle step")
-        reschedule(context: context, now: now)
+        reschedule(context: context, availability: availability, now: now)
     }
 
     /// Actual minutes are inferred from the sessions the scheduler placed for
@@ -139,7 +143,9 @@ final class PlanCoordinator {
     ///
     /// Safe to call on any change — the scheduler pins history and moves as
     /// little as possible, so this is not a teardown.
-    func reschedule(context: ModelContext, now: Date = .now) {
+    func reschedule(context: ModelContext,
+                    availability: Availability = .default,
+                    now: Date = .now) {
         do {
             let assignments = try context.fetch(FetchDescriptor<Assignment>())
             let existing = try context.fetch(FetchDescriptor<PlanSessionRecord>())
@@ -149,6 +155,7 @@ final class PlanCoordinator {
                 items: PlanBridge.scheduleItems(from: assignments),
                 existing: PlanBridge.plannedSessions(from: existing),
                 commitments: PlanBridge.commitments(from: existing),
+                availability: availability,
                 now: now
             )
 

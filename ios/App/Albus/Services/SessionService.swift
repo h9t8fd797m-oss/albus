@@ -14,6 +14,9 @@ final class SessionService {
 
     enum State: Equatable {
         case starting
+        /// No stored session. Onboarding runs and creates the account at the
+        /// end, which is the only point a CAPTCHA challenge can be presented.
+        case needsAccount
         case signedIn(userID: UUID, isAnonymous: Bool)
         case failed(String)
     }
@@ -31,12 +34,17 @@ final class SessionService {
         self.client = client
     }
 
-    /// Restores an existing session, or creates an anonymous one.
+    /// Restores an existing session. Does **not** create one.
     ///
     /// Restore is tried first and deliberately: signing in again when a valid
     /// session already exists would orphan the previous account and hand the
     /// caller a clean quota, which is exactly the abuse the Keychain-backed
     /// session exists to prevent.
+    ///
+    /// Creation is a separate, explicit step (`createAccount`) because it is
+    /// the only moment a CAPTCHA challenge can be attached. Creating an account
+    /// silently at launch, as this used to, is precisely what makes account
+    /// farming a one-line script.
     func start() async {
         guard let client else {
             state = .failed("Not configured")
@@ -46,17 +54,36 @@ final class SessionService {
             let session = try await client.auth.session
             state = .signedIn(userID: session.user.id,
                               isAnonymous: session.user.isAnonymous)
-            return
         } catch {
-            // No stored session, or it could not be refreshed. Fall through.
+            // No stored session, or it could not be refreshed.
+            state = .needsAccount
+        }
+    }
+
+    /// Creates the anonymous account, carrying a CAPTCHA token when one is
+    /// required.
+    ///
+    /// - Parameter captchaToken: must be non-nil whenever `Captcha.isEnabled`.
+    ///   Passing nil in that case is a caller bug, and the server will reject
+    ///   it — which is the correct outcome, not something to work around here.
+    @discardableResult
+    func createAccount(captchaToken: String? = nil) async -> Bool {
+        guard let client else {
+            state = .failed("Not configured")
+            return false
         }
 
+        // Never create a second account over a live one.
+        if case .signedIn = state { return true }
+
         do {
-            let session = try await client.auth.signInAnonymously()
+            let session = try await client.auth.signInAnonymously(captchaToken: captchaToken)
             state = .signedIn(userID: session.user.id,
                               isAnonymous: session.user.isAnonymous)
+            return true
         } catch {
             state = .failed(Self.describe(error))
+            return false
         }
     }
 

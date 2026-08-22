@@ -36,13 +36,10 @@ final class CoreLoopUITests: XCTestCase {
         let app = XCUIApplication()
         app.launch()
 
-        // The app signs in silently on launch. The schedule header proves the
-        // shell rendered; the absence of the banner proves sign-in worked.
-        XCTAssertTrue(app.staticTexts["TODAY'S SCHEDULE"].waitForExistence(timeout: 20),
-                      "Today never appeared — sign-in or the shell failed")
+        reachApp(app)
         XCTAssertFalse(app.staticTexts.containing(
             NSPredicate(format: "label BEGINSWITH 'Not signed in'")).element.exists,
-            "anonymous sign-in failed")
+            "sign-in failed")
 
         addAssignment(app, titled: assignmentTitle)
 
@@ -64,7 +61,7 @@ final class CoreLoopUITests: XCTestCase {
     func testPlanIsVisibleInTasksAndDetail() throws {
         let app = XCUIApplication()
         app.launch()
-        XCTAssertTrue(app.staticTexts["TODAY'S SCHEDULE"].waitForExistence(timeout: 20))
+        reachApp(app)
 
         addAssignment(app, titled: assignmentTitle)
 
@@ -89,7 +86,7 @@ final class CoreLoopUITests: XCTestCase {
     func testToolsLibraryRenders() throws {
         let app = XCUIApplication()
         app.launch()
-        XCTAssertTrue(app.staticTexts["TODAY'S SCHEDULE"].waitForExistence(timeout: 20))
+        reachApp(app)
 
         app.buttons["Tools"].tap()
         XCTAssertTrue(app.buttons.containing(
@@ -98,6 +95,48 @@ final class CoreLoopUITests: XCTestCase {
     }
 
     // MARK: - Helpers
+
+    /// Gets to the app proper, completing onboarding when it is showing.
+    ///
+    /// A fresh install has no account, so first launch lands in onboarding —
+    /// which is also where the account is created. A later launch restores the
+    /// session and goes straight through. Tests must tolerate both, because
+    /// which one they get depends on what ran before them.
+    private func reachApp(_ app: XCUIApplication) {
+        let onboarding = app.staticTexts["A few things first."]
+        let home = app.staticTexts["TODAY'S SCHEDULE"]
+
+        // Whichever appears first decides the path.
+        let start = Date()
+        while Date().timeIntervalSince(start) < 25 {
+            if home.exists { return }
+            if onboarding.exists { break }
+            usleep(200_000)
+        }
+        guard onboarding.exists else {
+            XCTAssertTrue(home.waitForExistence(timeout: 20),
+                          "neither onboarding nor the app appeared")
+            return
+        }
+
+        app.buttons["Next"].tap()
+
+        let task = app.textFields["e.g. History term paper"]
+        XCTAssertTrue(task.waitForExistence(timeout: 5), "the deadline step never appeared")
+        task.tap()
+        task.typeText("Onboarding first assignment")
+
+        app.buttons["Build my plan"].tap()
+
+        // Account creation plus a real Claude call.
+        let done = app.buttons["Show me"]
+        XCTAssertTrue(done.waitForExistence(timeout: 120),
+                      "onboarding never finished — account creation or the first plan failed")
+        done.tap()
+
+        XCTAssertTrue(home.waitForExistence(timeout: 20),
+                      "onboarding completed but the app never appeared")
+    }
 
     private func addAssignment(_ app: XCUIApplication, titled title: String) {
         app.buttons["Add assignment"].firstMatch.tap()

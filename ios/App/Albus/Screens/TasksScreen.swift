@@ -6,6 +6,7 @@ import AlbusCore
 struct TasksScreen: View {
     @Environment(\.modelContext) private var context
     @Environment(PlanCoordinator.self) private var coordinator
+    @Environment(Preferences.self) private var preferences
 
     @Query(sort: \Assignment.deadline) private var assignments: [Assignment]
 
@@ -66,7 +67,8 @@ struct TasksScreen: View {
                 Task {
                     await coordinator.addAssignment(
                         title: title, taskType: type, deadline: deadline,
-                        estimatedMinutes: minutes, course: nil, context: context
+                        estimatedMinutes: minutes, course: nil, context: context,
+                        availability: preferences.availability
                     )
                 }
             }
@@ -154,7 +156,8 @@ struct TasksScreen: View {
     private func toggleAll(_ assignment: Assignment) {
         let target = !assignment.isComplete
         for subtask in assignment.subtasks {
-            coordinator.setCompleted(subtask, target, context: context)
+            coordinator.setCompleted(subtask, target, context: context,
+                                     availability: preferences.availability)
         }
     }
 }

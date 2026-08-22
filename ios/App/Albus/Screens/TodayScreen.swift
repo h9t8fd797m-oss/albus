@@ -10,6 +10,7 @@ struct TodayScreen: View {
     @Environment(\.modelContext) private var context
     @Environment(SessionService.self) private var session
     @Environment(PlanCoordinator.self) private var coordinator
+    @Environment(Preferences.self) private var preferences
 
     @Query(sort: \PlanSessionRecord.startsAt) private var sessions: [PlanSessionRecord]
 
@@ -49,7 +50,8 @@ struct TodayScreen: View {
                 Task {
                     await coordinator.addAssignment(
                         title: title, taskType: type, deadline: deadline,
-                        estimatedMinutes: minutes, course: nil, context: context
+                        estimatedMinutes: minutes, course: nil, context: context,
+                        availability: preferences.availability
                     )
                 }
             }
@@ -149,7 +151,8 @@ struct TodayScreen: View {
                         onToggle: {
                             guard let subtask = record.subtask else { return }
                             coordinator.setCompleted(
-                                subtask, subtask.completedAt == nil, context: context
+                                subtask, subtask.completedAt == nil, context: context,
+                                availability: preferences.availability
                             )
                         }
                     )

@@ -10,6 +10,7 @@ import AlbusCore
 struct TaskDetailScreen: View {
     @Environment(\.modelContext) private var context
     @Environment(PlanCoordinator.self) private var coordinator
+    @Environment(Preferences.self) private var preferences
 
     let assignment: Assignment
 
@@ -121,7 +122,8 @@ struct TaskDetailScreen: View {
                         isExpanded: expanded == step.id,
                         subject: subject,
                         onToggleDone: {
-                            coordinator.setCompleted(step, step.completedAt == nil, context: context)
+                            coordinator.setCompleted(step, step.completedAt == nil, context: context,
+                                     availability: preferences.availability)
                         },
                         onTap: {
                             withAnimation(Tokens.Motion.quick) {

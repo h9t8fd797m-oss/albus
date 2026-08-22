@@ -76,18 +76,21 @@ struct AlbusApp: App {
 
     @State private var session = SessionService()
     @State private var coordinator = PlanCoordinator()
+    @State private var preferences = Preferences()
 
     var body: some Scene {
         WindowGroup {
-            AppShell()
+            RootView()
                 // No dark palette exists in the designs yet, and a half-applied
                 // one looks worse than none. Locked until dark is designed.
                 .preferredColorScheme(.light)
                 .environment(session)
                 .environment(coordinator)
+                .environment(preferences)
                 .task {
-                    // Silent, before anything else. Albus has no sign-up
-                    // screen: the anonymous account is the account.
+                    // Restores a stored session. It no longer *creates* one:
+                    // account creation moved into onboarding, which is the only
+                    // place a CAPTCHA challenge can be presented.
                     await session.start()
                 }
         }
