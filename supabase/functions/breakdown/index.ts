@@ -5,7 +5,7 @@
 
 import { requireUser } from "../_shared/auth.ts";
 import { errorResponse, HttpError, jsonResponse, mapPostgresError } from "../_shared/http.ts";
-import { assertCanGeneratePlan } from "../_shared/quota.ts";
+import { assertCanGeneratePlan, recordTokensInBackground } from "../_shared/quota.ts";
 import { loadRubric } from "../_shared/curriculum.ts";
 import { generateBreakdown } from "../_shared/anthropic.ts";
 import {
@@ -15,6 +15,9 @@ import {
   selectModel,
 } from "../_shared/prompt.ts";
 import { InvalidPlanError, validateAndNormalise } from "../_shared/breakdown_schema.ts";
+
+const UUID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 const TASK_TYPES = new Set([
   "essay",
@@ -60,8 +63,11 @@ function parseBody(body: RequestBody) {
     throw new HttpError(422, "INVALID_ESTIMATE", "Estimated minutes must be 5–12000.");
   }
 
+  // Real UUID shape. The previous /^[0-9a-f-]{36}$/i accepted 36 hyphens,
+  // which Postgres then rejected as a cast error — a 500 for what is plainly
+  // a malformed request.
   const uuid = (v: unknown): string | null =>
-    typeof v === "string" && /^[0-9a-f-]{36}$/i.test(v) ? v : null;
+    typeof v === "string" && UUID_RE.test(v) ? v : null;
 
   return {
     title,
@@ -160,18 +166,12 @@ Deno.serve(async (req) => {
     if (error) throw mapPostgresError(error.message);
 
     if (usageId) {
-      // Fire and forget: token accounting must never fail a student's request.
-      void (async () => {
-        try {
-          await caller.db.rpc("record_ai_usage_tokens", {
-            p_usage_id: usageId,
-            p_input_tokens: generated.inputTokens,
-            p_output_tokens: generated.outputTokens,
-          });
-        } catch (e) {
-          console.warn("token accounting failed:", e);
-        }
-      })();
+      recordTokensInBackground(
+        caller.db,
+        usageId as string,
+        generated.inputTokens,
+        generated.outputTokens,
+      );
     }
 
     return jsonResponse({

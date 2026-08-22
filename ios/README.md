@@ -88,29 +88,45 @@ screen, and a view maps the enum rather than picking.
 
 ---
 
-## ⚠️ CAPTCHA ships with the onboarding screen
+## CAPTCHA — built, and off until you add a key
 
-When you build onboarding, **that is the moment to add CAPTCHA** — it is the
-last known security gap and it is blocked on this screen existing.
+Onboarding exists now, and with it the CAPTCHA plumbing. **The client side is
+done**: `Services/CaptchaService.swift` presents a Cloudflare Turnstile
+challenge in a `WKWebView` and passes the token to `signInAnonymously`.
 
-**Why it cannot be turned on earlier.** The instant
-`[auth.captcha] enabled = true` is set in `supabase/config.toml`, Supabase
-rejects every sign-up that does not carry a CAPTCHA token. Albus creates an
-anonymous account on first launch, so enabling it before the client can present
-a challenge breaks every new install immediately.
+**It is deliberately inert until configured.** The switch is the presence of a
+site key: with `TURNSTILE_SITE_KEY` empty, no challenge is shown and sign-up
+behaves exactly as before. This matters because the two sides must be turned on
+*together* — a secret configured in Supabase without a key in the app rejects
+every new sign-up, and a key in the app without the secret verifies nothing.
 
-**What to do, in order:**
+**Why Turnstile rather than hCaptcha** (`config.toml` still names hcaptcha, and
+should be updated when you switch it on): Turnstile runs in a plain WebView, so
+it costs zero third-party SDKs in an app that has almost none, and it is free at
+higher volume.
 
-1. Add the challenge to the first onboarding screen (hCaptcha is what
-   `config.toml` is currently set to; Cloudflare Turnstile is also supported
-   and cheaper at volume — decide then).
-2. Pass the token to `signInAnonymously` via `options.captchaToken`.
-3. Set the provider secret: `supabase secrets set HCAPTCHA_SECRET=...`
-4. Flip `enabled = true` in `config.toml`, then `supabase config push`.
-5. **Verify a fresh install can still sign up** before merging. This is the
-   step that catches a broken token flow, and skipping it means shipping an app
-   nobody can open.
+### Turning it on — all three, in one go
 
-**Until then**, account farming is bounded by a global spend fuse
-(`app_config.global_ai_calls_per_hour`) plus per-IP sign-up limits. The
-residual risk is cost, not data — see `docs/security-model.md` § 6.
+1. **Cloudflare** → Turnstile → create a widget. Set its hostname to the value
+   of `TURNSTILE_ORIGIN` in your `Config.xcconfig` (default `albus.app`). The
+   hostname must match: Turnstile checks the page origin, which is why the
+   WebView loads its HTML with an explicit base URL rather than `about:blank`.
+2. **App** → paste the **site** key into `TURNSTILE_SITE_KEY` in
+   `App/Config.xcconfig`, and rebuild.
+3. **Supabase** → Authentication → Settings → Bot and Abuse Protection → enable,
+   provider Turnstile, paste the **secret** key.
+
+### Then verify, on a fresh install
+
+Delete the app first — an existing install has a session and will never hit
+sign-up, so testing on it proves nothing. A fresh install must reach the app.
+`AlbusUITests` covers exactly this path and is the fastest check:
+
+```
+xcodebuild test -scheme Albus -only-testing:AlbusUITests
+```
+
+**Until it is on**, account farming stays bounded by the global spend fuse
+(`app_config.global_ai_calls_per_hour`, currently 2000/hour) plus the per-IP
+sign-up limit of 10/hour. The residual risk is cost, not data — see
+`docs/security-model.md` § 6.

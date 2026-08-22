@@ -1,10 +1,18 @@
 {
   "lock": false,
   "tasks": {
-    "check": "deno check breakdown/index.ts chat/index.ts receipt/index.ts app-store-notifications/index.ts",
+    "check": "deno check breakdown/index.ts chat/index.ts receipt/index.ts app-store-notifications/index.ts revenuecat-webhook/index.ts",
     "test": "deno test _tests/",
-    "lint": "deno lint _shared/ breakdown/ chat/ receipt/ app-store-notifications/"
+    "lint": "deno lint _shared/ breakdown/ chat/ receipt/ app-store-notifications/ revenuecat-webhook/"
   },
-  "fmt": { "lineWidth": 100 },
-  "lint": { "rules": { "tags": ["recommended"] } }
+  "fmt": {
+    "lineWidth": 100
+  },
+  "lint": {
+    "rules": {
+      "tags": [
+        "recommended"
+      ]
+    }
+  }
 }

@@ -48,7 +48,10 @@ struct ResilientAuthStorage: AuthLocalStorage {
     }
 
     func retrieve(key: String) throws -> Data? {
-        if let data = try? keychain.retrieve(key: key), data != nil {
+        // `data != nil` used to sit here and always be true — retrieve returns
+        // a non-optional. Emptiness is the real question: an empty blob is not
+        // a session, and returning it would skip the fallback that holds one.
+        if let data = try? keychain.retrieve(key: key), !data.isEmpty {
             return data
         }
         return fallback.data(forKey: fallbackPrefix + key)

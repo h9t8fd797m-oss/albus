@@ -18,13 +18,48 @@ jobs:
     environment: production      # add required reviewers here for a manual gate
     steps:
       - uses: actions/checkout@v4
+
+      # Without this the run dies inside `supabase link` with "Access token not
+      # provided", which reads like a CLI bug rather than "nobody has added the
+      # secrets yet". This workflow failed on every run for exactly that reason,
+      # while CONTRIBUTING.md claimed merging deploys migrations.
+      - name: Check the deploy credentials exist
+        env:
+          TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          REF:   ${{ secrets.SUPABASE_PROJECT_REF }}
+          PW:    ${{ secrets.SUPABASE_DB_PASSWORD }}
+        run: |
+          missing=""
+          [ -z "$TOKEN" ] && missing="$missing SUPABASE_ACCESS_TOKEN"
+          [ -z "$REF" ]   && missing="$missing SUPABASE_PROJECT_REF"
+          [ -z "$PW" ]    && missing="$missing SUPABASE_DB_PASSWORD"
+          if [ -n "$missing" ]; then
+            echo "::error::Missing repository secret(s):$missing"
+            echo "::error::Add them under Settings -> Secrets and variables -> Actions."
+            echo "::error::Until then migrations must be applied by hand - see ios/README.md."
+            exit 1
+          fi
+          echo "all three secrets present"
+
       - uses: supabase/setup-cli@v1
         with: { version: latest }
+
       - run: supabase link --project-ref "$SUPABASE_PROJECT_REF"
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
           SUPABASE_PROJECT_REF:  ${{ secrets.SUPABASE_PROJECT_REF }}
-      - run: supabase db push
+
+      # Shows what is about to run before it runs. On an up-to-date database
+      # this prints "Remote database is up to date" and the push below is a
+      # no-op; on a real change it is the last chance to see it in the log.
+      - name: Preview
+        run: supabase db push --dry-run
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_DB_PASSWORD:  ${{ secrets.SUPABASE_DB_PASSWORD }}
+
+      - name: Apply
+        run: supabase db push --yes
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
           SUPABASE_DB_PASSWORD:  ${{ secrets.SUPABASE_DB_PASSWORD }}

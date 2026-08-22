@@ -54,5 +54,19 @@ export function mapPostgresError(message: string): HttpError {
   if (message.includes("SUBTASKS_REQUIRED") || message.includes("TOO_MANY_SUBTASKS")) {
     return new HttpError(422, "INVALID_PLAN");
   }
-  return new HttpError(500, "INTERNAL_ERROR", message);
+  // The global spend fuse (migration 0013). Without this case it fell through
+  // to the branch below and reached the client as a 500 INTERNAL_ERROR, so the
+  // app could not tell "we are at capacity, retry later" from "we are broken".
+  if (message.includes("GLOBAL_CAPACITY_REACHED")) {
+    return new HttpError(
+      503,
+      "GLOBAL_CAPACITY_REACHED",
+      "Albus is at capacity right now. Try again shortly.",
+    );
+  }
+  // Anything unmapped is a bug on our side. The message is a raw Postgres
+  // string — it can name tables, columns and constraints — so it goes to the
+  // logs and never to the caller.
+  console.error("unmapped postgres error:", message);
+  return new HttpError(500, "INTERNAL_ERROR");
 }
