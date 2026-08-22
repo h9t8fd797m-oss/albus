@@ -7,11 +7,13 @@ struct TasksScreen: View {
     @Environment(\.modelContext) private var context
     @Environment(PlanCoordinator.self) private var coordinator
     @Environment(Preferences.self) private var preferences
+    @Environment(EntitlementService.self) private var entitlements
 
     @Query(sort: \Assignment.deadline) private var assignments: [Assignment]
 
     @State private var filter: Filter = .all
     @State private var addingTask = false
+    @State private var showingPaywall = false
 
     enum Filter: String, CaseIterable, Identifiable {
         case all, dueSoon, overdue, done
@@ -62,6 +64,7 @@ struct TasksScreen: View {
         TimelineView(.periodic(from: .now, by: 300)) { timeline in
             content(now: timeline.date)
         }
+        .sheet(isPresented: $showingPaywall) { PaywallScreen() }
         .sheet(isPresented: $addingTask) {
             AddTaskSheet { title, type, deadline, minutes in
                 Task {
@@ -82,6 +85,7 @@ struct TasksScreen: View {
         return ScrollView {
             VStack(alignment: .leading, spacing: Tokens.Spacing.l) {
                 header
+                freeLimitNotice
 
                 FilterChipRow(filters: Filter.allCases, selection: $filter) { $0.title }
                     .padding(.horizontal, -Tokens.Spacing.xl)
@@ -113,6 +117,21 @@ struct TasksScreen: View {
             .padding(.bottom, Tokens.Spacing.xl)
         }
         .scrollContentBackground(.hidden)
+    }
+
+    /// Mirrors FREE_ACTIVE_PLAN_LIMIT on the server. Shown as guidance only —
+    /// the database enforces it in the same transaction as the insert, so this
+    /// being wrong costs a clearer message, never a bypassed limit.
+    private var activeCount: Int {
+        assignments.filter { !$0.isComplete }.count
+    }
+
+    @ViewBuilder private var freeLimitNotice: some View {
+        if !entitlements.isPlus && activeCount >= 3 {
+            StatusBanner(tone: .warning,
+                         message: "Free plans cover three assignments at a time.",
+                         retryTitle: "See Plus") { showingPaywall = true }
+        }
     }
 
     private var header: some View {

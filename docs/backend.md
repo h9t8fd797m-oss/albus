@@ -144,6 +144,74 @@ message.
 
 ## Payments
 
+Entitlement has exactly one source: the **RevenueCat webhook**. Nothing a
+client sends can make anyone Plus.
+
+```
+RevenueCat  →  revenuecat-webhook  →  apply_subscription_state  →  entitlements
+                (shared secret)         (conflict + expiry logic)    (server-written)
+```
+
+**`revenuecat-webhook`** is public — RevenueCat cannot present a user JWT — so
+the shared secret in the `Authorization` header is the whole authentication.
+It is compared in **constant time**, checked **before the body is read**, and a
+**missing secret rejects rather than accepts**: an unconfigured deployment must
+never mean an open endpoint that grants entitlements.
+
+Three things this endpoint gets right that are easy to get wrong:
+
+* **Sandbox purchases grant nothing.** `apply_subscription_state` decides
+  "active" from expiry and revocation alone and never looks at environment, so
+  without an explicit check a sandbox subscription — free, and available to
+  anyone with a test account — would hand out Plus exactly like a paid one.
+  Override with `ALBUS_ALLOW_SANDBOX_PURCHASES=true` in a test project only.
+* **Environment casing is normalised.** RevenueCat sends `PRODUCTION`; the
+  column's check constraint predates it and accepts Apple's `Production`. Left
+  unmapped every real webhook violated the constraint and returned 500, which
+  RevenueCat retries forever — nobody would ever have become Plus. Found by
+  sending a real payload, not by reading the code.
+* **Cancellation is not revocation.** `CANCELLATION` means "will not renew";
+  the student keeps what they paid for until `expires_at`. Only `EXPIRATION`
+  and `SUBSCRIPTION_PAUSED` revoke immediately.
+
+`apply_subscription_state` is unchanged and provider-agnostic: it still refuses
+to reassign a subscription that already belongs to another account (`conflict`),
+still stores state for a subscription it cannot yet attribute (`unlinked`), and
+still drives the tier-based rate limits.
+
+### Verified against the deployed endpoint
+
+| Attack / case | Result |
+|---|---|
+| No / empty / guessed / truncated / `Bearer`-wrapped secret | **401** |
+| Publishable key as the secret | **401** |
+| `GET`, malformed JSON, 70 KB body | **405 / 400 / 413** |
+| Legitimate purchase | grants Plus to that user only |
+| Sandbox purchase | **ignored**, nothing granted |
+| Another user claiming the same subscription | **conflict**, nothing granted |
+| Expiration | tier drops to free |
+| Cancellation | stays Plus until expiry |
+| Same event replayed 5× | idempotent |
+
+### What still needs an account
+
+The client cannot purchase yet. `PaywallScreen` presents the offer and says so
+rather than pretending; wiring it up is `Purchases.shared.purchase(...)` in
+`PaywallScreen.purchase()` and nothing else in the app, because entitlement
+still arrives from the server.
+
+1. App Store Connect: create the subscription products.
+2. RevenueCat: connect the app, set **`app_user_id` to the Supabase user id**
+   (this is what removes the "notification about a user we cannot identify"
+   case), add the SDK key.
+3. RevenueCat → Integrations → Webhooks: point at
+   `https://<project>.functions.supabase.co/revenuecat-webhook` and set the
+   Authorization header to the value of `REVENUECAT_WEBHOOK_SECRET`.
+
+---
+
+### Superseded: the direct-to-Apple path
+
 > **Superseded: payments will go through RevenueCat.**
 >
 > RevenueCat's SDK handles the purchase and its servers verify with Apple, so

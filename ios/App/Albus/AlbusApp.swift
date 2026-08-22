@@ -77,6 +77,7 @@ struct AlbusApp: App {
     @State private var session = SessionService()
     @State private var coordinator = PlanCoordinator()
     @State private var preferences = Preferences()
+    @State private var entitlements = EntitlementService()
 
     var body: some Scene {
         WindowGroup {
@@ -87,11 +88,15 @@ struct AlbusApp: App {
                 .environment(session)
                 .environment(coordinator)
                 .environment(preferences)
+                .environment(entitlements)
                 .task {
                     // Restores a stored session. It no longer *creates* one:
                     // account creation moved into onboarding, which is the only
                     // place a CAPTCHA challenge can be presented.
                     await session.start()
+                    // Only meaningful once signed in; refresh reads the
+                    // caller's own row and no-ops otherwise.
+                    await entitlements.refresh()
                 }
         }
         .modelContainer(container)
