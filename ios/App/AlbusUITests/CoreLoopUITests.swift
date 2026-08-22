@@ -19,17 +19,20 @@ import XCTest
 @MainActor
 final class CoreLoopUITests: XCTestCase {
 
-    /// Unique per test run.
+    /// Unique per test.
     ///
     /// A shared constant meant the second test found the row the first had left
     /// behind and failed on "multiple matching elements" — the tests were
     /// coupled through the live database, which is exactly what a suite hitting
     /// a real backend must not be.
-    private var assignmentTitle = ""
+    ///
+    /// Initialised here rather than in `setUp`, which is nonisolated under
+    /// Xcode 16.4 and so cannot assign to a MainActor-isolated property. XCTest
+    /// builds a fresh instance per test method, so this is still unique per test.
+    private let assignmentTitle = "Biology chapter \(UUID().uuidString.prefix(6))"
 
     override func setUp() {
         continueAfterFailure = false
-        assignmentTitle = "Biology chapter \(UUID().uuidString.prefix(6))"
     }
 
     func testAddAssignmentProducesAPlacedPlan() throws {
