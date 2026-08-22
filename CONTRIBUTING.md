@@ -19,9 +19,16 @@ but it makes one loud instead of silent.
 **`main` is protected.** No direct commits, no direct pushes, no force-pushes.
 Every change reaches `main` through a reviewed pull request.
 
-This is not ceremony. Merging to `main` deploys migrations to the live
+This is not ceremony. Merging to `main` is what deploys migrations to the live
 database, and a bad migration is the one class of mistake that is genuinely
 hard to undo.
+
+**Deploys need three repository secrets** — `SUPABASE_ACCESS_TOKEN`,
+`SUPABASE_PROJECT_REF` and `SUPABASE_DB_PASSWORD`, under Settings → Secrets and
+variables → Actions. Until they are set, the `Deploy migrations` workflow stops
+immediately and says which are missing, and migrations have to be applied by
+hand. It used to die further in with an opaque CLI error instead, which is how
+it went unnoticed that it had never once run.
 
 ## Branch names
 
@@ -73,3 +80,10 @@ Don't, except on a throwaway branch database. The path to production is a
 merged PR. If you need to apply something urgently, apply it via a PR with
 `workflow_dispatch` rather than reaching into the dashboard — otherwise the
 repo and the database drift, and the repo stops being the source of truth.
+
+That drift is not hypothetical: two migrations were applied by hand and never
+written to a file, so the repo could not rebuild the database it described.
+They were recovered from `supabase_migrations.schema_migrations` and are now
+`0016` and `0017`. If you ever have to apply something directly, write the file
+in the same change — a migration that exists only in the database is a migration
+nobody can review, roll forward, or reproduce.
