@@ -78,6 +78,63 @@ final class PlanCoordinator {
         }
     }
 
+    /// Marks a step done or undone and re-flows what is left.
+    ///
+    /// This is the other half of the core loop. Completing a step frees the
+    /// time it was holding; un-completing it needs that time back. Either way
+    /// the plan is rebuilt immediately and on device, so the student sees the
+    /// consequence of the tap rather than a spinner.
+    ///
+    /// A completion also writes a `CompletionRecord` — estimate against actual
+    /// — which is what the on-device estimator learns from. It carries
+    /// durations and a task type, never the title, so the learning signal holds
+    /// nothing about what the student is studying.
+    func setCompleted(_ subtask: Subtask, _ completed: Bool,
+                      context: ModelContext, now: Date = .now) {
+        guard (subtask.completedAt != nil) != completed else { return }
+
+        if completed {
+            subtask.completedAt = now
+            if let record = completionRecord(for: subtask, now: now) {
+                context.insert(record)
+            }
+        } else {
+            subtask.completedAt = nil
+        }
+        subtask.assignment?.updatedAt = now
+
+        // Finishing the last step closes the assignment, which is what frees a
+        // slot against the free-tier active-plan cap.
+        if let assignment = subtask.assignment {
+            assignment.status = assignment.isComplete ? "done" : "active"
+        }
+
+        save(context, "toggle step")
+        reschedule(context: context, now: now)
+    }
+
+    /// Actual minutes are inferred from the sessions the scheduler placed for
+    /// this step. With no sessions there is nothing honest to report, so
+    /// nothing is logged rather than logging the estimate as though it were
+    /// the measurement.
+    private func completionRecord(for subtask: Subtask, now: Date) -> CompletionRecord? {
+        let elapsed = subtask.sessions
+            .filter { $0.sessionState != .skipped && $0.endsAt > $0.startsAt }
+            .reduce(0) { $0 + Int($1.endsAt.timeIntervalSince($1.startsAt) / 60) }
+        guard elapsed > 0 else { return nil }
+
+        let assignment = subtask.assignment
+        return CompletionRecord(
+            subjectCode: assignment?.course?.displayName,
+            taskType: assignment?.taskType ?? "other",
+            estimatedMinutes: subtask.estimatedMinutes,
+            actualMinutes: elapsed,
+            hourBucket: Calendar.current.component(.hour, from: now),
+            highConfidence: subtask.sessions.count == 1,
+            createdAt: now
+        )
+    }
+
     /// Re-places everything that still needs time.
     ///
     /// Safe to call on any change — the scheduler pins history and moves as

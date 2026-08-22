@@ -9,6 +9,7 @@
 // it cannot race.
 
 import { adminClient, type Caller } from "./auth.ts";
+import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import { HttpError } from "./http.ts";
 
 export const FREE_ACTIVE_PLAN_LIMIT = 3;
@@ -46,4 +47,37 @@ export async function assertCanGeneratePlan(caller: Caller): Promise<void> {
       "Free plans cover three active assignments at a time.",
     );
   }
+}
+
+/**
+ * Records token usage after the response has been sent.
+ *
+ * `void (async () => ...)()` was losing these writes: Supabase Edge Runtime may
+ * tear the isolate down as soon as the response is returned, so a promise with
+ * nothing holding it is not guaranteed to run. `EdgeRuntime.waitUntil` keeps
+ * the worker alive until it settles. Still fire-and-forget from the caller's
+ * point of view — token accounting must never fail a student's request — but
+ * now it actually happens.
+ */
+export function recordTokensInBackground(
+  db: SupabaseClient,
+  usageId: string,
+  inputTokens: number,
+  outputTokens: number,
+): void {
+  const write = (async () => {
+    try {
+      await db.rpc("record_ai_usage_tokens", {
+        p_usage_id: usageId,
+        p_input_tokens: inputTokens,
+        p_output_tokens: outputTokens,
+      });
+    } catch (e) {
+      console.warn("token accounting failed:", e);
+    }
+  })();
+
+  const runtime = (globalThis as { EdgeRuntime?: { waitUntil(p: Promise<unknown>): void } })
+    .EdgeRuntime;
+  if (runtime?.waitUntil) runtime.waitUntil(write);
 }

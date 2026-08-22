@@ -12,12 +12,16 @@ import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import { requireUser } from "../_shared/auth.ts";
 import { errorResponse, HttpError, jsonResponse, mapPostgresError } from "../_shared/http.ts";
 import { chatReply } from "../_shared/anthropic.ts";
+import { recordTokensInBackground } from "../_shared/quota.ts";
 import {
   buildChatSystemPrompt,
   type ChatContext,
   MAX_MESSAGE_CHARS,
   sanitiseHistory,
 } from "../_shared/chat_prompt.ts";
+
+const UUID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 const MODEL_CHAT_RUBRIC = "claude-sonnet-5";
 const MODEL_CHAT_PLAIN = "claude-haiku-4-5";
@@ -97,7 +101,7 @@ Deno.serve(async (req) => {
     if (message.length > MAX_MESSAGE_CHARS) throw new HttpError(413, "MESSAGE_TOO_LONG");
 
     const assignmentId =
-      typeof body.assignment_id === "string" && /^[0-9a-f-]{36}$/i.test(body.assignment_id)
+      typeof body.assignment_id === "string" && UUID_RE.test(body.assignment_id)
         ? body.assignment_id
         : null;
 
@@ -120,18 +124,12 @@ Deno.serve(async (req) => {
     );
 
     if (usageId) {
-      // Fire and forget: token accounting must never fail a student's reply.
-      void (async () => {
-        try {
-          await caller.db.rpc("record_ai_usage_tokens", {
-            p_usage_id: usageId,
-            p_input_tokens: result.inputTokens,
-            p_output_tokens: result.outputTokens,
-          });
-        } catch (e) {
-          console.warn("token accounting failed:", e);
-        }
-      })();
+      recordTokensInBackground(
+        caller.db,
+        usageId as string,
+        result.inputTokens,
+        result.outputTokens,
+      );
     }
 
     return jsonResponse({

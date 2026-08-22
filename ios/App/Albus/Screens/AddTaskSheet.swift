@@ -6,18 +6,19 @@ import AlbusCore
 struct AddTaskSheet: View {
     @Environment(\.dismiss) private var dismiss
 
-    let onSubmit: (String, String, Date, Int) async -> Void
+    /// Reports the values and returns. Generation is the caller's job, so the
+    /// sheet does not outlive the tap.
+    let onSubmit: (String, String, Date, Int) -> Void
 
     @State private var title = ""
     @State private var taskType = "essay"
     @State private var deadline = Calendar.current.date(byAdding: .day, value: 3, to: .now) ?? .now
     @State private var hours = 2.0
-    @State private var submitting = false
 
     private let types = ["essay", "problem_set", "reading", "revision", "lab_report", "project"]
 
     private var canSubmit: Bool {
-        title.trimmingCharacters(in: .whitespaces).count >= 2 && !submitting
+        title.trimmingCharacters(in: .whitespaces).count >= 2
     }
 
     var body: some View {
@@ -50,16 +51,18 @@ struct AddTaskSheet: View {
                     Button("Cancel") { dismiss() }
                 }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button(submitting ? "Planning…" : "Plan it") {
-                        submitting = true
-                        let t = title.trimmingCharacters(in: .whitespaces)
-                        let minutes = Int(hours * 60)
-                        let type = taskType
-                        let due = deadline
-                        Task {
-                            await onSubmit(t, type, due, minutes)
-                            dismiss()
-                        }
+                    // Hands off and closes immediately rather than holding the
+                    // sheet open for the whole generation.
+                    //
+                    // The assignment is persisted before the network call, so
+                    // it is already in Tasks by the time this closes; Today
+                    // shows "Albus is planning…" while the steps arrive. The
+                    // old behaviour blocked the student behind a modal for
+                    // ~30 seconds and hid the app they had just added work to.
+                    Button("Plan it") {
+                        onSubmit(title.trimmingCharacters(in: .whitespaces),
+                                 taskType, deadline, Int(hours * 60))
+                        dismiss()
                     }
                     .disabled(!canSubmit)
                 }
