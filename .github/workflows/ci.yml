@@ -125,3 +125,19 @@ jobs:
           echo "using simulator $UDID"
           xcodebuild test -project Albus.xcodeproj -scheme Albus -destination "id=$UDID" \
             -skip-testing:AlbusUITests
+
+  backend-tests:
+    name: Edge function tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: denoland/setup-deno@v2
+        with: { deno-version: v2.x }
+      - name: Type-check, lint and test the edge functions
+        working-directory: supabase/functions
+        # These tests never ran in CI before, so a regression in prompt
+        # building, model routing or plan validation could merge unnoticed.
+        run: |
+          deno task check
+          deno task lint
+          deno task test
