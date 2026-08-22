@@ -3,7 +3,10 @@
 .env.*
 !.env.example
 *.xcconfig
-!Shared.xcconfig
+# The template MUST be committed — it is what CI copies to build, and what a
+# new clone copies to run. A blanket *.xcconfig swallowed it, which is why CI
+# could not generate the project.
+!ios/App/Config.example.xcconfig
 Secrets.plist
 supabase/.temp/
 supabase/.branches/
@@ -32,3 +35,6 @@ deno.lock
 # ── Xcode project is generated from ios/project.yml ───────────────────────
 ios/*.xcodeproj
 ios/AlbusCore/.build/
+
+# Real Supabase values — template is Config.example.xcconfig
+ios/App/Config.xcconfig

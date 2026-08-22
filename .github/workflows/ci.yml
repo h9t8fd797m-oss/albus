@@ -102,9 +102,16 @@ jobs:
         run: brew install xcodegen
       - if: steps.probe.outputs.found == 'true'
         working-directory: ios
-        # Generated from project.yml rather than committed, so CI regenerates
-        # it to catch a spec that no longer produces a valid project.
-        run: xcodegen generate --spec project.yml
+        # Config.xcconfig holds the real Supabase values and is gitignored, so
+        # CI has none. The placeholders build fine; the only test needing a live
+        # backend (AlbusUITests) is skipped below because it costs a real
+        # Anthropic call.
+        #
+        # The project is generated rather than committed, so regenerating here
+        # also catches a spec that no longer produces a valid project.
+        run: |
+          cp App/Config.example.xcconfig App/Config.xcconfig
+          xcodegen generate --spec project.yml
       - if: steps.probe.outputs.found == 'true'
         working-directory: ios
         # The runner's Xcode decides which simulators exist, and it lags behind
@@ -116,4 +123,5 @@ jobs:
           UDID=$(xcrun simctl list devices available | grep -m1 "iPhone" | sed -E "s/.*\(([0-9A-F-]{36})\).*/\1/")
           if [ -z "$UDID" ]; then echo "::error::no iPhone simulator on this runner"; exit 1; fi
           echo "using simulator $UDID"
-          xcodebuild test -project Albus.xcodeproj -scheme Albus -destination "id=$UDID"
+          xcodebuild test -project Albus.xcodeproj -scheme Albus -destination "id=$UDID" \
+            -skip-testing:AlbusUITests

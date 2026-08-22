@@ -26,12 +26,22 @@ struct AlbusApp: App {
         }
     }
 
+    @State private var session = SessionService()
+    @State private var coordinator = PlanCoordinator()
+
     var body: some Scene {
         WindowGroup {
             AppShell()
                 // No dark palette exists in the designs yet, and a half-applied
                 // one looks worse than none. Locked until dark is designed.
                 .preferredColorScheme(.light)
+                .environment(session)
+                .environment(coordinator)
+                .task {
+                    // Silent, before anything else. Albus has no sign-up
+                    // screen: the anonymous account is the account.
+                    await session.start()
+                }
         }
         .modelContainer(container)
     }

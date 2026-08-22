@@ -24,6 +24,28 @@ the work happens:
 cd ios/AlbusCore && swift test
 ```
 
+## ⚠️ Session persistence needs a Team ID
+
+`App/Albus/Albus.entitlements` declares the Keychain access group the auth
+session needs. It only takes effect on a **signed** build.
+
+**On the simulator (unsigned)** the session falls back to `UserDefaults`
+(`ResilientAuthStorage`). It survives relaunches — verified, 4 launches produce
+1 account — but not app deletion, so a reinstall signs in as a new anonymous
+user.
+
+**On a signed device build** Keychain is used, and its items survive app
+deletion, so a reinstall cannot reset the free-tier quota.
+
+Enabling ad-hoc signing to get the entitlement on the simulator was tried and
+reverted: it produced an `application-identifier` the simulator container did
+not match, and SwiftData then failed with *Sandbox access to file-write-create
+denied*. A working app is worth more than an entitlement that cannot be
+verified here.
+
+Quota enforcement does not depend on any of this — the global spend fuse
+(migration 0013) bounds abuse regardless of how many accounts exist.
+
 ## ⚠️ Signing is deliberately unset
 
 The app builds and runs in the simulator as is. To run on a **physical device**

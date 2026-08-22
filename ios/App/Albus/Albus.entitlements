@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <!-- Without this, every Keychain write fails with errSecMissingEntitlement
+         (-34018), the auth session is never stored, and the app creates a NEW
+         anonymous account on every launch — silently resetting the free-tier
+         quota each time. Found by a probe that wrote and read back one value. -->
+    <key>keychain-access-groups</key>
+    <array>
+        <string>$(AppIdentifierPrefix)com.felipegutierrez.albus</string>
+    </array>
+</dict>
+</plist>
