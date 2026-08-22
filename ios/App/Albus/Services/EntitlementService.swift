@@ -42,29 +42,19 @@ final class EntitlementService {
         return expiresAt > .now
     }
 
-    private let client: SupabaseClient?
+    private let reader: EntitlementReader
 
-    init(client: SupabaseClient? = Backend.shared) {
-        self.client = client
+    init(reader: EntitlementReader = EntitlementReader()) {
+        self.reader = reader
     }
 
     /// Refreshes from the server. Failure leaves the previous value alone
     /// rather than downgrading: a dropped connection must not make a paying
     /// student look free.
     func refresh() async {
-        guard let client else { return }
         do {
-            let rows: [Entitlement] = try await client
-                .from("entitlements")
-                .select("tier, expires_at")
-                .limit(1)
-                .execute()
-                .value
-
-            // RLS restricts this to the caller's own row, so there is nothing
-            // to filter by — and no user_id is sent, which is what makes it
-            // impossible to ask about someone else.
-            if let row = rows.first {
+            let row = try await reader.fetch()
+            if let row {
                 tier = Tier(rawValue: row.tier) ?? .free
                 expiresAt = row.expiresAt
             } else {
@@ -76,5 +66,34 @@ final class EntitlementService {
         } catch {
             print("[Albus] entitlement refresh failed: \(error.localizedDescription)")
         }
+    }
+}
+
+/// The network half, deliberately outside the MainActor class.
+///
+/// `PostgrestResponse` is not Sendable, so awaiting `.execute()` from an
+/// actor-isolated method means returning a non-Sendable value across an
+/// isolation boundary — which Xcode 16.4 rejects and Xcode 26 allows. Keeping
+/// the request in a plain nonisolated type means only the decoded, Sendable
+/// row ever crosses. Same shape as PlanService, for the same reason.
+struct EntitlementReader: Sendable {
+    private let client: SupabaseClient?
+
+    init(client: SupabaseClient? = Backend.shared) {
+        self.client = client
+    }
+
+    /// RLS restricts this to the caller's own row, so there is nothing to
+    /// filter by — and no user id is sent, which is what makes it impossible
+    /// to ask about anyone else.
+    func fetch() async throws -> EntitlementService.Entitlement? {
+        guard let client else { return nil }
+        let rows: [EntitlementService.Entitlement] = try await client
+            .from("entitlements")
+            .select("tier, expires_at")
+            .limit(1)
+            .execute()
+            .value
+        return rows.first
     }
 }
