@@ -1,0 +1,9 @@
+// Copy to Config.xcconfig and fill in. Config.xcconfig is gitignored.
+//
+// The publishable key is designed to be public — RLS is what protects data,
+// not this key. It is still kept out of git so it can be rotated without a
+// code change, and so no real project reference is committed.
+//
+// `$()` breaks up the `//` in the URL: xcconfig treats a bare // as a comment.
+SUPABASE_URL = https:/$()/YOUR_PROJECT_REF.supabase.co
+SUPABASE_PUBLISHABLE_KEY = sb_publishable_xxxxxxxxxxxxxxxxxxxx

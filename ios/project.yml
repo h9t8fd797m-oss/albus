@@ -17,6 +17,12 @@ options:
 packages:
   AlbusCore:
     path: AlbusCore
+  # Official client. Chosen over hand-rolled URLSession calls because the auth
+  # token lifecycle — refresh, expiry margins, concurrent refresh — is
+  # security-critical and easy to get subtly wrong.
+  Supabase:
+    url: https://github.com/supabase/supabase-swift.git
+    from: 2.55.1
 
 settings:
   base:
@@ -24,6 +30,19 @@ settings:
     ENABLE_USER_SCRIPT_SANDBOXING: YES
     # No team set on purpose — see the note above.
     CODE_SIGN_STYLE: Automatic
+    # Signing stays off until there is a real Apple Team ID.
+    #
+    # App/Albus/Albus.entitlements declares the Keychain access group the auth
+    # session needs. Enabling it here (ad-hoc signing) was tried and rejected:
+    # it produced an application-identifier the simulator container did not
+    # match, and SwiftData then failed with "Sandbox access to file-write-create
+    # denied" — a working app traded for an unverifiable entitlement.
+    #
+    # Consequence, documented rather than hidden: on the SIMULATOR the session
+    # is not persisted, so each fresh install signs in as a new anonymous user.
+    # On a signed device build the entitlement applies and the session survives.
+    # Quota enforcement does not depend on this — see the global spend fuse in
+    # migration 0013, which bounds abuse regardless of how many accounts exist.
     CODE_SIGNING_ALLOWED: NO
 
 targets:
@@ -34,11 +53,18 @@ targets:
       - path: App/Albus
     dependencies:
       - package: AlbusCore
+      - package: Supabase
+        product: Supabase
+    configFiles:
+      Debug: App/Config.xcconfig
+      Release: App/Config.xcconfig
     info:
       path: App/Albus/Info.plist
       properties:
         CFBundleDisplayName: Albus
         UILaunchScreen: {}
+        SUPABASE_URL: $(SUPABASE_URL)
+        SUPABASE_PUBLISHABLE_KEY: $(SUPABASE_PUBLISHABLE_KEY)
         UISupportedInterfaceOrientations:
           - UIInterfaceOrientationPortrait
         # The app talks only to Supabase over HTTPS; no cleartext exceptions.
@@ -49,6 +75,11 @@ targets:
         PRODUCT_BUNDLE_IDENTIFIER: com.felipegutierrez.albus
         TARGETED_DEVICE_FAMILY: "1"
         INFOPLIST_KEY_UIStatusBarStyle: UIStatusBarStyleDarkContent
+        # Set per-SDK: the project-level value loses to Xcode's iOS default
+        # ("iPhone Developer"), which needs a team we deliberately do not have.
+        # Ad-hoc is enough for the simulator and carries the entitlement.
+        # Applied automatically once DEVELOPMENT_TEAM is set; see ios/README.md.
+        CODE_SIGN_ENTITLEMENTS: App/Albus/Albus.entitlements
 
   AlbusTests:
     type: bundle.unit-test
@@ -62,14 +93,30 @@ targets:
       base:
         GENERATE_INFOPLIST_FILE: YES
 
+  AlbusUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    sources:
+      - path: App/AlbusUITests
+    dependencies:
+      - target: Albus
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: YES
+
 schemes:
   Albus:
     build:
       targets:
         Albus: all
         AlbusTests: [test]
+        AlbusUITests: [test]
     test:
       targets:
         - AlbusTests
+        # AlbusUITests makes a REAL backend call and costs money, so CI passes
+        # -skip-testing:AlbusUITests. Run it deliberately:
+        #   xcodebuild test -scheme Albus -only-testing:AlbusUITests
+        - AlbusUITests
     run:
       config: Debug
