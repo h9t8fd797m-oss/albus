@@ -110,8 +110,10 @@ Read `docs/security-model.md` before touching the schema, and run
 
 ## Before launch
 
-- [ ] CAPTCHA on anonymous sign-ins (`supabase/config.toml`)
+- [ ] CAPTCHA on anonymous sign-ins — **needs client work first**: enabling it
+      rejects every sign-up that does not carry a token, so it ships with the
+      onboarding screen. Until then a global spend fuse bounds the damage.
 - [ ] Sign in with Apple, once the Developer account is configured
-- [ ] Schedule `reap_abandoned_anonymous_users` via pg_cron
-- [ ] MFA on the Supabase account
+- [x] ~~Schedule `reap_abandoned_anonymous_users`~~ — running daily at 04:17
+- [ ] MFA on the Supabase account (only you can do this)
 - [ ] Reconcile migration history so `supabase db push` works in CI

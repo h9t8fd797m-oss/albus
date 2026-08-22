@@ -36,11 +36,22 @@ enable_confirmations = false
 [auth.external.apple]
 enabled = false   # flip on when the Apple Developer account is configured
 
-# Anonymous sign-ins are rate limited per IP by Supabase (30/hr).
-# Turn CAPTCHA on before launch — see docs/security-model.md.
+# CAPTCHA cannot be switched on unilaterally: once enabled, Supabase rejects
+# any sign-up that does not carry a captcha token, and the iOS client does not
+# send one yet. Turning it on here would break every new install. It lands with
+# the onboarding screen that can present the challenge.
 [auth.captcha]
 enabled = false
 provider = "hcaptcha"
+
+# Until then, this is the real control on account-farming. The default is 30
+# anonymous sign-ins per hour per IP; a genuine student needs exactly one, and
+# a shared school NAT might need a handful. Ten leaves room for that while
+# cutting the ceiling on scripted signups by two thirds.
+[auth.rate_limit]
+anonymous_users = 10
+sign_in_sign_ups = 30
+token_refresh = 150
 
 [edge_runtime]
 enabled = true
