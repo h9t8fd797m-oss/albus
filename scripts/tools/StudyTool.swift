@@ -554,7 +554,7 @@ enum StudyTool: String, CaseIterable, Identifiable, Sendable {
             out += [.jstor, .googleScholar]
         }
         if any(["outline", "plan", "structure", "draft", "write", "brainstorm", "argument", "essay"]) {
-            out += [.claude, .notion]
+            out += [.notion, .grammarly]
         }
         if any(["review", "edit", "proofread", "revise", "polish"]) {
             out += [.grammarly, .hemingwayEditor]

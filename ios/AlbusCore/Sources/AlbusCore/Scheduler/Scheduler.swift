@@ -53,12 +53,30 @@ public struct Scheduler: Sendable {
         now: Date
     ) -> ScheduleResult {
 
-        // History and in-flight work are pinned. So is anything that has
-        // already started, even if still marked scheduled — rewriting a block
-        // a student is sitting in front of is the same betrayal as rewriting
-        // one they finished.
-        let pinned = existing.filter { $0.state.isImmutable || $0.start <= now }
-        let movable = existing.filter { !($0.state.isImmutable || $0.start <= now) }
+        // What may move, and what may not.
+        //
+        //   pinned   finished or in-flight work, a block the student is sitting
+        //            in right now, and any past block we were never told about
+        //   movable  everything still ahead, and anything explicitly `.missed`
+        //
+        // The missed case is the one this product exists for: a block whose
+        // window passed unused has to be found a new home, and the slot it
+        // never used has to stop counting as occupied.
+        //
+        // Note what is *not* movable: a past `.scheduled` block nobody marked.
+        // We do not know whether that work happened, and re-placing it would
+        // rewrite a day the student may well have worked through. Marking a
+        // miss is the app's job (`PlanCoordinator.sweepMissedSessions`); this
+        // only acts on what it is told. Pinning it also keeps the promise that
+        // one miss moves one block — an earlier version made every past block
+        // movable, and a single missed session then shuffled the whole week.
+        func isMovable(_ session: PlannedSession) -> Bool {
+            if session.state.isImmutable { return false }
+            if session.state == .missed { return true }
+            return session.start > now
+        }
+        let pinned = existing.filter { !isMovable($0) }
+        let movable = existing.filter(isMovable)
 
         // Work already represented by a pinned session is done or being done.
         let pinnedItemIDs = Set(pinned.map(\.itemID))
@@ -89,12 +107,36 @@ public struct Scheduler: Sendable {
         let previousByItem = Dictionary(movable.map { ($0.itemID, $0) },
                                         uniquingKeysWith: { a, _ in a })
 
+        // ── Keep every placement that is still valid ──────────────────────
+        //
+        // "Only move what must move" cannot be honoured by re-placing the whole
+        // pool each run: feeding one item back in reshuffles everything after
+        // it in priority order, so a single missed session moved six other
+        // blocks. Each still-valid placement is therefore kept and its slot
+        // reserved *before* anything is placed fresh, and only work with
+        // nowhere to be competes for what is left.
+        var toPlace: [ScheduleItem] = []
+
+        for item in pending {
+            guard let previous = previousByItem[item.id],
+                  isStillValid(previous, for: item, occupied: occupied,
+                               usedPerDay: usedPerDay, availability: availability,
+                               now: now)
+            else {
+                toPlace.append(item)
+                continue
+            }
+            placed.append(previous)
+            occupied.append(DateInterval(start: previous.start, end: previous.end))
+            usedPerDay[calendar.startOfDay(for: previous.start), default: 0] += previous.duration
+        }
+
         // Placement is O(items x days x blocks): every candidate day rescans the
         // occupied list, which grows as work is placed. Deliberately left
         // simple — 400 items schedule in ~0.14s, and a real student has closer
         // to 50. An interval tree would be faster and harder to trust, and
         // this is the code where being obviously correct matters most.
-        for item in pending {
+        for item in toPlace {
             if let slot = findSlot(for: item,
                                    occupied: occupied,
                                    usedPerDay: usedPerDay,
@@ -132,6 +174,53 @@ public struct Scheduler: Sendable {
                                     calendar: calendar),
             movedCount: moved
         )
+    }
+
+    /// Whether a session can simply stay where it is.
+    ///
+    /// Everything a fresh placement would guarantee, asked of a placement that
+    /// already exists: still ahead of the clock, still before the deadline,
+    /// still the right length, still inside the study window on a day the
+    /// student works, still within that day's capacity, and still unoccupied.
+    ///
+    /// Anything that fails here has genuinely stopped being valid — a moved
+    /// deadline, a shortened study day, a slot taken by a class — and only then
+    /// is the block allowed to move.
+    private func isStillValid(_ session: PlannedSession,
+                              for item: ScheduleItem,
+                              occupied: [DateInterval],
+                              usedPerDay: [Date: TimeInterval],
+                              availability: Availability,
+                              now: Date) -> Bool {
+        guard session.start >= now else { return false }
+        guard session.end <= item.deadline else { return false }
+        // A step whose estimate changed needs a differently-sized slot.
+        guard abs(session.duration - item.duration) < 1 else { return false }
+
+        let day = calendar.startOfDay(for: session.start)
+        let weekday = calendar.component(.weekday, from: day)
+        guard !availability.excludedWeekdays.contains(weekday) else { return false }
+
+        guard let windowStart = calendar.date(bySettingHour: availability.windowStartHour,
+                                              minute: 0, second: 0, of: day),
+              let windowEnd = calendar.date(
+                bySettingHour: availability.windowEndHour == 24 ? 23 : availability.windowEndHour,
+                minute: availability.windowEndHour == 24 ? 59 : 0,
+                second: 0, of: day)
+        else { return false }
+        guard session.start >= windowStart, session.end <= windowEnd else { return false }
+
+        let remaining = TimeInterval(availability.dailyCapacityMinutes * 60)
+            - (usedPerDay[day] ?? 0)
+        guard remaining >= session.duration else { return false }
+
+        return !occupied.contains { Self.overlaps($0, session.start, session.end) }
+    }
+
+    /// Half-open overlap: blocks that merely touch are not in conflict, so
+    /// 16:00-17:00 and 17:00-18:00 can sit back to back.
+    private static func overlaps(_ interval: DateInterval, _ start: Date, _ end: Date) -> Bool {
+        interval.start < end && start < interval.end
     }
 
     // MARK: - Ordering

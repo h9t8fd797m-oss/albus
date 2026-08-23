@@ -263,3 +263,98 @@ struct HostileInputTests {
         #expect(r.sessions.count + r.unplaceable.count == 400)
     }
 }
+
+/// The behaviour the whole product rests on: when a student misses a session,
+/// Albus finds it a new home rather than leaving it in the past.
+@Suite("Missed work is re-placed")
+struct MissedWorkTests {
+
+    /// Yesterday, entirely in the past, and marked missed — which is what the
+    /// app does to a block whose window passed with the step still undone.
+    private func missedSession(_ item: ScheduleItem,
+                               startHour: Int = 16, minutes: Int = 60) -> PlannedSession {
+        PlannedSession(
+            itemID: item.id, assignmentID: item.assignmentID,
+            start: at(19, startHour),
+            end: at(19, startHour).addingTimeInterval(TimeInterval(minutes * 60)),
+            state: .missed
+        )
+    }
+
+    /// A past block nobody marked is left where it is: we do not know whether
+    /// that work happened, and rewriting it would erase a day the student may
+    /// have worked through.
+    @Test("an unmarked past block is not disturbed")
+    func unmarkedPastIsPinned() {
+        let work = item(60, dueDay: 23)
+        let stale = PlannedSession(
+            itemID: work.id, assignmentID: work.assignmentID,
+            start: at(19, 16), end: at(19, 17), state: .scheduled
+        )
+        let r = sched.schedule(items: [work], existing: [stale], now: now)
+        #expect(r.movedCount == 0)
+    }
+
+    @Test("a session whose window has passed is moved into the future")
+    func missedIsMoved() {
+        let work = item(60, dueDay: 23)
+        let missed = missedSession(work)
+
+        let r = sched.schedule(items: [work], existing: [missed], now: now)
+
+        #expect(r.sessions.count == 1)
+        let placed = try! #require(r.sessions.first)
+        // The whole point: it now sits ahead of the clock, not behind it.
+        #expect(placed.start >= now)
+        // And it is the same session moved, not a duplicate alongside the old.
+        #expect(placed.itemID == work.id)
+    }
+
+    @Test("missed work does not keep blocking the slot it never used")
+    func missedFreesItsSlot() {
+        // Two steps, one missed. The missed block sat at 16:00-17:00 yesterday;
+        // that time must not count as occupied today.
+        let first = item(60, dueDay: 23, ordinal: 0)
+        let second = item(60, dueDay: 23, ordinal: 1)
+        let missed = missedSession(first)
+
+        let r = sched.schedule(items: [first, second], existing: [missed], now: now)
+
+        #expect(r.sessions.count == 2)
+        // Nothing may overlap anything else.
+        let sorted = r.sessions.sorted { $0.start < $1.start }
+        for (a, b) in zip(sorted, sorted.dropFirst()) {
+            #expect(a.end <= b.start)
+        }
+    }
+
+    @Test("a block in progress right now is left alone")
+    func inProgressIsPinned() {
+        let work = item(60, dueDay: 23)
+        // Started an hour ago, still running: 08:30 to 09:30, now is 09:00.
+        let running = PlannedSession(
+            itemID: work.id, assignmentID: work.assignmentID,
+            start: at(20, 8, 30), end: at(20, 9, 30), state: .scheduled
+        )
+
+        let r = sched.schedule(items: [work], existing: [running], now: now)
+
+        // Untouched — the student is sitting in front of it.
+        #expect(r.sessions.contains { $0.id == running.id && $0.start == running.start })
+        #expect(r.movedCount == 0)
+    }
+
+    @Test("completed work stays exactly where it happened")
+    func completedIsPinned() {
+        let work = item(60, dueDay: 23)
+        let done = PlannedSession(
+            itemID: work.id, assignmentID: work.assignmentID,
+            start: at(19, 16), end: at(19, 17), state: .completed
+        )
+
+        // The item is no longer pending once its session is complete.
+        let r = sched.schedule(items: [], existing: [done], now: now)
+
+        #expect(r.sessions.contains { $0.id == done.id && $0.start == done.start })
+    }
+}

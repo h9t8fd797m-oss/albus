@@ -141,23 +141,35 @@ public enum Tokens {
         public static let title        = display(22, .bold)
         /// The date numeral in a calendar cell. Named rather than exposing
         /// `display(_:_:)`, which would let any view invent a size.
-        public static let dayNumber    = display(18, .semibold)
+        public static let dayNumber    = display(19, .semibold)
         public static let heading      = display(18, .semibold)
-        public static let cardTitle    = display(16, .semibold)
+        public static let cardTitle    = display(16.5, .semibold)
         public static let body         = Font.system(size: 15, weight: .regular)
         public static let label        = Font.system(size: 13, weight: .medium)
-        public static let caption      = Font.system(size: 12, weight: .regular)
+        /// Secondary detail under a title. The design's workhorse size.
+        public static let caption      = Font.system(size: 12.5, weight: .regular)
+        /// The quietest text in the app — "Assignment", "4 blocks · moderate".
+        public static let micro        = Font.system(size: 10.5, weight: .medium)
         /// Uppercase course codes and section headers.
-        public static let overline     = display(11, .semibold)
+        public static let overline     = display(10, .semibold)
         /// Times, counts and percentages, so digits do not jitter as they change.
         public static let mono         = Font.system(size: 12, weight: .medium, design: .monospaced)
     }
 
     /// Uppercase labels in the design are widely tracked. Kerning is in points,
     /// which is what `.tracking` takes.
+    /// Tracking in points, which is what `.tracking` takes. The design
+    /// expresses these in em, so each is (em x size) at the size it is used.
     public enum Tracking {
-        public static let overline: CGFloat = 1.3
-        public static let sectionHeader: CGFloat = 1.2
+        /// .14em at 10pt — course codes, HAPPENING NOW, day-of-week labels.
+        public static let overline: CGFloat = 1.4
+        /// .1em at 13pt — section headers.
+        public static let sectionHeader: CGFloat = 1.3
+        /// .18em at 11pt — the date above the greeting, the widest in the app.
+        public static let dateline: CGFloat = 2.0
+        /// Display type is set slightly tight; without this the big headings
+        /// read wider and softer than the exports.
+        public static let display: CGFloat = -0.3
     }
 
     // MARK: - Layout
@@ -177,6 +189,8 @@ public enum Tokens {
     public enum Radius {
         /// Glass cards — the large, soft radius of the Today surfaces.
         public static let glass: CGFloat = 22
+        /// Session cards sit one step tighter than the panels around them.
+        public static let session: CGFloat = 20
         /// Stripe cards — tighter, so the colour rail reads as an edge.
         public static let card: CGFloat = 12
         public static let sheet: CGFloat = 24

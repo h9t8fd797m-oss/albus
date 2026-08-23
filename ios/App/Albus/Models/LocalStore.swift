@@ -132,6 +132,25 @@ final class PlanSessionRecord {
     /// routes around these and never through them.
     var isFixed: Bool
 
+    // ── What actually happened ────────────────────────────────────────────
+    // `startsAt`/`endsAt` are the *plan*. These three are the *record*, and
+    // they are what the estimator learns from. Keeping them separate is what
+    // stops "I marked it done" being mistaken for "I did it".
+    //
+    // All optional so an existing store migrates without losing anything.
+
+    /// When a focus session was actually begun.
+    var startedAt: Date?
+    /// When it actually ended — by running out, or by being ended early.
+    var endedAt: Date?
+    /// Seconds genuinely spent in a running focus session, accumulated across
+    /// pauses. Measured with a monotonic clock, so moving the device clock
+    /// forward does not manufacture focus time.
+    var focusedSeconds: Int?
+    /// How many times the app was backgrounded mid-session. Not a punishment —
+    /// it is the honest caveat on a session's duration.
+    var interruptions: Int?
+
     var subtask: Subtask?
 
     init(id: UUID = UUID(), startsAt: Date, endsAt: Date,
@@ -143,6 +162,19 @@ final class PlanSessionRecord {
         self.state = state.rawValue
         self.isFixed = isFixed
         self.subtask = subtask
+    }
+
+    /// How long the session was planned to run.
+    var plannedSeconds: Int {
+        max(0, Int(endsAt.timeIntervalSince(startsAt)))
+    }
+
+    /// Measured focus, in whole minutes. Nil when the session was never run —
+    /// which is different from zero, and must stay different: an unrun session
+    /// has no measurement, and guessing one would poison the estimator.
+    var measuredMinutes: Int? {
+        guard let focusedSeconds, focusedSeconds > 0 else { return nil }
+        return max(1, focusedSeconds / 60)
     }
 
     var sessionState: SessionState {

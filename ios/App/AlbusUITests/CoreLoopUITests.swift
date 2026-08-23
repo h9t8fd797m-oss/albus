@@ -91,9 +91,18 @@ final class CoreLoopUITests: XCTestCase {
         reachApp(app)
 
         app.buttons["Tools"].tap()
-        XCTAssertTrue(app.buttons.containing(
-            NSPredicate(format: "label CONTAINS 'Claude'")).element.waitForExistence(timeout: 5),
-            "the tool library did not render")
+
+        // Asserting on one tool's name made this fail the moment the catalogue
+        // was reorganised, which is a test breaking for a reason nobody cares
+        // about. What matters is that the library rendered at all and that
+        // search narrows it.
+        XCTAssertTrue(app.textFields["Search tools"].waitForExistence(timeout: 10),
+                      "the tool library did not render")
+        let search = app.textFields["Search tools"]
+        search.tap()
+        search.typeText("grammar")
+        XCTAssertTrue(app.staticTexts["Grammarly"].waitForExistence(timeout: 5),
+                      "search did not narrow the library")
     }
 
     // MARK: - Helpers
@@ -106,7 +115,7 @@ final class CoreLoopUITests: XCTestCase {
     /// which one they get depends on what ran before them.
     private func reachApp(_ app: XCUIApplication) {
         let onboarding = app.staticTexts["A few things first."]
-        let home = app.staticTexts["TODAY'S SCHEDULE"]
+        let home = app.buttons["Tasks"]   // tab bar: present in the app, absent in onboarding
 
         // Whichever appears first decides the path.
         let start = Date()

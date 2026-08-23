@@ -117,26 +117,77 @@ final class PlanCoordinator {
         reschedule(context: context, availability: availability, now: now)
     }
 
-    /// Actual minutes are inferred from the sessions the scheduler placed for
-    /// this step. With no sessions there is nothing honest to report, so
-    /// nothing is logged rather than logging the estimate as though it were
-    /// the measurement.
+    /// Logs how long the step actually took — and only when that is known.
+    ///
+    /// This used to sum the *planned* length of the step's sessions and record
+    /// it as the actual duration. That made every completion agree perfectly
+    /// with its own estimate, so the estimator learned nothing and a student
+    /// could bank a three-hour session with one tap.
+    ///
+    /// Now the only source is measured focus time from a real session. A step
+    /// marked done without ever running one is still completed — plenty of work
+    /// happens on paper, and refusing to believe the student would be worse —
+    /// but it produces **no** duration sample rather than an invented one.
+    /// Silence is a better input than a confident lie.
     private func completionRecord(for subtask: Subtask, now: Date) -> CompletionRecord? {
-        let elapsed = subtask.sessions
-            .filter { $0.sessionState != .skipped && $0.endsAt > $0.startsAt }
-            .reduce(0) { $0 + Int($1.endsAt.timeIntervalSince($1.startsAt) / 60) }
-        guard elapsed > 0 else { return nil }
+        let measured = subtask.sessions
+            .filter { $0.sessionState != .skipped }
+            .compactMap(\.measuredMinutes)
+        guard !measured.isEmpty else { return nil }
 
+        let total = measured.reduce(0, +)
+        let interruptions = subtask.sessions.reduce(0) { $0 + ($1.interruptions ?? 0) }
         let assignment = subtask.assignment
+
         return CompletionRecord(
             subjectCode: assignment?.course?.displayName,
             taskType: assignment?.taskType ?? "other",
             estimatedMinutes: subtask.estimatedMinutes,
-            actualMinutes: elapsed,
+            actualMinutes: total,
             hourBucket: Calendar.current.component(.hour, from: now),
-            highConfidence: subtask.sessions.count == 1,
+            // One uninterrupted sitting is a clean measurement. A session split
+            // across app switches is still useful, just not evidence.
+            highConfidence: measured.count == 1 && interruptions == 0,
             createdAt: now
         )
+    }
+
+    /// Marks blocks whose window has passed as missed, then re-flows the plan.
+    ///
+    /// This is the half of "Albus adapts to you" that nothing else does. The
+    /// scheduler deliberately will not move a past block it was never told
+    /// about — it cannot know whether that work happened — so something has to
+    /// make the call. That is this: a block whose window has fully passed while
+    /// its step is still incomplete is a miss, and a miss gets a new home.
+    ///
+    /// Cheap and idempotent: it only writes when something actually changed, so
+    /// calling it on every appearance costs a fetch and nothing else.
+    @discardableResult
+    func sweepMissedSessions(context: ModelContext,
+                             availability: Availability = .default,
+                             now: Date = .now) -> Int {
+        do {
+            let sessions = try context.fetch(FetchDescriptor<PlanSessionRecord>())
+            var missed = 0
+
+            for session in sessions
+            where session.sessionState == .scheduled
+                && session.endsAt <= now
+                && session.subtask?.completedAt == nil
+                && !session.isFixed {
+                session.sessionState = .missed
+                missed += 1
+            }
+
+            guard missed > 0 else { return 0 }
+            save(context, "mark missed")
+            reschedule(context: context, availability: availability, now: now)
+            return missed
+        } catch {
+            // A failed sweep must not stop the screen rendering.
+            print("[Albus] missed-session sweep failed: \(error)")
+            return 0
+        }
     }
 
     /// Re-places everything that still needs time.

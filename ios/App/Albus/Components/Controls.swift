@@ -99,10 +99,11 @@ struct FilterChipRow<Filter: Hashable>: View {
     }
 }
 
-/// An external tool Albus suggests for a step — JSTOR, Claude, Grammarly.
+/// An external tool Albus suggests for a step.
 ///
-/// `compact` is the 22pt monogram badge shown on a collapsed step; the full
-/// form adds the name and the reason it is suggested.
+/// `compact` is the small mark shown on a collapsed step; the full form adds
+/// the name and the reason it is being suggested. Both defer to `ToolIcon`, so
+/// bundling real brand artwork later changes this file not at all.
 struct ToolChip: View {
     let tool: StudyTool
     var compact: Bool = false
@@ -110,18 +111,18 @@ struct ToolChip: View {
 
     var body: some View {
         if compact {
-            monogram(side: 22, fontSize: 10)
+            ToolIcon(tool: tool, side: 22, cornerRadius: 7)
                 .accessibilityLabel(tool.name)
         } else {
             Button { action?() } label: {
                 HStack(spacing: Tokens.Spacing.s) {
-                    monogram(side: 24, fontSize: 11)
+                    ToolIcon(tool: tool, side: 24, cornerRadius: 7)
                     VStack(alignment: .leading, spacing: 0) {
                         Text(tool.name)
                             .font(Tokens.Typography.label)
                             .foregroundStyle(Tokens.Palette.ink)
                         Text(tool.reason)
-                            .font(Tokens.Typography.caption)
+                            .font(Tokens.Typography.micro)
                             .foregroundStyle(Tokens.Palette.inkMuted)
                     }
                     .lineLimit(1)
@@ -140,15 +141,6 @@ struct ToolChip: View {
             .buttonStyle(.plain)
             .accessibilityLabel("\(tool.name). \(tool.reason)")
         }
-    }
-
-    private func monogram(side: CGFloat, fontSize: CGFloat) -> some View {
-        Text(tool.monogram)
-            .font(.system(size: fontSize, weight: .bold))
-            .foregroundStyle(tool.tint.foreground)
-            .frame(width: side, height: side)
-            .background(tool.tint.background,
-                        in: RoundedRectangle(cornerRadius: 7, style: .continuous))
     }
 }
 
@@ -255,11 +247,12 @@ struct SecondaryButton: View {
 
                 StatefulPreview()
 
+                let sample = Array(StudyTool.allCases.prefix(5))
                 HStack(spacing: Tokens.Spacing.xs) {
-                    ForEach(StudyTool.allCases) { ToolChip(tool: $0, compact: true) }
+                    ForEach(sample) { ToolChip(tool: $0, compact: true) }
                 }
                 VStack(alignment: .leading, spacing: Tokens.Spacing.s) {
-                    ForEach(StudyTool.allCases) { ToolChip(tool: $0) }
+                    ForEach(sample) { ToolChip(tool: $0) }
                 }
 
                 AskAlbusBar(prompt: "Ask Albus about this paper…") {}

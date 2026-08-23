@@ -39,7 +39,7 @@ struct AppShell: View {
             // reset scroll position on Today.
             Group {
                 switch tab {
-                case .today: NavigationStack { Screen { TodayScreen() } }
+                case .today: NavigationStack { Screen { HomeScreen() } }
                 case .albus: NavigationStack { Screen { AlbusScreen() } }
                 case .tools: NavigationStack { Screen { ToolsScreen() } }
                 case .tasks: NavigationStack { Screen { TasksScreen() } }
