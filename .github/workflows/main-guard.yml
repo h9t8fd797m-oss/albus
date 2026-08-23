@@ -29,12 +29,24 @@ jobs:
           REPO: ${{ github.repository }}
         run: |
           set -euo pipefail
-          count=$(gh api "repos/$REPO/commits/$SHA/pulls" \
-                    -H "Accept: application/vnd.github+json" --jq 'length')
-          if [ "$count" -gt 0 ]; then
-            echo "commit $SHA arrived via a pull request"
-            exit 0
-          fi
+          # The commit -> PR association is eventually consistent. This job
+          # starts the instant the merge lands, and on a real merge the API
+          # returned an empty list for several seconds before catching up —
+          # so the guard failed on a properly reviewed commit. A tripwire that
+          # cries wolf gets ignored, which is worse than not having one.
+          #
+          # Retry before concluding anything. A genuine direct push still fails,
+          # just under a minute later.
+          for attempt in 1 2 3 4 5 6; do
+            count=$(gh api "repos/$REPO/commits/$SHA/pulls" \
+                      -H "Accept: application/vnd.github+json" --jq 'length' 2>/dev/null || echo 0)
+            if [ "$count" -gt 0 ]; then
+              echo "commit $SHA arrived via a pull request (attempt $attempt)"
+              exit 0
+            fi
+            echo "no PR association yet (attempt $attempt); waiting…"
+            sleep 10
+          done
           echo "::error::Commit $SHA was pushed directly to main, bypassing review."
           echo "::error::If deliberate, note it on the commit. If not, revert it."
           exit 1
