@@ -31,12 +31,13 @@ final class CoreLoopUITests: XCTestCase {
     /// builds a fresh instance per test method, so this is still unique per test.
     private let assignmentTitle = "Biology chapter \(UUID().uuidString.prefix(6))"
 
+    private let app = XCUIApplication()
+
     override func setUp() {
         continueAfterFailure = false
     }
 
     func testAddAssignmentProducesAPlacedPlan() throws {
-        let app = XCUIApplication()
         app.launch()
 
         reachApp(app)
@@ -62,7 +63,6 @@ final class CoreLoopUITests: XCTestCase {
     /// The plan has to be reachable from Tasks and openable into its steps —
     /// the screens a student actually works from.
     func testPlanIsVisibleInTasksAndDetail() throws {
-        let app = XCUIApplication()
         app.launch()
         reachApp(app)
 
@@ -87,7 +87,6 @@ final class CoreLoopUITests: XCTestCase {
     /// Tools is static, so this is cheap — but it is the one tab that opens
     /// external links, and a crash here would only ever be found by tapping.
     func testToolsLibraryRenders() throws {
-        let app = XCUIApplication()
         app.launch()
         reachApp(app)
 
@@ -124,10 +123,8 @@ final class CoreLoopUITests: XCTestCase {
 
         app.buttons["Next"].tap()
 
-        let task = app.textFields["e.g. History term paper"]
-        XCTAssertTrue(task.waitForExistence(timeout: 5), "the deadline step never appeared")
-        task.tap()
-        task.typeText("Onboarding first assignment")
+        type("Onboarding first assignment",
+             into: app.textFields["e.g. History term paper"])
 
         app.buttons["Build my plan"].tap()
 
@@ -141,13 +138,30 @@ final class CoreLoopUITests: XCTestCase {
                       "onboarding completed but the app never appeared")
     }
 
+    /// Taps a field and types, waiting for focus first.
+    ///
+    /// `tap()` then `typeText()` races the keyboard: the tap registers but
+    /// focus has not landed, and the event fails with "neither element nor any
+    /// descendant has keyboard focus". Intermittent, which is worse than
+    /// broken — so wait for the keyboard, and retry the tap once if it does
+    /// not come up.
+    private func type(_ text: String, into field: XCUIElement, file: StaticString = #filePath,
+                      line: UInt = #line) {
+        XCTAssertTrue(field.waitForExistence(timeout: 10), "field never appeared",
+                      file: file, line: line)
+        field.tap()
+        if !app.keyboards.element.waitForExistence(timeout: 5) {
+            field.tap()
+            XCTAssertTrue(app.keyboards.element.waitForExistence(timeout: 5),
+                          "keyboard never appeared", file: file, line: line)
+        }
+        field.typeText(text)
+    }
+
     private func addAssignment(_ app: XCUIApplication, titled title: String) {
         app.buttons["Add assignment"].firstMatch.tap()
 
-        let field = app.textFields["What is it?"]
-        XCTAssertTrue(field.waitForExistence(timeout: 5), "the add sheet never opened")
-        field.tap()
-        field.typeText(title)
+        type(title, into: app.textFields["What is it?"])
 
         app.buttons["Plan it"].tap()
     }
