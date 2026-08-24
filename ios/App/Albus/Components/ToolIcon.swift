@@ -1,42 +1,45 @@
 import SwiftUI
 import AlbusCore
 
-/// A tool's mark.
+/// A tool's mark: its real logo, or nothing.
 ///
-/// Prefers real brand artwork — an image asset named `logo-<tool id>` — and
-/// falls back to the tool's SF Symbol when none is bundled. Today nothing is
-/// bundled, so every tool shows its symbol; adding logos later means dropping
-/// files into the asset catalogue and changing no code at all.
+/// This used to give every tool a tint picked from the app's palette and colour
+/// an SF Symbol with it. That was wrong in the way that is hardest to unsee — a
+/// brand colour the app invented is a claim about someone else's identity, and
+/// two hundred of them read as a build where nobody checked.
 ///
-/// The symbol is chosen to say what the tool is *for*, which is why this reads
-/// as an icon set rather than the initials it replaced.
+/// So: if real artwork is bundled (`logo-<id>`), it is drawn untouched on a
+/// neutral card — no tint, no template rendering, no monochrome treatment. If it
+/// is not, the tool falls back to a shape in muted ink that says what the tool is
+/// *for* and claims no colour at all.
 struct ToolIcon: View {
     let tool: StudyTool
     var side: CGFloat = 34
     var cornerRadius: CGFloat = 9
 
-    /// Asset lookup is cheap but not free, and this renders in a grid of 200.
-    /// Resolving once per tool and caching keeps scrolling smooth.
-    private var artwork: Image? {
-        ToolArtwork.image(for: tool)
-    }
-
     var body: some View {
         Group {
-            if let artwork {
+            if let artwork = ToolArtwork.image(for: tool) {
+                // `.original` matters: a template render would recolour the logo,
+                // which is the whole thing this file exists to prevent.
                 artwork
                     .resizable()
+                    .renderingMode(.original)
                     .aspectRatio(contentMode: .fit)
-                    .padding(side * 0.18)
+                    .padding(side * 0.16)
             } else {
                 Image(systemName: tool.symbolName)
-                    .font(.system(size: side * 0.42, weight: .medium))
-                    .foregroundStyle(tool.tint.foreground)
+                    .font(.system(size: side * 0.42, weight: .regular))
+                    .foregroundStyle(Tokens.Palette.inkMuted)
             }
         }
         .frame(width: side, height: side)
-        .background(tool.tint.background,
+        .background(Tokens.Palette.cardSurface,
                     in: RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                .strokeBorder(Tokens.Palette.hairline, lineWidth: 0.5)
+        }
         .accessibilityHidden(true)
     }
 }
@@ -47,7 +50,7 @@ struct ToolIcon: View {
 /// Tools grid asks about every visible tile on every scroll frame. One lookup
 /// per tool, remembered, turns that into nothing.
 @MainActor
-private enum ToolArtwork {
+enum ToolArtwork {
     private static var cache: [StudyTool: Image?] = [:]
 
     static func image(for tool: StudyTool) -> Image? {
@@ -55,6 +58,12 @@ private enum ToolArtwork {
         let resolved = UIImage(named: tool.logoAssetName).map(Image.init(uiImage:))
         cache[tool] = resolved
         return resolved
+    }
+
+    /// How many tools ship with real artwork. Used by tests and by the Tools
+    /// header, so the number shown is measured rather than asserted.
+    static var bundledCount: Int {
+        StudyTool.allCases.count { image(for: $0) != nil }
     }
 }
 

@@ -110,7 +110,7 @@ final class PlanCoordinator {
         // Finishing the last step closes the assignment, which is what frees a
         // slot against the free-tier active-plan cap.
         if let assignment = subtask.assignment {
-            assignment.status = assignment.isComplete ? "done" : "active"
+            assignment.statusValue = assignment.isComplete ? .completed : .active
         }
 
         save(context, "toggle step")

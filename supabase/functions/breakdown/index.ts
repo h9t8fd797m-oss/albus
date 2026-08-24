@@ -6,7 +6,7 @@
 import { requireUser } from "../_shared/auth.ts";
 import { errorResponse, HttpError, jsonResponse, mapPostgresError } from "../_shared/http.ts";
 import { assertCanGeneratePlan, recordTokensInBackground } from "../_shared/quota.ts";
-import { loadRubric } from "../_shared/curriculum.ts";
+import { loadPersonalRubric, loadRubric } from "../_shared/curriculum.ts";
 import { generateBreakdown } from "../_shared/anthropic.ts";
 import {
   type BreakdownInput,
@@ -38,7 +38,11 @@ interface RequestBody {
   course_id?: unknown;
   assessment_type_id?: unknown;
   notes?: unknown;
+  rubric_id?: unknown;
+  priority?: unknown;
 }
+
+const PRIORITIES = new Set(["low", "normal", "high"]);
 
 /** Everything here is attacker-controlled. Validate before it reaches the model. */
 function parseBody(body: RequestBody) {
@@ -77,6 +81,12 @@ function parseBody(body: RequestBody) {
     courseId: uuid(body.course_id),
     assessmentTypeId: uuid(body.assessment_type_id),
     notes: typeof body.notes === "string" ? body.notes.slice(0, 2000) : null,
+    rubricId: uuid(body.rubric_id),
+    // Normalised, not rejected: an unknown priority is a client bug and is not
+    // worth refusing to plan the student's assignment over.
+    priority: (typeof body.priority === "string" && PRIORITIES.has(body.priority)
+      ? body.priority
+      : "normal") as "low" | "normal" | "high",
   };
 }
 
@@ -99,7 +109,11 @@ Deno.serve(async (req) => {
     // The authoritative check lives in the RPC, inside the insert transaction.
     await assertCanGeneratePlan(caller);
 
-    const rubric = await loadRubric(caller.db, input.assessmentTypeId);
+    // The student's own rubric wins over the curriculum default: they pasted it
+    // off the sheet they are actually being marked against. Only one lookup runs
+    // in the common case, because the second is skipped once the first hits.
+    const rubric = (await loadPersonalRubric(caller.db, input.rubricId))
+      ?? (await loadRubric(caller.db, input.assessmentTypeId));
 
     const promptInput: BreakdownInput = {
       title: input.title,
@@ -108,6 +122,8 @@ Deno.serve(async (req) => {
       estimatedMinutes: input.estimatedMinutes,
       nowISO: new Date().toISOString(),
       rubric,
+      notes: input.notes,
+      priority: input.priority,
     };
 
     const model = selectModel(promptInput);
@@ -140,7 +156,14 @@ Deno.serve(async (req) => {
 
     // Map criterion codes back to real ids. The model only ever sees codes,
     // so it cannot fabricate a foreign key into another course's rubric.
-    const codeToId = new Map(rubric?.criteria.map((c) => [c.code, c.id]) ?? []);
+    //
+    // Only curriculum rubrics map: subtasks.rubric_criterion_id references the
+    // shared rubric_criteria table, and a personal rubric's criteria do not live
+    // there. Personal codes still reach the client on the response and are shown
+    // against the step — the link is by code, which is all any screen reads.
+    const codeToId = new Map(
+      rubric?.kind === "curriculum" ? rubric.criteria.map((c) => [c.code, c.id]) : [],
+    );
     const subtasks = plan.steps.map((s) => ({
       title: s.title,
       guidance: s.guidance,
@@ -161,6 +184,8 @@ Deno.serve(async (req) => {
         p_course_id: input.courseId,
         p_assessment_type_id: input.assessmentTypeId,
         p_notes: input.notes,
+        p_rubric_id: input.rubricId,
+        p_priority: input.priority,
       },
     );
     if (error) throw mapPostgresError(error.message);
@@ -178,6 +203,7 @@ Deno.serve(async (req) => {
       assignment_id: assignmentId,
       model: generated.model,
       rubric_grounded: rubric !== null,
+      rubric_source: rubric?.kind ?? null,
       cache_read_tokens: generated.cacheReadTokens,
       steps: plan.steps,
     }, 201);

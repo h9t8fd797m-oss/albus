@@ -21,16 +21,17 @@ import AlbusCore
 /// compile-time constant, so nothing a model wrote or a student typed can
 /// become a URL the app opens, and the whole list works offline.
 ///
-/// **On logos.** Each tool carries an SF Symbol chosen to say what the tool is
-/// *for*, plus its tint — meaningful iconography rather than the initial letters
-/// this replaced. Real brand artwork is supported and simply not bundled yet:
-/// `icon` prefers an image asset named `logo-<id>` when one exists in the
-/// asset catalogue and falls back to the symbol otherwise, so dropping logos in
-/// later is an additive change that touches no call site.
+/// **On logos.** A tool shows its real logo or it shows nothing. It never shows
+/// a colour this app invented for it: Notion is not teal because a palette said
+/// so, and a made-up brand colour is the loudest possible tell that nobody
+/// checked. `ToolIcon` renders the asset named `logo-<id>` when one is bundled
+/// and falls back to a neutral monogram-free placeholder otherwise — so a tool
+/// carries no colour of its own, and dropping artwork in later touches no code.
 ///
 /// Runtime favicon fetching was considered and rejected: it would tell two
 /// hundred companies when a student opens this tab, cost a request per tile,
-/// and leave the screen broken offline.
+/// and leave the screen broken offline. Logos are fetched at build time by
+/// `fetch_logos.py` and reviewed by hand.
 enum StudyTool: String, CaseIterable, Identifiable, Sendable {
 ''']
 
@@ -57,16 +58,18 @@ out.append('''            }
         }
     }
 
-    /// Name, host, category, symbol, tint and the one line explaining why you
-    /// would open it. Kept in one table so a new tool is a single edit.
+    /// Name, host, category, symbol and the one line explaining why you would
+    /// open it. Kept in one table so a new tool is a single edit.
+    ///
+    /// No colour here on purpose — see the note on logos above.
     private var spec: (name: String, host: String, category: Category,
-                       symbol: String, tint: Tokens.Tint, reason: String) {
+                       symbol: String, reason: String) {
         switch self {
 ''')
 
 for t, i in zip(T, ids):
-    name, host, cat, sym, tint, why = t
-    out.append(f'        case .{i}: ("{name}", "{host}", .{cat}, "{sym}", .{tint}, "{why}")\n')
+    name, host, cat, sym, _tint, why = t
+    out.append(f'        case .{i}: ("{name}", "{host}", .{cat}, "{sym}", "{why}")\n')
 
 out.append('''        }
     }
@@ -74,8 +77,8 @@ out.append('''        }
     var name: String { spec.name }
     var category: Category { spec.category }
     var reason: String { spec.reason }
-    var tint: Tokens.Tint { spec.tint }
-    /// SF Symbol fallback. Prefer `icon`, which checks for real artwork first.
+    /// Shape-only fallback used when no real logo is bundled. Rendered in a
+    /// neutral ink, never a brand colour this app guessed at.
     var symbolName: String { spec.symbol }
     /// Asset name a bundled brand logo would use.
     var logoAssetName: String { "logo-\\(rawValue)" }

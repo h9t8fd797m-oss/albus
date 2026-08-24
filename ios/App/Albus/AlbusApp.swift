@@ -20,11 +20,7 @@ struct AlbusApp: App {
     private let container: ModelContainer
 
     init() {
-        let schema = Schema([
-            Course.self, Assignment.self, Subtask.self,
-            PlanSessionRecord.self, CompletionRecord.self
-        ])
-        container = Self.makeContainer(schema: schema)
+        container = Self.makeContainer(schema: AlbusSchema.schema)
     }
 
     private static func makeContainer(schema: Schema) -> ModelContainer {

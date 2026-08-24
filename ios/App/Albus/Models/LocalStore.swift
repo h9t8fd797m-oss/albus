@@ -52,19 +52,31 @@ final class Assignment {
     var deadline: Date
     var estimatedMinutes: Int
     var status: String
+    /// One of `AssignmentPriority`. Stored raw so a rename in the enum is a
+    /// compile error here rather than a silent migration.
+    ///
+    /// Defaulted in the declaration, not just the initialiser: SwiftData needs a
+    /// value for rows written before this column existed.
+    var priority: String = AssignmentPriority.normal.rawValue
     var assessmentTypeID: UUID?
     var createdAt: Date
     var updatedAt: Date
 
     var course: Course?
+    /// The rubric this is marked against. Nil is normal — plenty of work has no
+    /// rubric, and refusing to plan without one would be worse than planning
+    /// without one.
+    var rubric: Rubric?
 
     @Relationship(deleteRule: .cascade, inverse: \Subtask.assignment)
     var subtasks: [Subtask] = []
 
     init(id: UUID = UUID(), remoteID: UUID? = nil, title: String, notes: String? = nil,
          taskType: String = "other", deadline: Date, estimatedMinutes: Int,
-         status: String = "active", assessmentTypeID: UUID? = nil,
-         course: Course? = nil, createdAt: Date = .now) {
+         status: AssignmentStatus = .active,
+         priority: AssignmentPriority = .normal,
+         assessmentTypeID: UUID? = nil,
+         course: Course? = nil, rubric: Rubric? = nil, createdAt: Date = .now) {
         self.id = id
         self.remoteID = remoteID
         self.title = title
@@ -72,9 +84,11 @@ final class Assignment {
         self.taskType = taskType
         self.deadline = deadline
         self.estimatedMinutes = estimatedMinutes
-        self.status = status
+        self.status = status.rawValue
+        self.priority = priority.rawValue
         self.assessmentTypeID = assessmentTypeID
         self.course = course
+        self.rubric = rubric
         self.createdAt = createdAt
         self.updatedAt = createdAt
     }
@@ -88,6 +102,54 @@ final class Assignment {
     var isComplete: Bool {
         !subtasks.isEmpty && subtasks.allSatisfy { $0.completedAt != nil }
     }
+
+    var priorityValue: AssignmentPriority {
+        get { AssignmentPriority(rawValue: priority) ?? .normal }
+        set { priority = newValue.rawValue }
+    }
+
+    var statusValue: AssignmentStatus {
+        get { AssignmentStatus(rawValue: status) ?? .active }
+        set { status = newValue.rawValue }
+    }
+}
+
+/// How urgent the student says this is.
+///
+/// Three values, not a slider. A 1-10 scale invites marking everything an 8,
+/// and a scheduler cannot act on a distinction the student did not really make.
+enum AssignmentPriority: String, CaseIterable, Codable, Sendable, Identifiable {
+    case low, normal, high
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .low: "Low"
+        case .normal: "Normal"
+        case .high: "High"
+        }
+    }
+
+    /// Higher sorts earlier. Only ever breaks a tie between two pieces of work
+    /// competing for the same window — never overrides a deadline.
+    var weight: Int {
+        switch self {
+        case .high: 2
+        case .normal: 1
+        case .low: 0
+        }
+    }
+}
+
+/// The assignment lifecycle, in the vocabulary the database actually accepts.
+///
+/// This was a loose string, and the client wrote `"done"` where the server's
+/// check constraint allows only `active`/`completed`/`archived`. Nothing broke
+/// yet because status is not synced — which is exactly the kind of bug that
+/// waits for the feature that would have shipped it.
+enum AssignmentStatus: String, CaseIterable, Codable, Sendable {
+    case active, completed, archived
 }
 
 @Model
@@ -216,5 +278,122 @@ final class CompletionRecord {
         self.completed = completed
         self.createdAt = createdAt
         self.synced = synced
+    }
+}
+
+// MARK: - Rubrics
+
+/// A rubric the student owns, saves once and reuses.
+///
+/// Two ways in, because both are real. Most students have a rubric as a block of
+/// text on the assignment sheet — that is `body`, and it is enough to grade
+/// against. Some want it broken into criteria they can see marks against — those
+/// are `items`. Grading prefers items and falls back to the body, so pasting
+/// works immediately and structure is an upgrade rather than a requirement.
+@Model
+final class Rubric {
+    @Attribute(.unique) var id: UUID
+    var remoteID: UUID?
+    var name: String
+    /// `custom` when pasted, `template` when copied from curriculum data.
+    var source: String
+    var assessmentTypeID: UUID?
+    /// The pasted sheet. Capped at the same 8000 characters the server enforces,
+    /// so a rubric that saves locally is one the server will also accept.
+    var body: String?
+    var totalMarks: Int?
+    var createdAt: Date
+    var updatedAt: Date
+
+    @Relationship(deleteRule: .cascade, inverse: \RubricItem.rubric)
+    var items: [RubricItem] = []
+
+    /// Assignments pointing here. Nullify rather than cascade: deleting a rubric
+    /// must never delete the student's work, only the link to it.
+    @Relationship(deleteRule: .nullify, inverse: \Assignment.rubric)
+    var assignments: [Assignment] = []
+
+    static let maxBodyCharacters = 8000
+    static let maxItems = 40
+
+    init(id: UUID = UUID(), remoteID: UUID? = nil, name: String,
+         source: RubricSource = .custom, assessmentTypeID: UUID? = nil,
+         body: String? = nil, totalMarks: Int? = nil, createdAt: Date = .now) {
+        self.id = id
+        self.remoteID = remoteID
+        self.name = name
+        self.source = source.rawValue
+        self.assessmentTypeID = assessmentTypeID
+        self.body = body
+        self.totalMarks = totalMarks
+        self.createdAt = createdAt
+        self.updatedAt = createdAt
+    }
+
+    var sortedItems: [RubricItem] {
+        items.sorted { $0.ordinal < $1.ordinal }
+    }
+
+    /// Marks the student can actually be scored out of: the declared total when
+    /// there is one, otherwise the sum of the criteria.
+    var effectiveTotalMarks: Int? {
+        if let totalMarks { return totalMarks }
+        let summed = items.compactMap(\.marks).reduce(0, +)
+        return summed > 0 ? summed : nil
+    }
+
+    /// A rubric with neither criteria nor text cannot ground anything, and
+    /// grading against it would be a confident guess. The UI refuses to save one.
+    var isUsable: Bool {
+        !items.isEmpty || !(body ?? "").trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+
+    var summary: String {
+        if !items.isEmpty {
+            let marks = effectiveTotalMarks.map { " · \($0) marks" } ?? ""
+            return "\(items.count) criteria\(marks)"
+        }
+        return "Pasted rubric"
+    }
+}
+
+enum RubricSource: String, CaseIterable, Codable, Sendable {
+    /// Pasted or typed by the student.
+    case custom
+    /// Copied out of curriculum reference data and then owned by the student.
+    case template
+}
+
+@Model
+final class RubricItem {
+    @Attribute(.unique) var id: UUID
+    var remoteID: UUID?
+    /// The criterion letter or number, e.g. "A". Nil when the rubric does not
+    /// use codes.
+    var code: String?
+    var name: String
+    var marks: Int?
+    var guidance: String?
+    var ordinal: Int
+
+    var rubric: Rubric?
+
+    init(id: UUID = UUID(), remoteID: UUID? = nil, code: String? = nil,
+         name: String, marks: Int? = nil, guidance: String? = nil,
+         ordinal: Int, rubric: Rubric? = nil) {
+        self.id = id
+        self.remoteID = remoteID
+        self.code = code
+        self.name = name
+        self.marks = marks
+        self.guidance = guidance
+        self.ordinal = ordinal
+        self.rubric = rubric
+    }
+
+    /// "A · Knowledge" or just "Knowledge".
+    var displayName: String {
+        guard let code, !code.isEmpty else { return name }
+        return "\(code) · \(name)"
     }
 }
