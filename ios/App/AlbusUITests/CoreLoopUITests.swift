@@ -69,19 +69,44 @@ final class CoreLoopUITests: XCTestCase {
         addAssignment(app, titled: assignmentTitle)
 
         app.buttons["Home"].tap()
-        let card = app.staticTexts[assignmentTitle]
+
+        // Addressed by identifier, not by label. Home shows the assignment title
+        // in two places — the up-next row and the assignment card — and they do
+        // different things: one starts a focus session, the other opens the
+        // plan. Matching on the title picked whichever came first in the tree,
+        // which was the up-next row, so this test opened Focus Mode and then
+        // correctly reported that no plan was visible.
+        let card = app.descendants(matching: .any)
+            .matching(identifier: "assignmentCard").element(boundBy: 0)
         XCTAssertTrue(card.waitForExistence(timeout: 90),
                       "the assignment is missing from Home")
+        XCTAssertTrue(app.staticTexts[assignmentTitle].waitForExistence(timeout: 5),
+                      "the assignment's title never rendered")
 
-        card.firstMatch.tap()
-        XCTAssertTrue(app.staticTexts["ALBUS'S PLAN"].waitForExistence(timeout: 10),
-                      "task detail did not show the generated plan")
+        card.tap()
 
-        // Every generated plan has at least one step, and each carries a
-        // duration — the thing that proves steps rendered, not just a header.
+        // Assert on the plan's *content*, not on its heading.
+        //
+        // This used to look for the "ALBUS'S PLAN" section header, which broke
+        // the moment that header gained a menu button: SwiftUI stops combining
+        // an accessibility element that contains an interactive child, so the
+        // exact label disappeared even though the screen was correct. A test
+        // that fails when a button is added next to a title is testing the
+        // wrong thing.
+        //
+        // Every generated plan has at least one step and every step carries a
+        // duration, so this proves steps rendered rather than just a header.
         let durations = app.staticTexts.containing(
             NSPredicate(format: "label MATCHES %@", #"^\d+h( \d+m)?$|^\d+m$"#))
-        XCTAssertGreaterThan(durations.count, 0, "no step durations rendered")
+        XCTAssertTrue(durations.element(boundBy: 0).waitForExistence(timeout: 15),
+                      "task detail did not show the generated plan")
+
+        // And the plan has to be startable, which is the whole point of the
+        // screen. This is also the regression guard for "Start session" having
+        // silently been a second Mark done button.
+        XCTAssertTrue(app.buttons.containing(
+            NSPredicate(format: "label BEGINSWITH 'Start'")).element.exists,
+            "no way to start a session from the plan")
     }
 
     /// Tools is static, so this is cheap — but it is the one tab that opens

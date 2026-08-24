@@ -114,9 +114,9 @@ struct TaskDetailScreen: View {
                     }
             }
             .buttonStyle(.plain)
-            .accessibilityLabel("Back to tasks")
+            .accessibilityLabel("Back to home")
 
-            Text("TASKS")
+            Text("HOME")
                 .font(Tokens.Typography.label)
                 .tracking(Tokens.Tracking.sectionHeader)
                 .foregroundStyle(Tokens.Palette.inkSecondary)

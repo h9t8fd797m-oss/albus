@@ -116,6 +116,13 @@ struct HomeScreen: View {
                                         AssignmentCard(assignment: assignment, now: now)
                                     }
                                     .buttonStyle(.plain)
+                                    // The up-next card shows the same title, so
+                                    // "the element labelled <title>" is genuinely
+                                    // ambiguous on this screen — and the two do
+                                    // different things. A UI test that picks the
+                                    // wrong one lands in Focus Mode and reports
+                                    // that the plan is missing.
+                                    .accessibilityIdentifier("assignmentCard")
                                 }
                             }
                         }

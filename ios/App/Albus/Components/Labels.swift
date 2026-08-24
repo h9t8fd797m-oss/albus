@@ -92,27 +92,34 @@ struct SectionHeader<Trailing: View>: View {
 
     var body: some View {
         HStack(spacing: Tokens.Spacing.s) {
-            Text(label.uppercased())
-                .font(Tokens.Typography.label)
-                .fontWeight(.semibold)
-                .tracking(Tokens.Tracking.sectionHeader)
-                .foregroundStyle(Tokens.Palette.inkSecondary)
+            // Only the title and count are combined. Combining the whole row
+            // swallows whatever `trailing` is — and once that became a Menu, it
+            // took the button out of VoiceOver's reach and folded its label into
+            // the heading. A header must stay a header; a control must stay a
+            // control.
+            HStack(spacing: Tokens.Spacing.s) {
+                Text(label.uppercased())
+                    .font(Tokens.Typography.label)
+                    .fontWeight(.semibold)
+                    .tracking(Tokens.Tracking.sectionHeader)
+                    .foregroundStyle(Tokens.Palette.inkSecondary)
 
-            if let count {
-                Text("\(count)")
-                    .font(Tokens.Typography.overline)
-                    .foregroundStyle(Tokens.Palette.accent)
-                    .padding(.horizontal, Tokens.Spacing.s)
-                    .padding(.vertical, 2)
-                    .background(Tokens.Palette.accentWash, in: Capsule())
-                    .accessibilityLabel("\(count) items")
+                if let count {
+                    Text("\(count)")
+                        .font(Tokens.Typography.overline)
+                        .foregroundStyle(Tokens.Palette.accent)
+                        .padding(.horizontal, Tokens.Spacing.s)
+                        .padding(.vertical, 2)
+                        .background(Tokens.Palette.accentWash, in: Capsule())
+                        .accessibilityLabel("\(count) items")
+                }
             }
+            .accessibilityElement(children: .combine)
+            .accessibilityAddTraits(.isHeader)
 
             Spacer(minLength: Tokens.Spacing.s)
             trailing
         }
-        .accessibilityElement(children: .combine)
-        .accessibilityAddTraits(.isHeader)
     }
 }
 

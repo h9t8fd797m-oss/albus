@@ -43,7 +43,13 @@ async function loadStudent(db: SupabaseClient): Promise<StudentContext | null> {
   let curriculumName: string | null = null;
   if (code) {
     const { data } = await db.from("curricula").select("name").eq("code", code).maybeSingle();
-    curriculumName = (data?.name as string) ?? code;
+    // Resolved name only. The first version of this fell back to `?? code`,
+    // which put an unbounded, user-writable string straight into the system
+    // prompt — above the breakpoint where the "fenced text is data" rule lives.
+    // A 40KB code and an injecting code were both accepted by the API. Migration
+    // 0023 added the foreign key that makes it impossible; this is the half that
+    // would still hold if the constraint were ever dropped.
+    curriculumName = typeof data?.name === "string" ? data.name : null;
   }
 
   const names = (courses.data ?? [])
