@@ -8,6 +8,7 @@ import AlbusCore
 /// serve and the tools that help, which is the difference between "study
 /// history 6–7" and a plan you can start.
 struct TaskDetailScreen: View {
+    @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var context
     @Environment(PlanCoordinator.self) private var coordinator
     @Environment(Preferences.self) private var preferences
@@ -16,6 +17,12 @@ struct TaskDetailScreen: View {
 
     @State private var expanded: UUID?
     @State private var asking = false
+    @State private var editing: StepDraft?
+    @State private var addingStep = false
+    @State private var focusing: PlanSessionRecord?
+    @State private var reordering = false
+    @State private var grading = false
+    @State private var viewingGrade: Grading?
 
     private var subject: Tokens.SubjectColor { assignment.course?.subjectColor ?? .violet }
     private var steps: [Subtask] { assignment.subtasks.sorted { $0.ordinal < $1.ordinal } }
@@ -31,8 +38,10 @@ struct TaskDetailScreen: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: Tokens.Spacing.l) {
+                topBar
                 summary
                 albusNote
+                gradeEntry
                 plan
                 AskAlbusBar(prompt: "Ask Albus about this \(assignment.taskType)…") {
                     asking = true
@@ -42,11 +51,79 @@ struct TaskDetailScreen: View {
             .padding(.bottom, Tokens.Spacing.xl)
         }
         .scrollContentBackground(.hidden)
-        .navigationTitle("")
-        .toolbarTitleDisplayMode(.inline)
+        // The design draws its own top row, so the system bar would be a second
+        // one stacked above it.
+        .navigationBarBackButtonHidden()
+        .toolbar(.hidden, for: .navigationBar)
         .sheet(isPresented: $asking) {
             AskAlbusSheet(assignment: assignment)
         }
+        .sheet(item: $editing) { draft in
+            StepEditorSheet(draft: draft) { saved in
+                guard let step = steps.first(where: { $0.id == saved.id }) else { return }
+                coordinator.updateStep(step, title: saved.title, minutes: saved.minutes,
+                                       context: context, availability: preferences.availability)
+            } onDelete: {
+                guard let step = steps.first(where: { $0.id == draft.id }) else { return }
+                coordinator.deleteStep(step, context: context,
+                                       availability: preferences.availability)
+            }
+        }
+        .sheet(isPresented: $addingStep) {
+            StepEditorSheet(draft: .empty) { saved in
+                coordinator.addStep(to: assignment, title: saved.title, minutes: saved.minutes,
+                                    context: context, availability: preferences.availability)
+            }
+        }
+        .fullScreenCover(item: $focusing) { record in
+            FocusModeScreen(record: record)
+        }
+        .sheet(isPresented: $grading) {
+            GradeSheet(assignment: assignment)
+        }
+        .sheet(item: $viewingGrade) { GradeResultView(grading: $0) }
+        .sheet(isPresented: $reordering) {
+            StepReorderSheet(steps: steps) { source, destination in
+                coordinator.moveSteps(in: assignment, from: source, to: destination,
+                                      context: context, availability: preferences.availability)
+            }
+        }
+    }
+
+    /// Opens Focus Mode on the block the scheduler placed for this step, or a
+    /// fresh one starting now when the student got there early.
+    private func start(_ step: Subtask) {
+        focusing = coordinator.session(toStart: step, context: context)
+    }
+
+    // MARK: - Chrome
+
+    private var topBar: some View {
+        HStack(spacing: Tokens.Spacing.m) {
+            Button { dismiss() } label: {
+                Image(systemName: "chevron.left")
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundStyle(Tokens.Palette.ink)
+                    .frame(width: 34, height: 34)
+                    .background(Tokens.Glass.fill,
+                                in: RoundedRectangle(cornerRadius: Tokens.Radius.control,
+                                                     style: .continuous))
+                    .overlay {
+                        RoundedRectangle(cornerRadius: Tokens.Radius.control, style: .continuous)
+                            .strokeBorder(Tokens.Glass.stroke, lineWidth: 1)
+                    }
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Back to home")
+
+            Text("HOME")
+                .font(Tokens.Typography.label)
+                .tracking(Tokens.Tracking.sectionHeader)
+                .foregroundStyle(Tokens.Palette.inkSecondary)
+
+            Spacer()
+        }
+        .padding(.top, Tokens.Spacing.s)
     }
 
     // MARK: - Summary
@@ -70,7 +147,25 @@ struct TaskDetailScreen: View {
                     }
                 }
 
-                DeadlineLabel(deadline: assignment.deadline)
+                HStack(spacing: Tokens.Spacing.s) {
+                    DeadlineLabel(deadline: assignment.deadline)
+                    if assignment.priorityValue == .high {
+                        MetaDot()
+                        Text("High priority")
+                            .font(Tokens.Typography.micro)
+                            .foregroundStyle(Tokens.Tint.orange.foreground)
+                    }
+                }
+
+                if let rubric = assignment.rubric {
+                    HStack(spacing: Tokens.Spacing.s - 2) {
+                        Image(systemName: "list.bullet.rectangle.portrait")
+                            .font(.system(size: 11, weight: .medium))
+                        Text("Marked against \(rubric.name)")
+                            .font(Tokens.Typography.caption)
+                    }
+                    .foregroundStyle(Tokens.Palette.inkSecondary)
+                }
 
                 if !steps.isEmpty {
                     VStack(spacing: Tokens.Spacing.s) {
@@ -93,11 +188,78 @@ struct TaskDetailScreen: View {
     @ViewBuilder private var albusNote: some View {
         if steps.isEmpty {
             StatusBanner(tone: .warning,
-                         message: "This assignment has no plan yet. Albus couldn't reach the planner when you added it.")
+                         message: "This assignment has no plan yet. Albus couldn't reach the planner when you added it.",
+                         retryTitle: "Add a step") { addingStep = true }
         } else if let next = steps.first(where: { $0.completedAt == nil }) {
             AlbusNote("**\(next.title)** is the step that makes the rest shorter.", isBusy: true)
         } else {
             AlbusNote("Every step is done. **Hand it in** and take the evening back.")
+        }
+    }
+
+    // MARK: - Marking
+
+    /// Offered when the work is finished, which is when it is worth marking.
+    ///
+    /// Kept available afterwards too — a student who fixed the first three
+    /// things and wants to know if it moved is exactly the person this is for.
+    @ViewBuilder private var gradeEntry: some View {
+        let previous = assignment.gradings.sorted { $0.createdAt > $1.createdAt }
+
+        if assignment.isComplete || !previous.isEmpty {
+            GlassCard {
+                VStack(alignment: .leading, spacing: Tokens.Spacing.m) {
+                    VStack(alignment: .leading, spacing: Tokens.Spacing.xs) {
+                        Text(assignment.isComplete ? "FINISHED" : "MARKED BEFORE")
+                            .font(Tokens.Typography.overline)
+                            .tracking(Tokens.Tracking.overline)
+                            .foregroundStyle(Tokens.Palette.inkMuted)
+                        Text(assignment.rubric == nil
+                             ? "Mark it against a rubric"
+                             : "Mark it against \(assignment.rubric!.name)")
+                            .font(Tokens.Typography.cardTitle)
+                            .foregroundStyle(Tokens.Palette.ink)
+                        Text("Albus reads what you wrote and says what to change, in the order worth changing it.")
+                            .font(Tokens.Typography.caption)
+                            .foregroundStyle(Tokens.Palette.inkSecondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+
+                    PrimaryButton(title: previous.isEmpty ? "Mark my work" : "Mark it again") {
+                        grading = true
+                    }
+
+                    if !previous.isEmpty {
+                        VStack(spacing: Tokens.Spacing.xs) {
+                            ForEach(previous) { grade in
+                                Button { viewingGrade = grade } label: {
+                                    HStack {
+                                        Text(grade.createdAt, format: .dateTime.month().day().hour().minute())
+                                            .font(Tokens.Typography.caption)
+                                            .foregroundStyle(Tokens.Palette.inkSecondary)
+                                        Spacer()
+                                        if let score = grade.scoreText {
+                                            Text(score)
+                                                .font(Tokens.Typography.mono)
+                                                .foregroundStyle(Tokens.Palette.accent)
+                                        } else {
+                                            Text("Comments")
+                                                .font(Tokens.Typography.micro)
+                                                .foregroundStyle(Tokens.Palette.inkMuted)
+                                        }
+                                        Image(systemName: "chevron.right")
+                                            .font(.system(size: 10, weight: .semibold))
+                                            .foregroundStyle(Tokens.Palette.inkMuted)
+                                    }
+                                    .contentShape(Rectangle())
+                                }
+                                .buttonStyle(.plain)
+                            }
+                        }
+                    }
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+            }
         }
     }
 
@@ -106,9 +268,26 @@ struct TaskDetailScreen: View {
     @ViewBuilder private var plan: some View {
         if !steps.isEmpty {
             SectionHeader(label: "Albus's plan", count: steps.count) {
-                Text(DurationText.short(minutes: totalMinutes))
-                    .font(Tokens.Typography.mono)
-                    .foregroundStyle(Tokens.Palette.inkMuted)
+                HStack(spacing: Tokens.Spacing.m) {
+                    Text(DurationText.short(minutes: totalMinutes))
+                        .font(Tokens.Typography.mono)
+                        .foregroundStyle(Tokens.Palette.inkMuted)
+                    Menu {
+                        Button("Add a step", systemImage: "plus") { addingStep = true }
+                        if steps.count > 1 {
+                            Button("Reorder", systemImage: "arrow.up.arrow.down") {
+                                reordering = true
+                            }
+                        }
+                    } label: {
+                        Image(systemName: "ellipsis")
+                            .font(.system(size: 14, weight: .semibold))
+                            .foregroundStyle(Tokens.Palette.inkSecondary)
+                            .frame(width: 28, height: 28)
+                            .contentShape(Rectangle())
+                    }
+                    .accessibilityLabel("Edit plan")
+                }
             }
             .padding(.top, Tokens.Spacing.xs)
 
@@ -125,6 +304,8 @@ struct TaskDetailScreen: View {
                             coordinator.setCompleted(step, step.completedAt == nil, context: context,
                                      availability: preferences.availability)
                         },
+                        onStartSession: { start(step) },
+                        onEdit: { editing = StepDraft(step) },
                         onTap: {
                             withAnimation(Tokens.Motion.quick) {
                                 expanded = expanded == step.id ? nil : step.id
@@ -146,6 +327,8 @@ private struct StepRow: View {
     let isExpanded: Bool
     let subject: Tokens.SubjectColor
     let onToggleDone: () -> Void
+    let onStartSession: () -> Void
+    let onEdit: () -> Void
     let onTap: () -> Void
 
     private var isDone: Bool { step.completedAt != nil }
@@ -262,12 +445,25 @@ private struct StepRow: View {
         }
 
         if isNext {
+            // This button used to call onToggleDone — the *same* closure as
+            // "Mark done". Starting a session silently completed the step
+            // instead, which is the one-tap fake completion this app is
+            // supposed to be the cure for. It opens Focus Mode now.
             HStack(spacing: Tokens.Spacing.s) {
-                PrimaryButton(title: "Start \(DurationText.short(minutes: step.estimatedMinutes)) session") {
-                    onToggleDone()
-                }
-                SecondaryButton(title: "Mark done", action: onToggleDone)
+                PrimaryButton(title: "Start \(DurationText.short(minutes: step.estimatedMinutes)) session",
+                              action: onStartSession)
+                SecondaryButton(title: isDone ? "Reopen" : "Mark done", action: onToggleDone)
             }
+            .padding(.top, Tokens.Spacing.xs)
+        }
+
+        if showsCard {
+            Button(action: onEdit) {
+                Label("Edit step", systemImage: "pencil")
+                    .font(Tokens.Typography.micro)
+                    .foregroundStyle(Tokens.Palette.inkMuted)
+            }
+            .buttonStyle(.plain)
             .padding(.top, Tokens.Spacing.xs)
         }
     }

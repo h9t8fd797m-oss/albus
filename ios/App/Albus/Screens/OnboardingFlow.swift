@@ -33,6 +33,9 @@ struct OnboardingFlow: View {
     @State private var showingCaptcha = false
     @State private var failure: String?
 
+    // Building step: drives the cactus's breathing pulse.
+    @State private var pulsing = false
+
     var body: some View {
         ZStack {
             BackgroundGradient()
@@ -164,10 +167,16 @@ struct OnboardingFlow: View {
                     .fill(Tokens.Palette.accent.opacity(0.12))
                     .frame(width: 200, height: 200)
                     .blur(radius: 20)
-                Image(systemName: "leaf.fill")
-                    .font(.system(size: 64, weight: .light))
-                    .foregroundStyle(Tokens.SubjectColor.green.color)
-                    .symbolEffect(.pulse)
+                // Albus, not a generic SF Symbol leaf — the mascot should be the
+                // first thing a student meets, not a placeholder standing in for
+                // it. `.calm` because there is no workload to reflect yet; the
+                // pulse is the same breathing rhythm Focus Mode uses while it
+                // waits.
+                AlbusCactus(size: 72, mood: .calm)
+                    .scaleEffect(pulsing ? 1.06 : 0.96)
+                    .animation(.easeInOut(duration: 1.6).repeatForever(autoreverses: true),
+                              value: pulsing)
+                    .onAppear { pulsing = true }
             }
             VStack(spacing: Tokens.Spacing.s) {
                 Text("Building your plan.")
@@ -216,9 +225,7 @@ struct OnboardingFlow: View {
             }
             .padding(.horizontal, Tokens.Spacing.xl)
 
-            Image(systemName: "leaf.fill")
-                .font(.system(size: 64, weight: .light))
-                .foregroundStyle(Tokens.SubjectColor.green.color)
+            AlbusCactus(size: 72, mood: .calm)
 
             Spacer()
             PrimaryButton(title: "Show me") { preferences.markOnboarded() }
@@ -272,12 +279,18 @@ struct OnboardingFlow: View {
             }
         }
 
+        // Now that there is an account, tell the server what the student is
+        // studying. Best-effort: a failed sync costs slightly less specific
+        // answers from Albus, never the assignment they are here to create.
+        await ProfileService().syncCurriculum(preferences.program.curriculumCode)
+
         await coordinator.addAssignment(
-            title: taskTitle.trimmingCharacters(in: .whitespaces),
-            taskType: taskType,
-            deadline: deadline,
-            estimatedMinutes: Int(hours * 60),
-            course: nil,
+            NewAssignment(
+                title: taskTitle.trimmingCharacters(in: .whitespaces),
+                taskType: taskType,
+                deadline: deadline,
+                estimatedMinutes: Int(hours * 60)
+            ),
             context: context,
             availability: preferences.availability
         )

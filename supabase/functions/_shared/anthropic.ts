@@ -2,6 +2,7 @@
 
 import Anthropic from "npm:@anthropic-ai/sdk@0.120.0";
 import { BREAKDOWN_JSON_SCHEMA } from "./breakdown_schema.ts";
+import { GRADE_JSON_SCHEMA, GRADE_MODEL } from "./grade_prompt.ts";
 import type { ChatTurn } from "./chat_prompt.ts";
 import { HttpError } from "./http.ts";
 
@@ -143,6 +144,71 @@ export async function chatReply(
       }
       console.error("ANTHROPIC REQUEST REJECTED (bug in our request):", status, e.message);
       throw new HttpError(502, "UPSTREAM_REJECTED", "Albus could not answer that.");
+    }
+    throw e;
+  }
+}
+
+/**
+ * Mark a piece of work against a rubric.
+ *
+ * `max_tokens` is generous where the breakdown's is not: useful feedback on an
+ * essay is genuinely long, and truncating it mid-criterion would produce a
+ * grade with half its reasons missing.
+ *
+ * A refusal is surfaced as a refusal rather than dressed up as a server error.
+ * The student pasted the text; they are owed a straight answer about why it was
+ * not marked.
+ */
+export async function gradeWork(
+  systemPrompt: string,
+  userPrompt: string,
+): Promise<GenerationResult> {
+  try {
+    const response = await getClient().messages.create({
+      model: GRADE_MODEL,
+      max_tokens: 4000,
+      system: [{ type: "text", text: systemPrompt, cache_control: { type: "ephemeral" } }],
+      messages: [{ role: "user", content: userPrompt }],
+      output_config: {
+        format: { type: "json_schema", schema: GRADE_JSON_SCHEMA },
+      },
+    } as Anthropic.MessageCreateParamsNonStreaming);
+
+    if (response.stop_reason === "refusal") {
+      throw new HttpError(422, "REFUSED", "Albus could not mark this work.");
+    }
+
+    const block = response.content.find((b) => b.type === "text");
+    if (!block || block.type !== "text") {
+      throw new HttpError(502, "EMPTY_RESPONSE", "Model returned no text block");
+    }
+
+    let raw: unknown;
+    try {
+      raw = JSON.parse(block.text);
+    } catch {
+      throw new HttpError(502, "MALFORMED_RESPONSE", "Model output was not valid JSON");
+    }
+
+    const u = response.usage;
+    return {
+      raw,
+      model: GRADE_MODEL,
+      inputTokens: u.input_tokens ?? 0,
+      outputTokens: u.output_tokens ?? 0,
+      cacheReadTokens: u.cache_read_input_tokens ?? 0,
+    };
+  } catch (e) {
+    if (e instanceof HttpError) throw e;
+    if (e instanceof Anthropic.APIError) {
+      const status = e.status ?? 0;
+      if (status === 429 || status >= 500) {
+        console.error("anthropic transient error", status, e.message);
+        throw new HttpError(503, "UPSTREAM_UNAVAILABLE", "Marking is unavailable right now.");
+      }
+      console.error("ANTHROPIC REQUEST REJECTED (bug in our request):", status, e.message);
+      throw new HttpError(502, "UPSTREAM_REJECTED", "Albus could not mark this work.");
     }
     throw e;
   }

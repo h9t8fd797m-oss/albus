@@ -20,11 +20,7 @@ struct AlbusApp: App {
     private let container: ModelContainer
 
     init() {
-        let schema = Schema([
-            Course.self, Assignment.self, Subtask.self,
-            PlanSessionRecord.self, CompletionRecord.self
-        ])
-        container = Self.makeContainer(schema: schema)
+        container = Self.makeContainer(schema: AlbusSchema.schema)
     }
 
     private static func makeContainer(schema: Schema) -> ModelContainer {
@@ -78,6 +74,7 @@ struct AlbusApp: App {
     @State private var coordinator = PlanCoordinator()
     @State private var preferences = Preferences()
     @State private var entitlements = EntitlementService()
+    @State private var focusSession = FocusSession()
 
     var body: some Scene {
         WindowGroup {
@@ -89,6 +86,7 @@ struct AlbusApp: App {
                 .environment(coordinator)
                 .environment(preferences)
                 .environment(entitlements)
+                .environment(focusSession)
                 .task {
                     // Restores a stored session. It no longer *creates* one:
                     // account creation moved into onboarding, which is the only

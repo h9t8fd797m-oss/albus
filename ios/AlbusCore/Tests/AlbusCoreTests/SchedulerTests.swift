@@ -11,9 +11,10 @@ private let now = at(20, 9)
 private let assignment = UUID()
 
 private func item(_ minutes: Int, dueDay: Int, dueHour: Int = 23,
-                  ordinal: Int = 0, assignment: UUID = assignment) -> ScheduleItem {
+                  ordinal: Int = 0, assignment: UUID = assignment,
+                  priority: Int = 1) -> ScheduleItem {
     ScheduleItem(id: UUID(), assignmentID: assignment, ordinal: ordinal,
-                 minutes: minutes, deadline: at(dueDay, dueHour))
+                 minutes: minutes, deadline: at(dueDay, dueHour), priority: priority)
 }
 
 private let sched = Scheduler()
@@ -261,5 +262,173 @@ struct HostileInputTests {
         let elapsed = Date().timeIntervalSince(started)
         #expect(elapsed < 2.0, "took \(elapsed)s")
         #expect(r.sessions.count + r.unplaceable.count == 400)
+    }
+}
+
+/// The behaviour the whole product rests on: when a student misses a session,
+/// Albus finds it a new home rather than leaving it in the past.
+@Suite("Missed work is re-placed")
+struct MissedWorkTests {
+
+    /// Yesterday, entirely in the past, and marked missed — which is what the
+    /// app does to a block whose window passed with the step still undone.
+    private func missedSession(_ item: ScheduleItem,
+                               startHour: Int = 16, minutes: Int = 60) -> PlannedSession {
+        PlannedSession(
+            itemID: item.id, assignmentID: item.assignmentID,
+            start: at(19, startHour),
+            end: at(19, startHour).addingTimeInterval(TimeInterval(minutes * 60)),
+            state: .missed
+        )
+    }
+
+    /// A past block nobody marked is left where it is: we do not know whether
+    /// that work happened, and rewriting it would erase a day the student may
+    /// have worked through.
+    @Test("an unmarked past block is not disturbed")
+    func unmarkedPastIsPinned() {
+        let work = item(60, dueDay: 23)
+        let stale = PlannedSession(
+            itemID: work.id, assignmentID: work.assignmentID,
+            start: at(19, 16), end: at(19, 17), state: .scheduled
+        )
+        let r = sched.schedule(items: [work], existing: [stale], now: now)
+        #expect(r.movedCount == 0)
+    }
+
+    @Test("a session whose window has passed is moved into the future")
+    func missedIsMoved() {
+        let work = item(60, dueDay: 23)
+        let missed = missedSession(work)
+
+        let r = sched.schedule(items: [work], existing: [missed], now: now)
+
+        #expect(r.sessions.count == 1)
+        let placed = try! #require(r.sessions.first)
+        // The whole point: it now sits ahead of the clock, not behind it.
+        #expect(placed.start >= now)
+        // And it is the same session moved, not a duplicate alongside the old.
+        #expect(placed.itemID == work.id)
+    }
+
+    @Test("missed work does not keep blocking the slot it never used")
+    func missedFreesItsSlot() {
+        // Two steps, one missed. The missed block sat at 16:00-17:00 yesterday;
+        // that time must not count as occupied today.
+        let first = item(60, dueDay: 23, ordinal: 0)
+        let second = item(60, dueDay: 23, ordinal: 1)
+        let missed = missedSession(first)
+
+        let r = sched.schedule(items: [first, second], existing: [missed], now: now)
+
+        #expect(r.sessions.count == 2)
+        // Nothing may overlap anything else.
+        let sorted = r.sessions.sorted { $0.start < $1.start }
+        for (a, b) in zip(sorted, sorted.dropFirst()) {
+            #expect(a.end <= b.start)
+        }
+    }
+
+    @Test("a block in progress right now is left alone")
+    func inProgressIsPinned() {
+        let work = item(60, dueDay: 23)
+        // Started an hour ago, still running: 08:30 to 09:30, now is 09:00.
+        let running = PlannedSession(
+            itemID: work.id, assignmentID: work.assignmentID,
+            start: at(20, 8, 30), end: at(20, 9, 30), state: .scheduled
+        )
+
+        let r = sched.schedule(items: [work], existing: [running], now: now)
+
+        // Untouched — the student is sitting in front of it.
+        #expect(r.sessions.contains { $0.id == running.id && $0.start == running.start })
+        #expect(r.movedCount == 0)
+    }
+
+    @Test("completed work stays exactly where it happened")
+    func completedIsPinned() {
+        let work = item(60, dueDay: 23)
+        let done = PlannedSession(
+            itemID: work.id, assignmentID: work.assignmentID,
+            start: at(19, 16), end: at(19, 17), state: .completed
+        )
+
+        // The item is no longer pending once its session is complete.
+        let r = sched.schedule(items: [], existing: [done], now: now)
+
+        #expect(r.sessions.contains { $0.id == done.id && $0.start == done.start })
+    }
+}
+
+@Suite("Priority orders work without overriding deadlines")
+struct PriorityTests {
+
+    @Test("high priority goes first when two things share a deadline")
+    func highPriorityWinsTies() {
+        let low = item(60, dueDay: 25, ordinal: 0, assignment: UUID(), priority: 0)
+        let high = item(60, dueDay: 25, ordinal: 0, assignment: UUID(), priority: 2)
+
+        // Fed in the "wrong" order on purpose: the sort has to do the work.
+        let result = sched.schedule(items: [low, high], existing: [], commitments: [],
+                                    availability: .default, now: now)
+
+        let placedLow = result.sessions.first { $0.itemID == low.id }
+        let placedHigh = result.sessions.first { $0.itemID == high.id }
+        #expect(placedHigh != nil && placedLow != nil)
+        #expect(placedHigh!.start < placedLow!.start)
+    }
+
+    /// The invariant that matters. Priority is a preference; a deadline is a
+    /// fact. If marking one thing urgent could push another past its due date,
+    /// the student asked for one thing to matter more and got a missed hand-in.
+    @Test("priority never pushes other work past its deadline")
+    func priorityNeverCausesAMiss() {
+        // Two hours a day. The urgent-but-later item is big enough to swallow
+        // tomorrow whole if it were allowed to go first.
+        let av = Availability(windowStartHour: 9, windowEndHour: 23,
+                              dailyCapacityMinutes: 120)
+
+        let dueTomorrow = item(120, dueDay: 21, dueHour: 23,
+                               assignment: UUID(), priority: 0)
+        let urgentLater = item(120, dueDay: 27, dueHour: 23,
+                               assignment: UUID(), priority: 2)
+
+        let result = sched.schedule(items: [urgentLater, dueTomorrow], existing: [],
+                                    commitments: [], availability: av, now: now)
+
+        let tight = result.sessions.first { $0.itemID == dueTomorrow.id }
+        #expect(tight != nil, "work due tomorrow must still be placed")
+        #expect(tight!.end <= at(21, 23))
+    }
+
+    @Test("priority alone does not reorder work within one assignment")
+    func ordinalStillWinsInsideAnAssignment() {
+        // Steps are meant to be done in order; priority is per-assignment, so it
+        // is the same for every step and must not disturb them.
+        let shared = UUID()
+        let first = item(30, dueDay: 25, ordinal: 0, assignment: shared, priority: 2)
+        let second = item(30, dueDay: 25, ordinal: 1, assignment: shared, priority: 2)
+
+        let result = sched.schedule(items: [second, first], existing: [], commitments: [],
+                                    availability: .default, now: now)
+
+        let a = result.sessions.first { $0.itemID == first.id }
+        let b = result.sessions.first { $0.itemID == second.id }
+        #expect(a != nil && b != nil)
+        #expect(a!.start < b!.start)
+    }
+
+    @Test("scheduling is still deterministic with priorities in play")
+    func deterministic() {
+        let items = [
+            item(45, dueDay: 24, assignment: UUID(), priority: 2),
+            item(45, dueDay: 24, assignment: UUID(), priority: 0),
+            item(45, dueDay: 26, assignment: UUID(), priority: 1)
+        ]
+        let first = sched.schedule(items: items, existing: [], commitments: [],
+                                   availability: .default, now: now)
+        let second = sched.schedule(items: items, existing: [], commitments: [],
+                                    availability: .default, now: now)
+        #expect(first.sessions.map(\.start) == second.sessions.map(\.start))
     }
 }

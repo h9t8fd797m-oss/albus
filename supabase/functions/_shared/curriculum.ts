@@ -53,9 +53,66 @@ export async function loadRubric(
   if (criteria.length === 0) return null;
 
   return {
+    kind: "curriculum",
     curriculumName: curriculum?.name ?? "General",
     courseName: course?.name ?? "Course",
     assessmentName: data.name as string,
     criteria,
+    body: null,
+  };
+}
+
+/**
+ * Read the student's own saved rubric.
+ *
+ * Loaded server-side by id through the caller's client, never taken from the
+ * request body. Two reasons: RLS makes a rubric belonging to someone else return
+ * nothing, and the size caps that keep this affordable are enforced by the
+ * column definitions rather than by whatever the client chose to send.
+ */
+export async function loadPersonalRubric(
+  db: SupabaseClient,
+  rubricId: string | null,
+): Promise<RubricContext | null> {
+  if (!rubricId) return null;
+
+  const { data, error } = await db
+    .from("rubrics")
+    .select(`name, body, total_marks, rubric_items ( id, code, name, marks, guidance, ordinal )`)
+    .eq("id", rubricId)
+    .maybeSingle();
+
+  if (error || !data) {
+    if (error) console.warn("personal rubric lookup failed, continuing generic:", error.message);
+    return null;
+  }
+
+  const criteria = ((data.rubric_items ?? []) as Array<{
+    id: string;
+    code: string | null;
+    name: string;
+    marks: number | null;
+    guidance: string | null;
+    ordinal: number;
+  }>)
+    .sort((a, b) => a.ordinal - b.ordinal)
+    .map(({ id, code, name, marks, guidance }) => ({
+      id,
+      code: code ?? "",
+      name,
+      marks,
+      guidance,
+    }));
+
+  const body = typeof data.body === "string" ? data.body : null;
+  if (criteria.length === 0 && !(body ?? "").trim()) return null;
+
+  return {
+    kind: "personal",
+    curriculumName: "the student's own rubric",
+    courseName: "",
+    assessmentName: data.name as string,
+    criteria,
+    body,
   };
 }

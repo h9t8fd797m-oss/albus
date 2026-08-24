@@ -93,6 +93,8 @@ struct Conversation: View {
     let assignment: Assignment?
 
     @State private var turns: [ChatService.Turn] = []
+    /// 1-based, when the student narrowed the question to one step.
+    @State private var focusStep: Int?
     @State private var draft = ""
     @State private var isSending = false
     @State private var failure: String?
@@ -102,6 +104,7 @@ struct Conversation: View {
 
     var body: some View {
         VStack(spacing: 0) {
+            stepPicker
             transcript
             composer
         }
@@ -110,6 +113,37 @@ struct Conversation: View {
         .onChange(of: assignment?.id) {
             turns.removeAll()
             failure = nil
+            focusStep = nil
+        }
+    }
+
+    /// Narrowing the question to one step.
+    ///
+    /// The whole plan still reaches the model either way — this says which part
+    /// of it the question is about, which is the difference between "how do I
+    /// start?" being answered about the essay and about the paragraph in front
+    /// of them.
+    @ViewBuilder private var stepPicker: some View {
+        let steps = (assignment?.subtasks ?? []).sorted { $0.ordinal < $1.ordinal }
+        if steps.count > 1 {
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: Tokens.Spacing.s) {
+                    FilterChip(title: "Whole plan", isSelected: focusStep == nil) {
+                        withAnimation(Tokens.Motion.quick) { focusStep = nil }
+                    }
+                    ForEach(Array(steps.enumerated()), id: \.element.id) { index, step in
+                        FilterChip(title: "\(index + 1). \(step.title)",
+                                   isSelected: focusStep == index + 1) {
+                            withAnimation(Tokens.Motion.quick) {
+                                focusStep = focusStep == index + 1 ? nil : index + 1
+                            }
+                        }
+                    }
+                }
+                .padding(.horizontal, Tokens.Spacing.xl)
+            }
+            .scrollClipDisabled()
+            .padding(.bottom, Tokens.Spacing.m)
         }
     }
 
@@ -247,7 +281,7 @@ struct Conversation: View {
 
         do {
             let reply = try await service.send(message, about: assignment?.remoteID,
-                                               history: history)
+                                               step: focusStep, history: history)
             turns.append(.init(role: .assistant, content: reply.reply))
         } catch let error as ChatService.Failure {
             failure = error.errorDescription ?? "Albus couldn't answer."

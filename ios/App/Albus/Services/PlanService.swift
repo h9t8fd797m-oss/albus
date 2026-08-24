@@ -26,12 +26,16 @@ struct PlanService {
         let assignmentID: UUID
         let model: String
         let rubricGrounded: Bool
+        /// "personal", "curriculum", or nil when the plan was generic. Lets the
+        /// UI tell the student *which* rubric shaped their plan.
+        let rubricSource: String?
         let steps: [Step]
 
         private enum CodingKeys: String, CodingKey {
             case assignmentID = "assignment_id"
             case model
             case rubricGrounded = "rubric_grounded"
+            case rubricSource = "rubric_source"
             case steps
         }
     }
@@ -68,6 +72,15 @@ struct PlanService {
         let deadline: String
         let estimated_minutes: Int
         let assessment_type_id: String?
+        let course_id: String?
+        /// What the student typed about the assignment. Reaches the model
+        /// fenced as data; the server caps it at 2000 characters.
+        let notes: String?
+        /// The student's own rubric, by id. The rubric itself is never sent —
+        /// the server loads it through the caller's own RLS context, so a
+        /// forged id resolves to nothing rather than to someone else's rubric.
+        let rubric_id: String?
+        let priority: String
     }
 
     private struct ErrorBody: Decodable { let error: String?; let message: String? }
@@ -79,13 +92,22 @@ struct PlanService {
     }
 
     func breakdown(title: String, taskType: String, deadline: Date,
-                   estimatedMinutes: Int, assessmentTypeID: UUID? = nil) async throws -> Result {
+                   estimatedMinutes: Int, assessmentTypeID: UUID? = nil,
+                   courseID: UUID? = nil, notes: String? = nil,
+                   rubricID: UUID? = nil,
+                   priority: AssignmentPriority = .normal) async throws -> Result {
+        let trimmedNotes = notes?.trimmingCharacters(in: .whitespacesAndNewlines)
+
         let body = Request(
             title: title,
             task_type: taskType,
             deadline: ISO8601DateFormatter().string(from: deadline),
             estimated_minutes: estimatedMinutes,
-            assessment_type_id: assessmentTypeID?.uuidString
+            assessment_type_id: assessmentTypeID?.uuidString,
+            course_id: courseID?.uuidString,
+            notes: (trimmedNotes?.isEmpty ?? true) ? nil : trimmedNotes,
+            rubric_id: rubricID?.uuidString,
+            priority: priority.rawValue
         )
 
         guard let client else { throw Failure.unavailable }

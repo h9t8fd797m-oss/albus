@@ -14,8 +14,7 @@ import AlbusCore
 struct DataLayerTests {
 
     private func makeContext() throws -> ModelContext {
-        let schema = Schema([Course.self, Assignment.self, Subtask.self,
-                             PlanSessionRecord.self, CompletionRecord.self])
+        let schema = AlbusSchema.schema
         let container = try ModelContainer(
             for: schema,
             configurations: ModelConfiguration(schema: schema, isStoredInMemoryOnly: true)

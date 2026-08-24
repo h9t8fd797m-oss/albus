@@ -31,12 +31,13 @@ final class CoreLoopUITests: XCTestCase {
     /// builds a fresh instance per test method, so this is still unique per test.
     private let assignmentTitle = "Biology chapter \(UUID().uuidString.prefix(6))"
 
+    private let app = XCUIApplication()
+
     override func setUp() {
         continueAfterFailure = false
     }
 
     func testAddAssignmentProducesAPlacedPlan() throws {
-        let app = XCUIApplication()
         app.launch()
 
         reachApp(app)
@@ -46,55 +47,87 @@ final class CoreLoopUITests: XCTestCase {
 
         addAssignment(app, titled: assignmentTitle)
 
-        // Assert through Tasks, not Today.
+        // Assert on the assignment, not on a placed session.
         //
-        // Today only shows work the scheduler placed *today*, and late in the
-        // evening it correctly places everything in tomorrow's study window
-        // instead of at midnight. Asserting on Today therefore passed at noon
-        // and failed at 23:58 — a test that fails for a reason the app is right
-        // about. Tasks lists every assignment regardless of when its sessions
-        // land, so this checks the same thing without depending on the clock.
-        app.buttons["Tasks"].tap()
+        // A session-level assertion passed at noon and failed at 23:58, because
+        // late in the evening the scheduler correctly places everything in
+        // tomorrow's window rather than at midnight — a test failing for a
+        // reason the app is right about. Home lists every assignment regardless
+        // of when its sessions land, so this checks the same thing without
+        // depending on the clock.
+        app.buttons["Home"].tap()
         XCTAssertTrue(app.staticTexts[assignmentTitle].waitForExistence(timeout: 90),
                       "no plan appeared — breakdown, persistence or scheduling failed")
     }
 
-    /// The plan has to be reachable from Tasks and openable into its steps —
+    /// The plan has to be reachable from Home and openable into its steps —
     /// the screens a student actually works from.
-    func testPlanIsVisibleInTasksAndDetail() throws {
-        let app = XCUIApplication()
+    func testPlanIsVisibleOnHomeAndInDetail() throws {
         app.launch()
         reachApp(app)
 
         addAssignment(app, titled: assignmentTitle)
 
-        app.buttons["Tasks"].tap()
-        let card = app.staticTexts[assignmentTitle]
+        app.buttons["Home"].tap()
+
+        // Addressed by identifier, not by label. Home shows the assignment title
+        // in two places — the up-next row and the assignment card — and they do
+        // different things: one starts a focus session, the other opens the
+        // plan. Matching on the title picked whichever came first in the tree,
+        // which was the up-next row, so this test opened Focus Mode and then
+        // correctly reported that no plan was visible.
+        let card = app.descendants(matching: .any)
+            .matching(identifier: "assignmentCard").element(boundBy: 0)
         XCTAssertTrue(card.waitForExistence(timeout: 90),
-                      "the assignment is missing from Tasks")
+                      "the assignment is missing from Home")
+        XCTAssertTrue(app.staticTexts[assignmentTitle].waitForExistence(timeout: 5),
+                      "the assignment's title never rendered")
 
-        card.firstMatch.tap()
-        XCTAssertTrue(app.staticTexts["ALBUS'S PLAN"].waitForExistence(timeout: 10),
-                      "task detail did not show the generated plan")
+        card.tap()
 
-        // Every generated plan has at least one step, and each carries a
-        // duration — the thing that proves steps rendered, not just a header.
+        // Assert on the plan's *content*, not on its heading.
+        //
+        // This used to look for the "ALBUS'S PLAN" section header, which broke
+        // the moment that header gained a menu button: SwiftUI stops combining
+        // an accessibility element that contains an interactive child, so the
+        // exact label disappeared even though the screen was correct. A test
+        // that fails when a button is added next to a title is testing the
+        // wrong thing.
+        //
+        // Every generated plan has at least one step and every step carries a
+        // duration, so this proves steps rendered rather than just a header.
         let durations = app.staticTexts.containing(
             NSPredicate(format: "label MATCHES %@", #"^\d+h( \d+m)?$|^\d+m$"#))
-        XCTAssertGreaterThan(durations.count, 0, "no step durations rendered")
+        XCTAssertTrue(durations.element(boundBy: 0).waitForExistence(timeout: 15),
+                      "task detail did not show the generated plan")
+
+        // And the plan has to be startable, which is the whole point of the
+        // screen. This is also the regression guard for "Start session" having
+        // silently been a second Mark done button.
+        XCTAssertTrue(app.buttons.containing(
+            NSPredicate(format: "label BEGINSWITH 'Start'")).element.exists,
+            "no way to start a session from the plan")
     }
 
     /// Tools is static, so this is cheap — but it is the one tab that opens
     /// external links, and a crash here would only ever be found by tapping.
     func testToolsLibraryRenders() throws {
-        let app = XCUIApplication()
         app.launch()
         reachApp(app)
 
         app.buttons["Tools"].tap()
-        XCTAssertTrue(app.buttons.containing(
-            NSPredicate(format: "label CONTAINS 'Claude'")).element.waitForExistence(timeout: 5),
-            "the tool library did not render")
+
+        // Asserting on one tool's name made this fail the moment the catalogue
+        // was reorganised, which is a test breaking for a reason nobody cares
+        // about. What matters is that the library rendered at all and that
+        // search narrows it.
+        XCTAssertTrue(app.textFields["Search tools"].waitForExistence(timeout: 10),
+                      "the tool library did not render")
+        let search = app.textFields["Search tools"]
+        search.tap()
+        search.typeText("grammar")
+        XCTAssertTrue(app.staticTexts["Grammarly"].waitForExistence(timeout: 5),
+                      "search did not narrow the library")
     }
 
     // MARK: - Helpers
@@ -107,7 +140,7 @@ final class CoreLoopUITests: XCTestCase {
     /// which one they get depends on what ran before them.
     private func reachApp(_ app: XCUIApplication) {
         let onboarding = app.staticTexts["A few things first."]
-        let home = app.staticTexts["TODAY'S SCHEDULE"]
+        let home = app.buttons["Home"]   // tab bar: present in the app, absent in onboarding
 
         // Whichever appears first decides the path.
         let start = Date()
@@ -124,10 +157,8 @@ final class CoreLoopUITests: XCTestCase {
 
         app.buttons["Next"].tap()
 
-        let task = app.textFields["e.g. History term paper"]
-        XCTAssertTrue(task.waitForExistence(timeout: 5), "the deadline step never appeared")
-        task.tap()
-        task.typeText("Onboarding first assignment")
+        type("Onboarding first assignment",
+             into: app.textFields["e.g. History term paper"])
 
         app.buttons["Build my plan"].tap()
 
@@ -141,13 +172,30 @@ final class CoreLoopUITests: XCTestCase {
                       "onboarding completed but the app never appeared")
     }
 
+    /// Taps a field and types, waiting for focus first.
+    ///
+    /// `tap()` then `typeText()` races the keyboard: the tap registers but
+    /// focus has not landed, and the event fails with "neither element nor any
+    /// descendant has keyboard focus". Intermittent, which is worse than
+    /// broken — so wait for the keyboard, and retry the tap once if it does
+    /// not come up.
+    private func type(_ text: String, into field: XCUIElement, file: StaticString = #filePath,
+                      line: UInt = #line) {
+        XCTAssertTrue(field.waitForExistence(timeout: 10), "field never appeared",
+                      file: file, line: line)
+        field.tap()
+        if !app.keyboards.element.waitForExistence(timeout: 5) {
+            field.tap()
+            XCTAssertTrue(app.keyboards.element.waitForExistence(timeout: 5),
+                          "keyboard never appeared", file: file, line: line)
+        }
+        field.typeText(text)
+    }
+
     private func addAssignment(_ app: XCUIApplication, titled title: String) {
         app.buttons["Add assignment"].firstMatch.tap()
 
-        let field = app.textFields["What is it?"]
-        XCTAssertTrue(field.waitForExistence(timeout: 5), "the add sheet never opened")
-        field.tap()
-        field.typeText(title)
+        type(title, into: app.textFields["What is it?"])
 
         app.buttons["Plan it"].tap()
     }

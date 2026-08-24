@@ -8,41 +8,48 @@ import AlbusCore
 /// once. Content scrolls *under* the bar, which means the bottom inset is set
 /// in exactly one place and no screen adds padding of its own.
 struct AppShell: View {
-    @State private var tab: Tab = .today
+    @State private var tab: Tab = .home
 
+    /// Four destinations.
+    ///
+    /// Home and Tasks used to be two tabs showing the same thing from different
+    /// angles — Home listed session blocks, Tasks listed the assignments those
+    /// blocks belonged to. Home is now the assignment list, which is what a
+    /// student actually keeps track of, and the freed slot went to Rubrics,
+    /// which needed somewhere to live.
     enum Tab: String, CaseIterable, Identifiable {
-        case today, albus, tools, tasks
+        case home, rubrics, albus, tools
         var id: String { rawValue }
 
         var title: String {
             switch self {
-            case .today: "Today"
+            case .home: "Home"
+            case .rubrics: "Rubrics"
             case .albus: "Albus"
             case .tools: "Tools"
-            case .tasks: "Tasks"
             }
         }
 
         var icon: String {
             switch self {
-            case .today: "calendar"
+            case .home: "house"
+            case .rubrics: "list.bullet.rectangle.portrait"
             case .albus: "text.alignleft"
-            case .tools: "gearshape"
-            case .tasks: "checkmark.square"
+            case .tools: "wrench.and.screwdriver"
             }
         }
     }
 
     var body: some View {
         ZStack(alignment: .bottom) {
-            // A stack per tab so pushing a detail view from Tasks does not
-            // reset scroll position on Today.
+            // A stack per tab so pushing a plan from Home does not reset
+            // scroll position elsewhere.
             Group {
                 switch tab {
-                case .today: NavigationStack { Screen { TodayScreen() } }
+                case .home: NavigationStack { Screen { HomeScreen() } }
+                case .rubrics: NavigationStack { Screen { RubricsScreen() } }
                 case .albus: NavigationStack { Screen { AlbusScreen() } }
                 case .tools: NavigationStack { Screen { ToolsScreen() } }
-                case .tasks: NavigationStack { Screen { TasksScreen() } }
                 }
             }
 

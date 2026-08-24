@@ -52,19 +52,36 @@ final class Assignment {
     var deadline: Date
     var estimatedMinutes: Int
     var status: String
+    /// One of `AssignmentPriority`. Stored raw so a rename in the enum is a
+    /// compile error here rather than a silent migration.
+    ///
+    /// Defaulted in the declaration, not just the initialiser: SwiftData needs a
+    /// value for rows written before this column existed.
+    var priority: String = AssignmentPriority.normal.rawValue
     var assessmentTypeID: UUID?
     var createdAt: Date
     var updatedAt: Date
 
     var course: Course?
+    /// The rubric this is marked against. Nil is normal — plenty of work has no
+    /// rubric, and refusing to plan without one would be worse than planning
+    /// without one.
+    var rubric: Rubric?
 
     @Relationship(deleteRule: .cascade, inverse: \Subtask.assignment)
     var subtasks: [Subtask] = []
 
+    /// Every time this work has been marked. Kept so a student can compare a
+    /// draft against the version they handed in.
+    @Relationship(deleteRule: .cascade, inverse: \Grading.assignment)
+    var gradings: [Grading] = []
+
     init(id: UUID = UUID(), remoteID: UUID? = nil, title: String, notes: String? = nil,
          taskType: String = "other", deadline: Date, estimatedMinutes: Int,
-         status: String = "active", assessmentTypeID: UUID? = nil,
-         course: Course? = nil, createdAt: Date = .now) {
+         status: AssignmentStatus = .active,
+         priority: AssignmentPriority = .normal,
+         assessmentTypeID: UUID? = nil,
+         course: Course? = nil, rubric: Rubric? = nil, createdAt: Date = .now) {
         self.id = id
         self.remoteID = remoteID
         self.title = title
@@ -72,9 +89,11 @@ final class Assignment {
         self.taskType = taskType
         self.deadline = deadline
         self.estimatedMinutes = estimatedMinutes
-        self.status = status
+        self.status = status.rawValue
+        self.priority = priority.rawValue
         self.assessmentTypeID = assessmentTypeID
         self.course = course
+        self.rubric = rubric
         self.createdAt = createdAt
         self.updatedAt = createdAt
     }
@@ -88,6 +107,54 @@ final class Assignment {
     var isComplete: Bool {
         !subtasks.isEmpty && subtasks.allSatisfy { $0.completedAt != nil }
     }
+
+    var priorityValue: AssignmentPriority {
+        get { AssignmentPriority(rawValue: priority) ?? .normal }
+        set { priority = newValue.rawValue }
+    }
+
+    var statusValue: AssignmentStatus {
+        get { AssignmentStatus(rawValue: status) ?? .active }
+        set { status = newValue.rawValue }
+    }
+}
+
+/// How urgent the student says this is.
+///
+/// Three values, not a slider. A 1-10 scale invites marking everything an 8,
+/// and a scheduler cannot act on a distinction the student did not really make.
+enum AssignmentPriority: String, CaseIterable, Codable, Sendable, Identifiable {
+    case low, normal, high
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .low: "Low"
+        case .normal: "Normal"
+        case .high: "High"
+        }
+    }
+
+    /// Higher sorts earlier. Only ever breaks a tie between two pieces of work
+    /// competing for the same window — never overrides a deadline.
+    var weight: Int {
+        switch self {
+        case .high: 2
+        case .normal: 1
+        case .low: 0
+        }
+    }
+}
+
+/// The assignment lifecycle, in the vocabulary the database actually accepts.
+///
+/// This was a loose string, and the client wrote `"done"` where the server's
+/// check constraint allows only `active`/`completed`/`archived`. Nothing broke
+/// yet because status is not synced — which is exactly the kind of bug that
+/// waits for the feature that would have shipped it.
+enum AssignmentStatus: String, CaseIterable, Codable, Sendable {
+    case active, completed, archived
 }
 
 @Model
@@ -132,6 +199,25 @@ final class PlanSessionRecord {
     /// routes around these and never through them.
     var isFixed: Bool
 
+    // ── What actually happened ────────────────────────────────────────────
+    // `startsAt`/`endsAt` are the *plan*. These three are the *record*, and
+    // they are what the estimator learns from. Keeping them separate is what
+    // stops "I marked it done" being mistaken for "I did it".
+    //
+    // All optional so an existing store migrates without losing anything.
+
+    /// When a focus session was actually begun.
+    var startedAt: Date?
+    /// When it actually ended — by running out, or by being ended early.
+    var endedAt: Date?
+    /// Seconds genuinely spent in a running focus session, accumulated across
+    /// pauses. Measured with a monotonic clock, so moving the device clock
+    /// forward does not manufacture focus time.
+    var focusedSeconds: Int?
+    /// How many times the app was backgrounded mid-session. Not a punishment —
+    /// it is the honest caveat on a session's duration.
+    var interruptions: Int?
+
     var subtask: Subtask?
 
     init(id: UUID = UUID(), startsAt: Date, endsAt: Date,
@@ -143,6 +229,19 @@ final class PlanSessionRecord {
         self.state = state.rawValue
         self.isFixed = isFixed
         self.subtask = subtask
+    }
+
+    /// How long the session was planned to run.
+    var plannedSeconds: Int {
+        max(0, Int(endsAt.timeIntervalSince(startsAt)))
+    }
+
+    /// Measured focus, in whole minutes. Nil when the session was never run —
+    /// which is different from zero, and must stay different: an unrun session
+    /// has no measurement, and guessing one would poison the estimator.
+    var measuredMinutes: Int? {
+        guard let focusedSeconds, focusedSeconds > 0 else { return nil }
+        return max(1, focusedSeconds / 60)
     }
 
     var sessionState: SessionState {
@@ -184,5 +283,223 @@ final class CompletionRecord {
         self.completed = completed
         self.createdAt = createdAt
         self.synced = synced
+    }
+}
+
+// MARK: - Rubrics
+
+/// A rubric the student owns, saves once and reuses.
+///
+/// Two ways in, because both are real. Most students have a rubric as a block of
+/// text on the assignment sheet — that is `body`, and it is enough to grade
+/// against. Some want it broken into criteria they can see marks against — those
+/// are `items`. Grading prefers items and falls back to the body, so pasting
+/// works immediately and structure is an upgrade rather than a requirement.
+@Model
+final class Rubric {
+    @Attribute(.unique) var id: UUID
+    var remoteID: UUID?
+    var name: String
+    /// `custom` when pasted, `template` when copied from curriculum data.
+    var source: String
+    var assessmentTypeID: UUID?
+    /// The pasted sheet. Capped at the same 8000 characters the server enforces,
+    /// so a rubric that saves locally is one the server will also accept.
+    var body: String?
+    var totalMarks: Int?
+    var createdAt: Date
+    var updatedAt: Date
+
+    @Relationship(deleteRule: .cascade, inverse: \RubricItem.rubric)
+    var items: [RubricItem] = []
+
+    /// Assignments pointing here. Nullify rather than cascade: deleting a rubric
+    /// must never delete the student's work, only the link to it.
+    @Relationship(deleteRule: .nullify, inverse: \Assignment.rubric)
+    var assignments: [Assignment] = []
+
+    static let maxBodyCharacters = 8000
+    static let maxItems = 40
+
+    init(id: UUID = UUID(), remoteID: UUID? = nil, name: String,
+         source: RubricSource = .custom, assessmentTypeID: UUID? = nil,
+         body: String? = nil, totalMarks: Int? = nil, createdAt: Date = .now) {
+        self.id = id
+        self.remoteID = remoteID
+        self.name = name
+        self.source = source.rawValue
+        self.assessmentTypeID = assessmentTypeID
+        self.body = body
+        self.totalMarks = totalMarks
+        self.createdAt = createdAt
+        self.updatedAt = createdAt
+    }
+
+    var sortedItems: [RubricItem] {
+        items.sorted { $0.ordinal < $1.ordinal }
+    }
+
+    /// Marks the student can actually be scored out of: the declared total when
+    /// there is one, otherwise the sum of the criteria.
+    var effectiveTotalMarks: Int? {
+        if let totalMarks { return totalMarks }
+        let summed = items.compactMap(\.marks).reduce(0, +)
+        return summed > 0 ? summed : nil
+    }
+
+    /// A rubric with neither criteria nor text cannot ground anything, and
+    /// grading against it would be a confident guess. The UI refuses to save one.
+    var isUsable: Bool {
+        !items.isEmpty || !(body ?? "").trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+
+    var summary: String {
+        if !items.isEmpty {
+            let marks = effectiveTotalMarks.map { " · \($0) marks" } ?? ""
+            return "\(items.count) criteria\(marks)"
+        }
+        return "Pasted rubric"
+    }
+}
+
+enum RubricSource: String, CaseIterable, Codable, Sendable {
+    /// Pasted or typed by the student.
+    case custom
+    /// Copied out of curriculum reference data and then owned by the student.
+    case template
+}
+
+@Model
+final class RubricItem {
+    @Attribute(.unique) var id: UUID
+    var remoteID: UUID?
+    /// The criterion letter or number, e.g. "A". Nil when the rubric does not
+    /// use codes.
+    var code: String?
+    var name: String
+    var marks: Int?
+    var guidance: String?
+    var ordinal: Int
+
+    var rubric: Rubric?
+
+    init(id: UUID = UUID(), remoteID: UUID? = nil, code: String? = nil,
+         name: String, marks: Int? = nil, guidance: String? = nil,
+         ordinal: Int, rubric: Rubric? = nil) {
+        self.id = id
+        self.remoteID = remoteID
+        self.code = code
+        self.name = name
+        self.marks = marks
+        self.guidance = guidance
+        self.ordinal = ordinal
+        self.rubric = rubric
+    }
+
+    /// "A · Knowledge" or just "Knowledge".
+    var displayName: String {
+        guard let code, !code.isEmpty else { return name }
+        return "\(code) · \(name)"
+    }
+}
+
+/// Everything the add screen collects, in one value.
+///
+/// A struct rather than eight positional arguments: the flow gained a rubric,
+/// instructions, a priority and a course in one pass, and a call site with eight
+/// unlabelled parameters is where the deadline and the estimate quietly swap.
+@MainActor
+struct NewAssignment {
+    var title: String
+    var taskType: String
+    var deadline: Date
+    var estimatedMinutes: Int
+    var priority: AssignmentPriority = .normal
+    var course: Course?
+    var rubric: Rubric?
+    /// What the student typed about the assignment. Capped at what the server
+    /// accepts, so a note that saves is a note that syncs.
+    var notes: String?
+
+    static let maxNoteCharacters = 2000
+}
+
+// MARK: - Grading
+
+/// A marked piece of work.
+///
+/// **The work itself is not here, and never reaches this table on the server.**
+/// Albus sends the text, gets marks and feedback back, and keeps only those plus
+/// a character count. Nothing is lost that a student wants back — they have
+/// their own essay — and the app stops being a repository of other people's
+/// coursework, which is a category of thing worth not being.
+@Model
+final class Grading {
+    @Attribute(.unique) var id: UUID
+    var remoteID: UUID?
+    var model: String
+    /// How long the submission was. Enough to say "3,240 words marked" and to
+    /// reason about cost; it reveals nothing about what was written.
+    var inputChars: Int
+    var overallMarks: Int?
+    var totalMarks: Int?
+    /// Per-criterion marks and comments, in rubric order.
+    var criteria: [GradedCriterion]
+    var feedback: String
+    var createdAt: Date
+
+    var assignment: Assignment?
+
+    init(id: UUID = UUID(), remoteID: UUID? = nil, model: String, inputChars: Int,
+         overallMarks: Int? = nil, totalMarks: Int? = nil,
+         criteria: [GradedCriterion] = [], feedback: String,
+         assignment: Assignment? = nil, createdAt: Date = .now) {
+        self.id = id
+        self.remoteID = remoteID
+        self.model = model
+        self.inputChars = inputChars
+        self.overallMarks = overallMarks
+        self.totalMarks = totalMarks
+        self.criteria = criteria
+        self.feedback = feedback
+        self.assignment = assignment
+        self.createdAt = createdAt
+    }
+
+    /// "14/20". Nil when the rubric carried no marks, which is a real case and
+    /// must not render as "0".
+    var scoreText: String? {
+        guard let overallMarks, let totalMarks, totalMarks > 0 else { return nil }
+        return "\(overallMarks)/\(totalMarks)"
+    }
+
+    var fraction: Double? {
+        guard let overallMarks, let totalMarks, totalMarks > 0 else { return nil }
+        return min(1, Double(overallMarks) / Double(totalMarks))
+    }
+
+    /// Roughly, for display. Words are a unit students think in; characters
+    /// are not.
+    var approximateWords: Int { max(1, inputChars / 6) }
+}
+
+/// One criterion's result. `Codable` because SwiftData stores it inline on the
+/// grading rather than as a second table — these are never queried on their own.
+struct GradedCriterion: Codable, Hashable, Sendable, Identifiable {
+    var id: String { (code ?? "") + name }
+    var code: String?
+    var name: String
+    var marks: Int?
+    var outOf: Int?
+    var comment: String
+
+    var displayName: String {
+        guard let code, !code.isEmpty else { return name }
+        return "\(code) · \(name)"
+    }
+
+    var scoreText: String? {
+        guard let marks, let outOf, outOf > 0 else { return nil }
+        return "\(marks)/\(outOf)"
     }
 }
