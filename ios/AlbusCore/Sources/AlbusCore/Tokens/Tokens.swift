@@ -50,6 +50,11 @@ public enum Tokens {
             .init(color: Color(hex: 0xF4F0E6), location: 1.00)
         ]
 
+        /// Focus Mode's ground. Near-black rather than pure black, so the
+        /// cactus's own shadow tones still read against it. The one dark
+        /// surface in the app, and the only place this is used.
+        public static let focusBackdrop = Color(hex: 0x0E0B16)
+
         /// The aurora blobs. Positioned by the view that draws them.
         public static let auroraViolet = Color(hex: 0x7C3AED)
         public static let auroraAmber  = Color(hex: 0xF4B340)

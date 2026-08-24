@@ -231,7 +231,7 @@ private struct FocusBackdrop: View {
 
     var body: some View {
         ZStack {
-            Color(red: 0.055, green: 0.043, blue: 0.086)
+            Tokens.Palette.focusBackdrop
             RadialGradient(
                 colors: [tint.opacity(0.22), .clear],
                 center: .center, startRadius: 0, endRadius: 320

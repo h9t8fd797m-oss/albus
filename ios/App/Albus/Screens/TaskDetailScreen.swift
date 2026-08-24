@@ -8,6 +8,7 @@ import AlbusCore
 /// serve and the tools that help, which is the difference between "study
 /// history 6–7" and a plan you can start.
 struct TaskDetailScreen: View {
+    @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var context
     @Environment(PlanCoordinator.self) private var coordinator
     @Environment(Preferences.self) private var preferences
@@ -31,6 +32,7 @@ struct TaskDetailScreen: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: Tokens.Spacing.l) {
+                topBar
                 summary
                 albusNote
                 plan
@@ -42,11 +44,43 @@ struct TaskDetailScreen: View {
             .padding(.bottom, Tokens.Spacing.xl)
         }
         .scrollContentBackground(.hidden)
-        .navigationTitle("")
-        .toolbarTitleDisplayMode(.inline)
+        // The design draws its own top row, so the system bar would be a second
+        // one stacked above it.
+        .navigationBarBackButtonHidden()
+        .toolbar(.hidden, for: .navigationBar)
         .sheet(isPresented: $asking) {
             AskAlbusSheet(assignment: assignment)
         }
+    }
+
+    // MARK: - Chrome
+
+    private var topBar: some View {
+        HStack(spacing: Tokens.Spacing.m) {
+            Button { dismiss() } label: {
+                Image(systemName: "chevron.left")
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundStyle(Tokens.Palette.ink)
+                    .frame(width: 34, height: 34)
+                    .background(Tokens.Glass.fill,
+                                in: RoundedRectangle(cornerRadius: Tokens.Radius.control,
+                                                     style: .continuous))
+                    .overlay {
+                        RoundedRectangle(cornerRadius: Tokens.Radius.control, style: .continuous)
+                            .strokeBorder(Tokens.Glass.stroke, lineWidth: 1)
+                    }
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Back to tasks")
+
+            Text("TASKS")
+                .font(Tokens.Typography.label)
+                .tracking(Tokens.Tracking.sectionHeader)
+                .foregroundStyle(Tokens.Palette.inkSecondary)
+
+            Spacer()
+        }
+        .padding(.top, Tokens.Spacing.s)
     }
 
     // MARK: - Summary
