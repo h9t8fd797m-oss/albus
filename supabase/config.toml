@@ -36,13 +36,27 @@ enable_confirmations = false
 [auth.external.apple]
 enabled = false   # flip on when the Apple Developer account is configured
 
-# CAPTCHA cannot be switched on unilaterally: once enabled, Supabase rejects
-# any sign-up that does not carry a captcha token, and the iOS client does not
-# send one yet. Turning it on here would break every new install. It lands with
-# the onboarding screen that can present the challenge.
+# CAPTCHA cannot be switched on unilaterally: once enabled, Supabase rejects any
+# sign-up that does not carry a captcha token.
+#
+# The client half is done — `CaptchaService` presents a Cloudflare Turnstile
+# challenge and `SessionService.createAccount` passes the token through. It is
+# inert until `TURNSTILE_SITE_KEY` is set in Config.xcconfig: `Captcha.isEnabled`
+# is `!siteKey.isEmpty`, so with no key onboarding skips the challenge entirely.
+#
+# `provider` said "hcaptcha" while the client implements Turnstile. That is not a
+# problem while this is off, and would have been one the moment it was flipped on:
+# Supabase would have tried to verify a Turnstile token against hCaptcha and
+# rejected every single sign-up. Corrected to match what the client actually sends.
+#
+# To switch on, all three are needed together:
+#   1. TURNSTILE_SITE_KEY in ios/App/Config.xcconfig  (public, safe on device)
+#   2. the Turnstile SECRET key in the Supabase dashboard, Auth > Settings
+#      (never in this repo — it verifies tokens server-side)
+#   3. enabled = true here
 [auth.captcha]
 enabled = false
-provider = "hcaptcha"
+provider = "turnstile"
 
 # Until then, this is the real control on account-farming. The default is 30
 # anonymous sign-ins per hour per IP; a genuine student needs exactly one, and
