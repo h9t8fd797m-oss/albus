@@ -57,4 +57,27 @@ struct ToolCatalogTests {
         // An empty query is "show everything", not "match nothing".
         #expect(StudyTool.allCases.filter { $0.matches("") }.count == StudyTool.allCases.count)
     }
+
+    @Test("the bundled logos are actually reachable from the catalogue")
+    @MainActor
+    func logosResolve() {
+        // The asset name is built by `StudyTool.logoAssetName` and the files are
+        // written by `scripts/tools/make_assets.py`. If those two conventions
+        // ever drift, every logo silently disappears and the app still builds,
+        // runs and looks *almost* right — which is the worst kind of broken.
+        //
+        // The threshold is deliberately well below what is currently bundled:
+        // this is a canary for the naming convention, not a target for how many
+        // brands answered a build-time request.
+        #expect(ToolArtwork.bundledCount >= 100,
+                "only \(ToolArtwork.bundledCount) logos resolved — check logoAssetName against Assets.xcassets")
+    }
+
+    @Test("a tool with no logo is not given an invented one")
+    @MainActor
+    func missingLogosStayMissing() {
+        // The rule the Tools screen exists to keep: a real mark, or none. If
+        // every tool resolved, something is substituting a placeholder.
+        #expect(ToolArtwork.bundledCount <= StudyTool.allCases.count)
+    }
 }

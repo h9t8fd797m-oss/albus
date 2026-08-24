@@ -142,6 +142,9 @@ struct ToolsScreen: View {
             Button(action: action) {
                 GlassCard(padding: Tokens.Spacing.m) {
                     VStack(alignment: .leading, spacing: Tokens.Spacing.s) {
+                        // Nothing at all when no logo is bundled: the name is
+                        // already the loudest thing on the card, and a made-up
+                        // mark would be worse than an honest gap.
                         ToolIcon(tool: tool)
                         Text(tool.name)
                             .font(Tokens.Typography.label)

@@ -38,3 +38,9 @@ ios/AlbusCore/.build/
 
 # Real Supabase values — template is Config.example.xcconfig
 ios/App/Config.xcconfig
+
+# Fetched brand artwork. Not committed: the asset catalogue holds the same
+# PNGs and is what the app builds from. `python3 scripts/tools/make_assets.py
+# --restore` puts this directory back from the catalogue, no network needed.
+scripts/tools/logos/
+scripts/tools/__pycache__/

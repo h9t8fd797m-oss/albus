@@ -102,8 +102,10 @@ struct FilterChipRow<Filter: Hashable>: View {
 /// An external tool Albus suggests for a step.
 ///
 /// `compact` is the small mark shown on a collapsed step; the full form adds
-/// the name and the reason it is being suggested. Both defer to `ToolIcon`, so
-/// bundling real brand artwork later changes this file not at all.
+/// the name and the reason it is being suggested.
+///
+/// A tool with no bundled logo shows its *name* rather than a stand-in glyph.
+/// A name is not a fake identity — an invented mark is.
 struct ToolChip: View {
     let tool: StudyTool
     var compact: Bool = false
@@ -111,8 +113,23 @@ struct ToolChip: View {
 
     var body: some View {
         if compact {
-            ToolIcon(tool: tool, side: 22, cornerRadius: 7)
-                .accessibilityLabel(tool.name)
+            if ToolArtwork.has(tool) {
+                ToolIcon(tool: tool, side: 22, cornerRadius: 7)
+                    .accessibilityLabel(tool.name)
+            } else {
+                Text(tool.name)
+                    .font(Tokens.Typography.micro)
+                    .foregroundStyle(Tokens.Palette.inkSecondary)
+                    .lineLimit(1)
+                    .padding(.horizontal, Tokens.Spacing.s)
+                    .frame(height: 22)
+                    .background(Tokens.Palette.cardSurface,
+                                in: RoundedRectangle(cornerRadius: 7, style: .continuous))
+                    .overlay {
+                        RoundedRectangle(cornerRadius: 7, style: .continuous)
+                            .strokeBorder(Tokens.Palette.hairline, lineWidth: 0.5)
+                    }
+            }
         } else {
             Button { action?() } label: {
                 HStack(spacing: Tokens.Spacing.s) {
