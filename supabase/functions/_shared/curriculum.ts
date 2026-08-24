@@ -17,8 +17,12 @@ export async function loadRubric(
   const { data, error } = await db
     .from("assessment_types")
     .select(`
-      name,
-      course_templates ( name, curricula ( name ) ),
+      name, typical_minutes,
+      course_templates (
+        name,
+        curricula ( name ),
+        assessment_objectives ( code, name, weighting_min, weighting_max, ordinal )
+      ),
       rubric_criteria ( id, code, name, marks, guidance, ordinal )
     `)
     .eq("id", assessmentTypeId)
@@ -36,7 +40,11 @@ export async function loadRubric(
   const one = <T>(v: unknown): T | null =>
     Array.isArray(v) ? (v[0] as T ?? null) : ((v as T) ?? null);
 
-  const course = one<{ name: string; curricula: unknown }>(data.course_templates);
+  const course = one<{
+    name: string;
+    curricula: unknown;
+    assessment_objectives?: unknown[];
+  }>(data.course_templates);
   const curriculum = one<{ name: string }>(course?.curricula);
 
   const criteria = ((data.rubric_criteria ?? []) as Array<{
@@ -50,7 +58,30 @@ export async function loadRubric(
     .sort((a, b) => a.ordinal - b.ordinal)
     .map(({ id, code, name, marks, guidance }) => ({ id, code, name, marks, guidance }));
 
-  if (criteria.length === 0) return null;
+  // Assessment objectives, which is what makes an A-level paper groundable.
+  //
+  // A-level components carry no per-criterion marks — the marks live in the
+  // paper as a whole — so before this the function found no criteria and
+  // returned null, and every A-level plan silently fell back to generic. The
+  // objectives are the thing that says what the paper actually rewards.
+  const objectives = ((course?.assessment_objectives ?? []) as Array<{
+    code: string;
+    name: string;
+    weighting_min: number | null;
+    weighting_max: number | null;
+    ordinal: number;
+  }>)
+    .sort((a, b) => a.ordinal - b.ordinal)
+    .map(({ code, name, weighting_min, weighting_max }) => ({
+      code,
+      name,
+      weightingMin: weighting_min,
+      weightingMax: weighting_max,
+    }));
+
+  // Grounded if we know *anything* useful — criteria, objectives, or even just
+  // how long the paper is and what it is called.
+  if (criteria.length === 0 && objectives.length === 0) return null;
 
   return {
     kind: "curriculum",
@@ -58,6 +89,8 @@ export async function loadRubric(
     courseName: course?.name ?? "Course",
     assessmentName: data.name as string,
     criteria,
+    objectives,
+    componentMinutes: (data.typical_minutes as number | null) ?? null,
     body: null,
   };
 }

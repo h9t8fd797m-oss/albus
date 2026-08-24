@@ -417,6 +417,12 @@ struct NewAssignment {
     var priority: AssignmentPriority = .normal
     var course: Course?
     var rubric: Rubric?
+    /// Which component of the course this is — "Paper 3", "Internal assessment".
+    ///
+    /// Only the *id* travels to the server, never the criteria. The server reads
+    /// its own copy of what that component is; a modified client cannot put
+    /// invented assessment criteria into the model's context.
+    var assessmentTypeID: UUID?
     /// What the student typed about the assignment. Capped at what the server
     /// accepts, so a note that saves is a note that syncs.
     var notes: String?
