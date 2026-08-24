@@ -14,7 +14,8 @@ enum AlbusSchema {
         PlanSessionRecord.self,
         CompletionRecord.self,
         Rubric.self,
-        RubricItem.self
+        RubricItem.self,
+        Grading.self
     ]
 
     static var schema: Schema { Schema(models) }

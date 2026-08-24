@@ -71,6 +71,11 @@ final class Assignment {
     @Relationship(deleteRule: .cascade, inverse: \Subtask.assignment)
     var subtasks: [Subtask] = []
 
+    /// Every time this work has been marked. Kept so a student can compare a
+    /// draft against the version they handed in.
+    @Relationship(deleteRule: .cascade, inverse: \Grading.assignment)
+    var gradings: [Grading] = []
+
     init(id: UUID = UUID(), remoteID: UUID? = nil, title: String, notes: String? = nil,
          taskType: String = "other", deadline: Date, estimatedMinutes: Int,
          status: AssignmentStatus = .active,
@@ -417,4 +422,84 @@ struct NewAssignment {
     var notes: String?
 
     static let maxNoteCharacters = 2000
+}
+
+// MARK: - Grading
+
+/// A marked piece of work.
+///
+/// **The work itself is not here, and never reaches this table on the server.**
+/// Albus sends the text, gets marks and feedback back, and keeps only those plus
+/// a character count. Nothing is lost that a student wants back — they have
+/// their own essay — and the app stops being a repository of other people's
+/// coursework, which is a category of thing worth not being.
+@Model
+final class Grading {
+    @Attribute(.unique) var id: UUID
+    var remoteID: UUID?
+    var model: String
+    /// How long the submission was. Enough to say "3,240 words marked" and to
+    /// reason about cost; it reveals nothing about what was written.
+    var inputChars: Int
+    var overallMarks: Int?
+    var totalMarks: Int?
+    /// Per-criterion marks and comments, in rubric order.
+    var criteria: [GradedCriterion]
+    var feedback: String
+    var createdAt: Date
+
+    var assignment: Assignment?
+
+    init(id: UUID = UUID(), remoteID: UUID? = nil, model: String, inputChars: Int,
+         overallMarks: Int? = nil, totalMarks: Int? = nil,
+         criteria: [GradedCriterion] = [], feedback: String,
+         assignment: Assignment? = nil, createdAt: Date = .now) {
+        self.id = id
+        self.remoteID = remoteID
+        self.model = model
+        self.inputChars = inputChars
+        self.overallMarks = overallMarks
+        self.totalMarks = totalMarks
+        self.criteria = criteria
+        self.feedback = feedback
+        self.assignment = assignment
+        self.createdAt = createdAt
+    }
+
+    /// "14/20". Nil when the rubric carried no marks, which is a real case and
+    /// must not render as "0".
+    var scoreText: String? {
+        guard let overallMarks, let totalMarks, totalMarks > 0 else { return nil }
+        return "\(overallMarks)/\(totalMarks)"
+    }
+
+    var fraction: Double? {
+        guard let overallMarks, let totalMarks, totalMarks > 0 else { return nil }
+        return min(1, Double(overallMarks) / Double(totalMarks))
+    }
+
+    /// Roughly, for display. Words are a unit students think in; characters
+    /// are not.
+    var approximateWords: Int { max(1, inputChars / 6) }
+}
+
+/// One criterion's result. `Codable` because SwiftData stores it inline on the
+/// grading rather than as a second table — these are never queried on their own.
+struct GradedCriterion: Codable, Hashable, Sendable, Identifiable {
+    var id: String { (code ?? "") + name }
+    var code: String?
+    var name: String
+    var marks: Int?
+    var outOf: Int?
+    var comment: String
+
+    var displayName: String {
+        guard let code, !code.isEmpty else { return name }
+        return "\(code) · \(name)"
+    }
+
+    var scoreText: String? {
+        guard let marks, let outOf, outOf > 0 else { return nil }
+        return "\(marks)/\(outOf)"
+    }
 }

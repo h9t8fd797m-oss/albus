@@ -34,6 +34,32 @@ export function mapPostgresError(message: string): HttpError {
       "Free plans cover three active assignments at a time.",
     );
   }
+  // The grading paywall. 402 rather than 403: the student is not forbidden,
+  // they have not paid — and that is a difference the app renders as a paywall
+  // rather than as an error.
+  if (message.includes("PLUS_REQUIRED")) {
+    return new HttpError(
+      402,
+      "PLUS_REQUIRED",
+      "Marking your work against a rubric is part of Albus Plus.",
+    );
+  }
+  if (message.includes("RUBRIC_NOT_YOURS")) {
+    return new HttpError(403, "RUBRIC_NOT_YOURS", "That rubric isn't yours.");
+  }
+  if (message.includes("TOO_MANY_CRITERIA")) {
+    return new HttpError(422, "TOO_MANY_CRITERIA", "That's more criteria than a rubric can hold.");
+  }
+  if (message.includes("RUBRIC_NAME_REQUIRED") || message.includes("RUBRIC_ID_REQUIRED")) {
+    return new HttpError(422, "INVALID_RUBRIC", "That rubric is missing a name.");
+  }
+  if (message.includes("rubric does not belong to this user")) {
+    return new HttpError(403, "RUBRIC_NOT_YOURS", "That rubric isn't yours.");
+  }
+  if (message.includes("rubric limit reached")
+      || message.includes("rubric criterion limit reached")) {
+    return new HttpError(422, "RUBRIC_LIMIT", "That's as many rubrics as Albus can hold.");
+  }
   if (message.includes("NOT_AUTHENTICATED")) {
     return new HttpError(401, "NOT_AUTHENTICATED");
   }

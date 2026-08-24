@@ -21,6 +21,8 @@ struct TaskDetailScreen: View {
     @State private var addingStep = false
     @State private var focusing: PlanSessionRecord?
     @State private var reordering = false
+    @State private var grading = false
+    @State private var viewingGrade: Grading?
 
     private var subject: Tokens.SubjectColor { assignment.course?.subjectColor ?? .violet }
     private var steps: [Subtask] { assignment.subtasks.sorted { $0.ordinal < $1.ordinal } }
@@ -39,6 +41,7 @@ struct TaskDetailScreen: View {
                 topBar
                 summary
                 albusNote
+                gradeEntry
                 plan
                 AskAlbusBar(prompt: "Ask Albus about this \(assignment.taskType)…") {
                     asking = true
@@ -75,6 +78,10 @@ struct TaskDetailScreen: View {
         .fullScreenCover(item: $focusing) { record in
             FocusModeScreen(record: record)
         }
+        .sheet(isPresented: $grading) {
+            GradeSheet(assignment: assignment)
+        }
+        .sheet(item: $viewingGrade) { GradeResultView(grading: $0) }
         .sheet(isPresented: $reordering) {
             StepReorderSheet(steps: steps) { source, destination in
                 coordinator.moveSteps(in: assignment, from: source, to: destination,
@@ -187,6 +194,72 @@ struct TaskDetailScreen: View {
             AlbusNote("**\(next.title)** is the step that makes the rest shorter.", isBusy: true)
         } else {
             AlbusNote("Every step is done. **Hand it in** and take the evening back.")
+        }
+    }
+
+    // MARK: - Marking
+
+    /// Offered when the work is finished, which is when it is worth marking.
+    ///
+    /// Kept available afterwards too — a student who fixed the first three
+    /// things and wants to know if it moved is exactly the person this is for.
+    @ViewBuilder private var gradeEntry: some View {
+        let previous = assignment.gradings.sorted { $0.createdAt > $1.createdAt }
+
+        if assignment.isComplete || !previous.isEmpty {
+            GlassCard {
+                VStack(alignment: .leading, spacing: Tokens.Spacing.m) {
+                    VStack(alignment: .leading, spacing: Tokens.Spacing.xs) {
+                        Text(assignment.isComplete ? "FINISHED" : "MARKED BEFORE")
+                            .font(Tokens.Typography.overline)
+                            .tracking(Tokens.Tracking.overline)
+                            .foregroundStyle(Tokens.Palette.inkMuted)
+                        Text(assignment.rubric == nil
+                             ? "Mark it against a rubric"
+                             : "Mark it against \(assignment.rubric!.name)")
+                            .font(Tokens.Typography.cardTitle)
+                            .foregroundStyle(Tokens.Palette.ink)
+                        Text("Albus reads what you wrote and says what to change, in the order worth changing it.")
+                            .font(Tokens.Typography.caption)
+                            .foregroundStyle(Tokens.Palette.inkSecondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+
+                    PrimaryButton(title: previous.isEmpty ? "Mark my work" : "Mark it again") {
+                        grading = true
+                    }
+
+                    if !previous.isEmpty {
+                        VStack(spacing: Tokens.Spacing.xs) {
+                            ForEach(previous) { grade in
+                                Button { viewingGrade = grade } label: {
+                                    HStack {
+                                        Text(grade.createdAt, format: .dateTime.month().day().hour().minute())
+                                            .font(Tokens.Typography.caption)
+                                            .foregroundStyle(Tokens.Palette.inkSecondary)
+                                        Spacer()
+                                        if let score = grade.scoreText {
+                                            Text(score)
+                                                .font(Tokens.Typography.mono)
+                                                .foregroundStyle(Tokens.Palette.accent)
+                                        } else {
+                                            Text("Comments")
+                                                .font(Tokens.Typography.micro)
+                                                .foregroundStyle(Tokens.Palette.inkMuted)
+                                        }
+                                        Image(systemName: "chevron.right")
+                                            .font(.system(size: 10, weight: .semibold))
+                                            .foregroundStyle(Tokens.Palette.inkMuted)
+                                    }
+                                    .contentShape(Rectangle())
+                                }
+                                .buttonStyle(.plain)
+                            }
+                        }
+                    }
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+            }
         }
     }
 
