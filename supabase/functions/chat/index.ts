@@ -18,6 +18,7 @@ import {
   type ChatContext,
   MAX_MESSAGE_CHARS,
   sanitiseHistory,
+  type StudentContext,
 } from "../_shared/chat_prompt.ts";
 
 const UUID_RE =
@@ -26,15 +27,44 @@ const UUID_RE =
 const MODEL_CHAT_RUBRIC = "claude-sonnet-5";
 const MODEL_CHAT_PLAIN = "claude-haiku-4-5";
 
+/**
+ * Who is asking: curriculum and subjects.
+ *
+ * One round trip, and it fails soft — a chat that works without knowing the
+ * student is better than one that refuses because a profile row is missing.
+ */
+async function loadStudent(db: SupabaseClient): Promise<StudentContext | null> {
+  const [profile, courses] = await Promise.all([
+    db.from("profiles").select("curriculum_code").maybeSingle(),
+    db.from("courses").select("display_name").order("display_name").limit(20),
+  ]);
+
+  const code = profile.data?.curriculum_code as string | null | undefined;
+  let curriculumName: string | null = null;
+  if (code) {
+    const { data } = await db.from("curricula").select("name").eq("code", code).maybeSingle();
+    curriculumName = (data?.name as string) ?? code;
+  }
+
+  const names = (courses.data ?? [])
+    .map((c) => (c as { display_name: string }).display_name)
+    .filter(Boolean);
+
+  if (!curriculumName && names.length === 0) return null;
+  return { curriculumName, courses: names };
+}
+
 async function loadContext(
   db: SupabaseClient,
   assignmentId: string,
+  focusStep: number | null,
 ): Promise<ChatContext | null> {
   // RLS applies here: another user's assignment returns no rows, not an error.
   const { data, error } = await db
     .from("assignments")
     .select(`
       title, task_type, deadline,
+      rubrics ( name, body, rubric_items ( code, name, marks, ordinal ) ),
       subtasks ( title, estimated_minutes, completed_at, ordinal,
                  rubric_criteria ( code, name, marks ) )
     `)
@@ -47,6 +77,11 @@ async function loadContext(
     title: string;
     task_type: string;
     deadline: string;
+    rubrics: {
+      name: string;
+      body: string | null;
+      rubric_items: Array<{ code: string | null; name: string; marks: number | null; ordinal: number }>;
+    } | null;
     subtasks: Array<{
       title: string;
       estimated_minutes: number;
@@ -66,6 +101,27 @@ async function loadContext(
     }
   }
 
+  // The student's own rubric wins over the curriculum criteria attached to
+  // steps: it is the sheet they are actually being marked against.
+  //
+  // PostgREST embeds a to-one relation as either an object or a single-element
+  // array depending on how it infers the relationship, so both are handled —
+  // and the annotation is explicit, because indexing a declared object type
+  // silently produces `any`.
+  type PersonalRubric = NonNullable<typeof row.rubrics>;
+  const embedded = row.rubrics as PersonalRubric | PersonalRubric[] | null;
+  const personal: PersonalRubric | null = Array.isArray(embedded)
+    ? (embedded[0] ?? null)
+    : embedded;
+  let personalSummary: string | null = null;
+  if (personal) {
+    const items = (personal.rubric_items ?? [])
+      .sort((a, b) => a.ordinal - b.ordinal)
+      .map((i) => `${i.code ? `${i.code}: ` : ""}${i.name}${i.marks ? ` (${i.marks} marks)` : ""}`);
+    const parts = [items.join("\n"), personal.body ?? ""].filter((p) => p.trim().length > 0);
+    if (parts.length > 0) personalSummary = `${personal.name}\n${parts.join("\n\n")}`;
+  }
+
   return {
     assignmentTitle: row.title,
     taskType: row.task_type,
@@ -79,7 +135,9 @@ async function loadContext(
         criterionCode: c?.code ?? null,
       };
     }),
-    rubricSummary: criteria.size > 0 ? [...criteria.values()].join("\n") : null,
+    rubricSummary: personalSummary
+      ?? (criteria.size > 0 ? [...criteria.values()].join("\n") : null),
+    focusStep,
   };
 }
 
@@ -89,7 +147,12 @@ Deno.serve(async (req) => {
 
     const caller = await requireUser(req);
 
-    let body: { message?: unknown; assignment_id?: unknown; history?: unknown };
+    let body: {
+      message?: unknown;
+      assignment_id?: unknown;
+      history?: unknown;
+      step?: unknown;
+    };
     try {
       body = await req.json();
     } catch {
@@ -105,7 +168,19 @@ Deno.serve(async (req) => {
         ? body.assignment_id
         : null;
 
-    const context = assignmentId ? await loadContext(caller.db, assignmentId) : null;
+    // 1-based step number the student is looking at. Bounds are checked against
+    // the loaded plan below; anything out of range is simply ignored rather than
+    // rejected, because it is a stale tap, not an attack.
+    const step = Number(body.step);
+    const focusStep = Number.isInteger(step) && step >= 1 && step <= 64 ? step : null;
+
+    // Both loads in parallel: one is about the assignment, one about the
+    // student, and neither needs the other.
+    const [context, student] = await Promise.all([
+      assignmentId ? loadContext(caller.db, assignmentId, focusStep) : Promise.resolve(null),
+      loadStudent(caller.db),
+    ]) as [ChatContext | null, StudentContext | null];
+
     const model = context?.rubricSummary ? MODEL_CHAT_RUBRIC : MODEL_CHAT_PLAIN;
 
     // Reserve a slot before spending anything. Atomic in Postgres, so two
@@ -118,7 +193,7 @@ Deno.serve(async (req) => {
 
     const result = await chatReply(
       model,
-      buildChatSystemPrompt(context),
+      buildChatSystemPrompt(context, student),
       sanitiseHistory(body.history),
       message,
     );

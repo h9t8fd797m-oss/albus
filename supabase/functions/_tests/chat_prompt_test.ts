@@ -16,6 +16,7 @@ const CTX: ChatContext = {
     { title: "Draft", estimatedMinutes: 150, completed: false, criterionCode: "B" },
   ],
   rubricSummary: "A: Identifying and evaluating sources (6 marks)",
+  focusStep: null,
 };
 
 Deno.test("system prompt states progress and lists the plan", () => {
@@ -73,4 +74,48 @@ Deno.test("history must start with a user turn", () => {
 Deno.test("non-array history yields nothing", () => {
   assertEquals(sanitiseHistory("nope").length, 0);
   assertEquals(sanitiseHistory(null).length, 0);
+});
+
+// MARK: - Knowing who is asking
+
+Deno.test("curriculum and subjects reach the prompt", () => {
+  const system = buildChatSystemPrompt(CTX, {
+    curriculumName: "International Baccalaureate Diploma Programme",
+    courses: ["History HL", "Biology SL", "Maths AA HL"],
+  });
+  assertStringIncludes(system, "International Baccalaureate Diploma Programme");
+  assertStringIncludes(system, "History HL, Biology SL, Maths AA HL");
+});
+
+Deno.test("no student context adds nothing rather than an empty heading", () => {
+  const bare = buildChatSystemPrompt(CTX, null);
+  const empty = buildChatSystemPrompt(CTX, { curriculumName: null, courses: [] });
+  assertEquals(bare, empty);
+  assert(!bare.includes("Curriculum:"));
+  assert(!bare.includes("Subjects:"));
+});
+
+Deno.test("a curriculum with no courses still says what it knows", () => {
+  const system = buildChatSystemPrompt(null, { curriculumName: "AP", courses: [] });
+  assertStringIncludes(system, "Curriculum: AP.");
+  assert(!system.includes("Subjects:"));
+});
+
+Deno.test("focusing a step names it, so the answer is about that step", () => {
+  const system = buildChatSystemPrompt({ ...CTX, focusStep: 1 });
+  assertStringIncludes(system, `asking about step 1`);
+  assertStringIncludes(system, CTX.steps[0].title);
+});
+
+Deno.test("an out-of-range focus is ignored rather than crashing the prompt", () => {
+  // A stale tap after the plan was edited, not an attack. The plan still has to
+  // render.
+  const system = buildChatSystemPrompt({ ...CTX, focusStep: 99 });
+  assert(!system.includes("asking about step"));
+  assertStringIncludes(system, CTX.steps[0].title);
+});
+
+Deno.test("the whole plan is still present when one step is focused", () => {
+  const system = buildChatSystemPrompt({ ...CTX, focusStep: 1 });
+  for (const step of CTX.steps) assertStringIncludes(system, step.title);
 });

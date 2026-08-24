@@ -26,6 +26,8 @@ struct AddTaskSheet: View {
     @State private var deadline = Calendar.current.date(byAdding: .day, value: 3, to: .now) ?? .now
     @State private var hours = 2.0
     @State private var creatingRubric: RubricDraft?
+    @State private var addingCourse = false
+    @State private var newCourseName = ""
 
     /// The vocabulary the server's check constraint accepts. Kept here rather
     /// than as free text so a typo is a compile error, not a 422.
@@ -58,12 +60,14 @@ struct AddTaskSheet: View {
                         ForEach(Self.types, id: \.id) { Text($0.label).tag($0.id) }
                     }
 
-                    if !courses.isEmpty {
-                        Picker("Subject", selection: $courseID) {
-                            Text("None").tag(UUID?.none)
-                            ForEach(courses) { Text($0.displayName).tag(UUID?.some($0.id)) }
-                        }
+                    Picker("Subject", selection: $courseID) {
+                        Text("None").tag(UUID?.none)
+                        ForEach(courses) { Text($0.displayName).tag(UUID?.some($0.id)) }
                     }
+                    // Subjects had no way of being created, so the picker was
+                    // permanently empty and every assignment was "General" —
+                    // which also meant Albus never knew what the student takes.
+                    Button("New subject…") { addingCourse = true }
                 }
 
                 Section {
@@ -126,6 +130,13 @@ struct AddTaskSheet: View {
                     Button("Plan it") { add() }.disabled(!canAdd)
                 }
             }
+            .alert("New subject", isPresented: $addingCourse) {
+                TextField("e.g. History HL", text: $newCourseName)
+                Button("Cancel", role: .cancel) { newCourseName = "" }
+                Button("Add") { addCourse() }
+            } message: {
+                Text("Albus uses your subjects to pitch answers at the right level.")
+            }
             .sheet(item: $creatingRubric) { draft in
                 RubricEditorSheet(draft: draft) { saved in
                     // Saved through the same path the Rubrics tab uses, then
@@ -140,6 +151,34 @@ struct AddTaskSheet: View {
     }
 
     @Environment(\.modelContext) private var modelContext
+
+    /// Colours cycle through the token set rather than being chosen: a subject's
+    /// colour is a property of the course, and picking one per assignment is how
+    /// HIST ends up red on one screen and green on another.
+    private func addCourse() {
+        let name = newCourseName.trimmed
+        newCourseName = ""
+        guard !name.isEmpty else { return }
+
+        let palette = Tokens.SubjectColor.allCases
+        let colour = palette[courses.count % palette.count]
+        let course = Course(displayName: name, colorKey: colour)
+        modelContext.insert(course)
+        try? modelContext.save()
+        courseID = course.id
+
+        Task {
+            // The remote id is what the breakdown endpoint needs to attach the
+            // assignment to a course. Without it the subject stays local, which
+            // is worse but not broken.
+            if let remote = await ProfileService().createCourse(
+                displayName: name, colorKey: colour.rawValue
+            ) {
+                course.remoteID = remote
+                try? modelContext.save()
+            }
+        }
+    }
 
     private func add() {
         onAdd(NewAssignment(

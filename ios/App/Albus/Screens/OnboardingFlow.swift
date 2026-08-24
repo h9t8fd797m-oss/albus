@@ -272,6 +272,11 @@ struct OnboardingFlow: View {
             }
         }
 
+        // Now that there is an account, tell the server what the student is
+        // studying. Best-effort: a failed sync costs slightly less specific
+        // answers from Albus, never the assignment they are here to create.
+        await ProfileService().syncCurriculum(preferences.program.curriculumCode)
+
         await coordinator.addAssignment(
             NewAssignment(
                 title: taskTitle.trimmingCharacters(in: .whitespaces),

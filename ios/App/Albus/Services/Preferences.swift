@@ -17,6 +17,17 @@ final class Preferences {
         case university = "University"
         case other = "Other"
         var id: String { rawValue }
+
+        /// The `curricula.code` this maps to. Kept next to the cases so adding a
+        /// programme cannot silently produce a foreign key the server rejects.
+        /// Exhaustive on purpose — no default — for the same reason.
+        var curriculumCode: String {
+            switch self {
+            case .ib: "IB_DP"
+            case .ap: "AP"
+            case .university, .other: "GENERIC"
+            }
+        }
     }
 
     /// The three buckets onboarding offers, mapped to real capacity.

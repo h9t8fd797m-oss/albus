@@ -39,6 +39,10 @@ struct ChatService {
         let message: String
         let assignment_id: String?
         let history: [Turn]
+        /// 1-based step the student is looking at, when they picked one. The
+        /// server still sends the whole plan — this only says which part of it
+        /// the question is about.
+        let step: Int?
     }
 
     private struct ErrorBody: Decodable { let error: String?; let message: String? }
@@ -49,7 +53,7 @@ struct ChatService {
         self.client = client
     }
 
-    func send(_ message: String, about assignmentID: UUID?,
+    func send(_ message: String, about assignmentID: UUID?, step: Int? = nil,
               history: [Turn]) async throws -> Reply {
         let trimmed = String(message.trimmingCharacters(in: .whitespacesAndNewlines)
             .prefix(Self.maxMessageChars))
@@ -59,7 +63,8 @@ struct ChatService {
         let body = Request(
             message: trimmed,
             assignment_id: assignmentID?.uuidString.lowercased(),
-            history: Array(history.suffix(Self.maxHistoryTurns))
+            history: Array(history.suffix(Self.maxHistoryTurns)),
+            step: step
         )
 
         do {
