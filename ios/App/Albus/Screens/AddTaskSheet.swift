@@ -11,6 +11,7 @@ import AlbusCore
 /// both were previously either impossible to supply or silently ignored.
 struct AddTaskSheet: View {
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.modelContext) private var modelContext
 
     @Query(sort: \Course.displayName) private var courses: [Course]
     @Query(sort: \Rubric.updatedAt, order: .reverse) private var rubrics: [Rubric]
@@ -50,107 +51,114 @@ struct AddTaskSheet: View {
     }
 
     var body: some View {
-        NavigationStack {
-            Form {
-                Section("Assignment") {
-                    TextField("What is it?", text: $title)
-                        .textInputAutocapitalization(.sentences)
+        AlbusSheetScaffold(
+            eyebrow: "New assignment",
+            title: "What's on your plate?",
+            primaryTitle: "Plan it",
+            isPrimaryEnabled: canAdd,
+            primaryAction: add,
+            onCancel: { dismiss() }
+        ) {
+            SheetField(label: "Assignment") {
+                TextField("What is it?", text: $title)
+                    .textInputAutocapitalization(.sentences)
+            }
 
-                    Picker("Type", selection: $taskType) {
-                        ForEach(Self.types, id: \.id) { Text($0.label).tag($0.id) }
-                    }
+            SheetPicker(label: "Type", options: Self.types.map { (value: $0.id, title: $0.label) },
+                       selection: $taskType)
 
-                    Picker("Subject", selection: $courseID) {
-                        Text("None").tag(UUID?.none)
-                        ForEach(courses) { Text($0.displayName).tag(UUID?.some($0.id)) }
-                    }
-                    // Subjects had no way of being created, so the picker was
-                    // permanently empty and every assignment was "General" —
-                    // which also meant Albus never knew what the student takes.
-                    Button("New subject…") { addingCourse = true }
-                }
+            VStack(alignment: .leading, spacing: Tokens.Spacing.s) {
+                SheetPicker(
+                    label: "Subject",
+                    options: [(value: UUID?.none, title: "None")]
+                        + courses.map { (value: UUID?.some($0.id), title: $0.displayName) },
+                    selection: $courseID
+                )
+                // Subjects had no way of being created, so the picker was
+                // permanently empty and every assignment was "General" —
+                // which also meant Albus never knew what the student takes.
+                Button("New subject\u{2026}") { addingCourse = true }
+                    .font(Tokens.Typography.caption)
+                    .foregroundStyle(Tokens.Palette.accent)
+            }
 
-                Section {
-                    Picker("Rubric", selection: $rubricID) {
-                        Text("None").tag(UUID?.none)
-                        ForEach(rubrics) { Text($0.name).tag(UUID?.some($0.id)) }
-                    }
-                    Button("New rubric…") { creatingRubric = .empty }
-                } header: {
-                    Text("Marked against")
-                } footer: {
-                    Text(selectedRubric == nil
-                         ? "Optional. With a rubric, Albus shapes the steps around the criteria and can mark your work against them later."
-                         : selectedRubric!.summary)
-                }
+            VStack(alignment: .leading, spacing: Tokens.Spacing.s) {
+                SheetPicker(
+                    label: "Marked against",
+                    options: [(value: UUID?.none, title: "None")]
+                        + rubrics.map { (value: UUID?.some($0.id), title: $0.name) },
+                    selection: $rubricID
+                )
+                Button("New rubric\u{2026}") { creatingRubric = .empty }
+                    .font(Tokens.Typography.caption)
+                    .foregroundStyle(Tokens.Palette.accent)
+                Text(selectedRubric == nil
+                     ? "Optional. With a rubric, Albus shapes the steps around the criteria and can mark your work against them later."
+                     : selectedRubric!.summary)
+                    .font(Tokens.Typography.micro)
+                    .foregroundStyle(Tokens.Palette.inkMuted)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
 
-                Section {
-                    TextEditor(text: $notes)
-                        .frame(minHeight: 80)
-                        .font(Tokens.Typography.body)
-                        .onChange(of: notes) {
-                            if notes.count > NewAssignment.maxNoteCharacters {
-                                notes = String(notes.prefix(NewAssignment.maxNoteCharacters))
-                            }
+            SheetField(label: "Instructions (optional)") {
+                TextEditor(text: $notes)
+                    .scrollContentBackground(.hidden)
+                    .frame(minHeight: 70)
+                    .font(Tokens.Typography.body)
+                    .onChange(of: notes) {
+                        if notes.count > NewAssignment.maxNoteCharacters {
+                            notes = String(notes.prefix(NewAssignment.maxNoteCharacters))
                         }
-                } header: {
-                    Text("Instructions (optional)")
-                } footer: {
-                    Text("Anything the teacher said: sources to use, a word count, a question to answer.")
-                }
-
-                Section("Priority") {
-                    Picker("Priority", selection: $priority) {
-                        ForEach(AssignmentPriority.allCases) { Text($0.title).tag($0) }
                     }
-                    .pickerStyle(.segmented)
+            }
+            Text("Anything the teacher said: sources to use, a word count, a question to answer.")
+                .font(Tokens.Typography.micro)
+                .foregroundStyle(Tokens.Palette.inkMuted)
+                .padding(.top, -Tokens.Spacing.s)
+
+            VStack(alignment: .leading, spacing: Tokens.Spacing.xs) {
+                Text("Priority")
+                    .font(Tokens.Typography.micro)
+                    .tracking(Tokens.Tracking.overline)
+                    .foregroundStyle(Tokens.Palette.inkMuted)
+                    .textCase(.uppercase)
+                Picker("Priority", selection: $priority) {
+                    ForEach(AssignmentPriority.allCases) { Text($0.title).tag($0) }
                 }
+                .pickerStyle(.segmented)
+                .tint(Tokens.Palette.accent)
+            }
 
-                Section("When and how long") {
-                    DatePicker("Due", selection: $deadline, in: Date.now...,
-                               displayedComponents: [.date, .hourAndMinute])
+            SheetField(label: "Due") {
+                DatePicker("Due", selection: $deadline, in: Date.now...,
+                          displayedComponents: [.date, .hourAndMinute])
+                    .labelsHidden()
+            }
 
-                    VStack(alignment: .leading, spacing: Tokens.Spacing.xs) {
-                        Text("About \(hours, format: .number.precision(.fractionLength(1))) hours")
-                            .font(Tokens.Typography.caption)
-                            .foregroundStyle(Tokens.Palette.inkSecondary)
-                        Slider(value: $hours, in: 0.5...20, step: 0.5)
-                    }
+            SheetField(label: "About how long") {
+                VStack(alignment: .leading, spacing: Tokens.Spacing.xs) {
+                    Text("About \(hours, format: .number.precision(.fractionLength(1))) hours")
+                        .font(Tokens.Typography.body)
+                        .foregroundStyle(Tokens.Palette.ink)
+                    Slider(value: $hours, in: 0.5...20, step: 0.5)
+                        .tint(Tokens.Palette.accent)
                 }
             }
-            .navigationTitle("New assignment")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { dismiss() }
-                }
-                ToolbarItem(placement: .confirmationAction) {
-                    // "Plan it", not "Add": the button's job is to say what
-                    // happens next, and what happens next is that Albus plans it.
-                    Button("Plan it") { add() }.disabled(!canAdd)
-                }
-            }
-            .alert("New subject", isPresented: $addingCourse) {
-                TextField("e.g. History HL", text: $newCourseName)
-                Button("Cancel", role: .cancel) { newCourseName = "" }
-                Button("Add") { addCourse() }
-            } message: {
-                Text("Albus uses your subjects to pitch answers at the right level.")
-            }
-            .sheet(item: $creatingRubric) { draft in
-                RubricEditorSheet(draft: draft) { saved in
-                    // Saved through the same path the Rubrics tab uses, then
-                    // selected — so a rubric written here is a real saved rubric,
-                    // reusable next time, not a one-off attached to this task.
-                    if let created = RubricWriter.commit(saved, context: modelContext) {
-                        rubricID = created
-                    }
+        }
+        .sheet(isPresented: $addingCourse) {
+            NewSubjectSheet(name: $newCourseName) { addCourse() }
+        }
+        .sheet(item: $creatingRubric) { draft in
+            RubricEditorSheet(draft: draft) { saved in
+                // Saved through the same path the Rubrics tab uses, then
+                // selected — so a rubric written here is a real saved rubric,
+                // reusable next time, not a one-off attached to this task.
+                if let created = RubricWriter.commit(saved, context: modelContext) {
+                    rubricID = created
                 }
             }
         }
     }
-
-    @Environment(\.modelContext) private var modelContext
 
     /// Colours cycle through the token set rather than being chosen: a subject's
     /// colour is a property of the course, and picking one per assignment is how
@@ -192,5 +200,46 @@ struct AddTaskSheet: View {
             notes: notes.trimmed.nilIfEmpty
         ))
         dismiss()
+    }
+}
+
+/// Naming a subject. Small enough that it doesn't need its own file, but still
+/// built from the same scaffold — a `.alert` with a text field is the single
+/// most "default iPhone" control there is, and this is exactly the kind of
+/// popup this pass exists to replace.
+private struct NewSubjectSheet: View {
+    @Environment(\.dismiss) private var dismiss
+    @Binding var name: String
+    let onAdd: () -> Void
+
+    private var canAdd: Bool { !name.trimmed.isEmpty }
+
+    var body: some View {
+        AlbusSheetScaffold(
+            eyebrow: "New subject",
+            title: "What's it called?",
+            primaryTitle: "Add",
+            isPrimaryEnabled: canAdd,
+            primaryAction: {
+                onAdd()
+                dismiss()
+            },
+            onCancel: {
+                name = ""
+                dismiss()
+            },
+            // A fixed height rather than .medium/.large: this is one field and
+            // a footnote, and giving it half the screen would be mostly empty
+            // paper background under the keyboard.
+            detents: [.height(340)]
+        ) {
+            SheetField {
+                TextField("e.g. History HL", text: $name)
+                    .textInputAutocapitalization(.words)
+            }
+            Text("Albus uses your subjects to pitch answers at the right level.")
+                .font(Tokens.Typography.micro)
+                .foregroundStyle(Tokens.Palette.inkMuted)
+        }
     }
 }

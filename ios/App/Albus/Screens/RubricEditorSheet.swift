@@ -76,45 +76,85 @@ extension String {
 /// Two ways in, because both are real: most students have a rubric as a block of
 /// text on the sheet, some want it split into criteria they can see marks
 /// against. Neither is required to use the other.
+///
+/// Built around a `List` rather than `AlbusSheetScaffold`'s plain `ScrollView`:
+/// the criteria section needs `.onDelete` / `.onMove`, which only a `List`
+/// gives you, so the header is used on its own here and every row is stripped
+/// with `.sheetRow()` instead.
 struct RubricEditorSheet: View {
     @Environment(\.dismiss) private var dismiss
 
     @State var draft: RubricDraft
     let onSave: (RubricDraft) -> Void
 
+    // Owned explicitly rather than relying on a NavigationStack toolbar's
+    // implicit environment — this sheet has no NavigationStack, so EditButton
+    // needs somewhere real to write to.
+    @State private var editMode: EditMode = .inactive
+
     private var bodyRemaining: Int { Rubric.maxBodyCharacters - draft.body.count }
 
     var body: some View {
-        NavigationStack {
-            Form {
-                Section("Name") {
-                    TextField("e.g. Mr Hall's essay rubric", text: $draft.name)
+        VStack(spacing: 0) {
+            Capsule()
+                .fill(Tokens.Palette.hairline)
+                .frame(width: 40, height: 4)
+                .padding(.top, Tokens.Spacing.s)
+
+            SheetHeader(eyebrow: draft.isExisting ? "Edit rubric" : "New rubric",
+                       title: "What's it marked against?",
+                       onCancel: { dismiss() })
+
+            List {
+                Section {
+                    SheetField(label: "Name") {
+                        TextField("e.g. Mr Hall's essay rubric", text: $draft.name)
+                    }
+                    .sheetRow()
                 }
 
                 Section {
-                    TextEditor(text: $draft.body)
-                        .frame(minHeight: 140)
-                        .font(Tokens.Typography.body)
-                        // The server caps the column at the same number. Enforcing
-                        // it here means a rubric that saves locally is one the
-                        // server will also accept, rather than one that syncs and
-                        // silently truncates.
-                        .onChange(of: draft.body) {
-                            if draft.body.count > Rubric.maxBodyCharacters {
-                                draft.body = String(draft.body.prefix(Rubric.maxBodyCharacters))
+                    SheetField(label: "Paste the rubric") {
+                        TextEditor(text: $draft.body)
+                            .scrollContentBackground(.hidden)
+                            .frame(minHeight: 140)
+                            .font(Tokens.Typography.body)
+                            // The server caps the column at the same number.
+                            // Enforcing it here means a rubric that saves
+                            // locally is one the server will also accept,
+                            // rather than one that syncs and silently
+                            // truncates.
+                            .onChange(of: draft.body) {
+                                if draft.body.count > Rubric.maxBodyCharacters {
+                                    draft.body = String(draft.body.prefix(Rubric.maxBodyCharacters))
+                                }
                             }
-                        }
-                } header: {
-                    Text("Paste the rubric")
-                } footer: {
+                    }
+                    .sheetRow()
+
                     Text(bodyRemaining < 500
                          ? "\(max(0, bodyRemaining)) characters left."
                          : "Paste the marking criteria straight off the assignment sheet. That's enough — the criteria below are optional.")
+                        .font(Tokens.Typography.micro)
+                        .foregroundStyle(Tokens.Palette.inkMuted)
+                        .sheetRow()
                 }
 
                 Section {
+                    HStack {
+                        Text("Criteria (optional)")
+                            .font(Tokens.Typography.micro)
+                            .tracking(Tokens.Tracking.overline)
+                            .foregroundStyle(Tokens.Palette.inkMuted)
+                            .textCase(.uppercase)
+                        Spacer()
+                        if !draft.items.isEmpty { EditButton() }
+                    }
+                    .sheetRow()
+
                     ForEach($draft.items) { $row in
                         CriterionRow(row: $row)
+                            .sheetRow()
                     }
                     .onDelete { draft.items.remove(atOffsets: $0) }
                     .onMove { draft.items.move(fromOffsets: $0, toOffset: $1) }
@@ -124,41 +164,51 @@ struct RubricEditorSheet: View {
                             draft.items.append(.init())
                         } label: {
                             Label("Add criterion", systemImage: "plus.circle")
+                                .font(Tokens.Typography.body)
+                                .foregroundStyle(Tokens.Palette.accent)
                         }
+                        .sheetRow()
                     }
-                } header: {
-                    Text("Criteria (optional)")
-                } footer: {
+
                     Text(draft.items.isEmpty
                          ? "Add these if you want marks broken down per criterion when Albus grades your work."
                          : "Albus will shape your plan around these, in this order.")
+                        .font(Tokens.Typography.micro)
+                        .foregroundStyle(Tokens.Palette.inkMuted)
+                        .sheetRow()
                 }
 
                 Section {
-                    TextField("Total marks", text: $draft.marksText)
-                        .keyboardType(.numberPad)
-                } footer: {
-                    Text("Leave blank to add up the criteria above.")
-                }
-            }
-            .navigationTitle(draft.isExisting ? "Edit rubric" : "New rubric")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { dismiss() }
-                }
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Save") {
-                        onSave(draft)
-                        dismiss()
+                    SheetField(label: "Total marks") {
+                        TextField("Total marks", text: $draft.marksText)
+                            .keyboardType(.numberPad)
                     }
-                    .disabled(!draft.isSavable)
-                }
-                ToolbarItem(placement: .topBarLeading) {
-                    if !draft.items.isEmpty { EditButton() }
+                    .sheetRow()
+
+                    Text("Leave blank to add up the criteria above.")
+                        .font(Tokens.Typography.micro)
+                        .foregroundStyle(Tokens.Palette.inkMuted)
+                        .sheetRow()
                 }
             }
+            .listStyle(.plain)
+            .scrollContentBackground(.hidden)
+            .scrollDismissesKeyboard(.interactively)
+            .environment(\.editMode, $editMode)
+
+            PrimaryButton(title: draft.isExisting ? "Save" : "Add rubric",
+                         isEnabled: draft.isSavable) {
+                onSave(draft)
+                dismiss()
+            }
+            .padding(.horizontal, Tokens.Spacing.xl)
+            .padding(.top, Tokens.Spacing.s)
+            .padding(.bottom, Tokens.Spacing.l)
         }
+        .background(Tokens.Palette.backgroundStops[0].color)
+        .presentationDragIndicator(.hidden)
+        .presentationCornerRadius(Tokens.Radius.sheet)
+        .presentationDetents([.medium, .large])
     }
 
     private struct CriterionRow: View {
@@ -184,7 +234,13 @@ struct RubricEditorSheet: View {
                     .foregroundStyle(Tokens.Palette.inkSecondary)
                     .lineLimit(1...3)
             }
-            .padding(.vertical, 2)
+            .padding(Tokens.Spacing.m)
+            .background(Tokens.Palette.cardSurface,
+                        in: RoundedRectangle(cornerRadius: Tokens.Radius.control, style: .continuous))
+            .overlay {
+                RoundedRectangle(cornerRadius: Tokens.Radius.control, style: .continuous)
+                    .strokeBorder(Tokens.Palette.hairline, lineWidth: 1)
+            }
         }
     }
 }
