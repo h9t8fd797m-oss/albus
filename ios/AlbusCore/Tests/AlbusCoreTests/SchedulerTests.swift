@@ -11,9 +11,10 @@ private let now = at(20, 9)
 private let assignment = UUID()
 
 private func item(_ minutes: Int, dueDay: Int, dueHour: Int = 23,
-                  ordinal: Int = 0, assignment: UUID = assignment) -> ScheduleItem {
+                  ordinal: Int = 0, assignment: UUID = assignment,
+                  priority: Int = 1) -> ScheduleItem {
     ScheduleItem(id: UUID(), assignmentID: assignment, ordinal: ordinal,
-                 minutes: minutes, deadline: at(dueDay, dueHour))
+                 minutes: minutes, deadline: at(dueDay, dueHour), priority: priority)
 }
 
 private let sched = Scheduler()
@@ -356,5 +357,78 @@ struct MissedWorkTests {
         let r = sched.schedule(items: [], existing: [done], now: now)
 
         #expect(r.sessions.contains { $0.id == done.id && $0.start == done.start })
+    }
+}
+
+@Suite("Priority orders work without overriding deadlines")
+struct PriorityTests {
+
+    @Test("high priority goes first when two things share a deadline")
+    func highPriorityWinsTies() {
+        let low = item(60, dueDay: 25, ordinal: 0, assignment: UUID(), priority: 0)
+        let high = item(60, dueDay: 25, ordinal: 0, assignment: UUID(), priority: 2)
+
+        // Fed in the "wrong" order on purpose: the sort has to do the work.
+        let result = sched.schedule(items: [low, high], existing: [], commitments: [],
+                                    availability: .default, now: now)
+
+        let placedLow = result.sessions.first { $0.itemID == low.id }
+        let placedHigh = result.sessions.first { $0.itemID == high.id }
+        #expect(placedHigh != nil && placedLow != nil)
+        #expect(placedHigh!.start < placedLow!.start)
+    }
+
+    /// The invariant that matters. Priority is a preference; a deadline is a
+    /// fact. If marking one thing urgent could push another past its due date,
+    /// the student asked for one thing to matter more and got a missed hand-in.
+    @Test("priority never pushes other work past its deadline")
+    func priorityNeverCausesAMiss() {
+        // Two hours a day. The urgent-but-later item is big enough to swallow
+        // tomorrow whole if it were allowed to go first.
+        let av = Availability(windowStartHour: 9, windowEndHour: 23,
+                              dailyCapacityMinutes: 120)
+
+        let dueTomorrow = item(120, dueDay: 21, dueHour: 23,
+                               assignment: UUID(), priority: 0)
+        let urgentLater = item(120, dueDay: 27, dueHour: 23,
+                               assignment: UUID(), priority: 2)
+
+        let result = sched.schedule(items: [urgentLater, dueTomorrow], existing: [],
+                                    commitments: [], availability: av, now: now)
+
+        let tight = result.sessions.first { $0.itemID == dueTomorrow.id }
+        #expect(tight != nil, "work due tomorrow must still be placed")
+        #expect(tight!.end <= at(21, 23))
+    }
+
+    @Test("priority alone does not reorder work within one assignment")
+    func ordinalStillWinsInsideAnAssignment() {
+        // Steps are meant to be done in order; priority is per-assignment, so it
+        // is the same for every step and must not disturb them.
+        let shared = UUID()
+        let first = item(30, dueDay: 25, ordinal: 0, assignment: shared, priority: 2)
+        let second = item(30, dueDay: 25, ordinal: 1, assignment: shared, priority: 2)
+
+        let result = sched.schedule(items: [second, first], existing: [], commitments: [],
+                                    availability: .default, now: now)
+
+        let a = result.sessions.first { $0.itemID == first.id }
+        let b = result.sessions.first { $0.itemID == second.id }
+        #expect(a != nil && b != nil)
+        #expect(a!.start < b!.start)
+    }
+
+    @Test("scheduling is still deterministic with priorities in play")
+    func deterministic() {
+        let items = [
+            item(45, dueDay: 24, assignment: UUID(), priority: 2),
+            item(45, dueDay: 24, assignment: UUID(), priority: 0),
+            item(45, dueDay: 26, assignment: UUID(), priority: 1)
+        ]
+        let first = sched.schedule(items: items, existing: [], commitments: [],
+                                   availability: .default, now: now)
+        let second = sched.schedule(items: items, existing: [], commitments: [],
+                                    availability: .default, now: now)
+        #expect(first.sessions.map(\.start) == second.sessions.map(\.start))
     }
 }

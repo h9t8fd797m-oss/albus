@@ -228,8 +228,17 @@ public struct Scheduler: Sendable {
     /// Earliest deadline first; within an assignment, keep the author's order.
     /// Total and deterministic — ties broken by id so equal work never shuffles
     /// between runs.
+    /// Deadline first, always.
+    ///
+    /// Priority is the *second* key, never the first. If it led, marking a maths
+    /// problem set "high" could push an essay due tomorrow past its deadline —
+    /// the student would have asked for one thing to matter more and been given
+    /// a missed hand-in. Priority decides who goes first among work that is
+    /// already competing for the same window, which is the only place the
+    /// student's answer is actually information the scheduler lacks.
     private static func priorityOrder(_ a: ScheduleItem, _ b: ScheduleItem) -> Bool {
         if a.deadline != b.deadline { return a.deadline < b.deadline }
+        if a.priority != b.priority { return a.priority > b.priority }
         if a.assignmentID != b.assignmentID {
             return a.assignmentID.uuidString < b.assignmentID.uuidString
         }

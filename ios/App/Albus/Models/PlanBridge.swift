@@ -13,7 +13,7 @@ enum PlanBridge {
     /// Steps still needing time. Completed work is excluded — it is history.
     static func scheduleItems(from assignments: [Assignment]) -> [ScheduleItem] {
         assignments
-            .filter { $0.status == "active" }
+            .filter { $0.statusValue == .active }
             .flatMap { assignment in
                 assignment.subtasks
                     .filter { $0.completedAt == nil }
@@ -23,7 +23,8 @@ enum PlanBridge {
                             assignmentID: assignment.id,
                             ordinal: subtask.ordinal,
                             minutes: subtask.estimatedMinutes,
-                            deadline: assignment.deadline
+                            deadline: assignment.deadline,
+                            priority: assignment.priorityValue.weight
                         )
                     }
             }

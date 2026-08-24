@@ -273,11 +273,12 @@ struct OnboardingFlow: View {
         }
 
         await coordinator.addAssignment(
-            title: taskTitle.trimmingCharacters(in: .whitespaces),
-            taskType: taskType,
-            deadline: deadline,
-            estimatedMinutes: Int(hours * 60),
-            course: nil,
+            NewAssignment(
+                title: taskTitle.trimmingCharacters(in: .whitespaces),
+                taskType: taskType,
+                deadline: deadline,
+                estimatedMinutes: Int(hours * 60)
+            ),
             context: context,
             availability: preferences.availability
         )

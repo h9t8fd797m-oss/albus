@@ -397,3 +397,24 @@ final class RubricItem {
         return "\(code) · \(name)"
     }
 }
+
+/// Everything the add screen collects, in one value.
+///
+/// A struct rather than eight positional arguments: the flow gained a rubric,
+/// instructions, a priority and a course in one pass, and a call site with eight
+/// unlabelled parameters is where the deadline and the estimate quietly swap.
+@MainActor
+struct NewAssignment {
+    var title: String
+    var taskType: String
+    var deadline: Date
+    var estimatedMinutes: Int
+    var priority: AssignmentPriority = .normal
+    var course: Course?
+    var rubric: Rubric?
+    /// What the student typed about the assignment. Capped at what the server
+    /// accepts, so a note that saves is a note that syncs.
+    var notes: String?
+
+    static let maxNoteCharacters = 2000
+}

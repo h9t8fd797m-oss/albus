@@ -47,31 +47,31 @@ final class CoreLoopUITests: XCTestCase {
 
         addAssignment(app, titled: assignmentTitle)
 
-        // Assert through Tasks, not Today.
+        // Assert on the assignment, not on a placed session.
         //
-        // Today only shows work the scheduler placed *today*, and late in the
-        // evening it correctly places everything in tomorrow's study window
-        // instead of at midnight. Asserting on Today therefore passed at noon
-        // and failed at 23:58 — a test that fails for a reason the app is right
-        // about. Tasks lists every assignment regardless of when its sessions
-        // land, so this checks the same thing without depending on the clock.
-        app.buttons["Tasks"].tap()
+        // A session-level assertion passed at noon and failed at 23:58, because
+        // late in the evening the scheduler correctly places everything in
+        // tomorrow's window rather than at midnight — a test failing for a
+        // reason the app is right about. Home lists every assignment regardless
+        // of when its sessions land, so this checks the same thing without
+        // depending on the clock.
+        app.buttons["Home"].tap()
         XCTAssertTrue(app.staticTexts[assignmentTitle].waitForExistence(timeout: 90),
                       "no plan appeared — breakdown, persistence or scheduling failed")
     }
 
-    /// The plan has to be reachable from Tasks and openable into its steps —
+    /// The plan has to be reachable from Home and openable into its steps —
     /// the screens a student actually works from.
-    func testPlanIsVisibleInTasksAndDetail() throws {
+    func testPlanIsVisibleOnHomeAndInDetail() throws {
         app.launch()
         reachApp(app)
 
         addAssignment(app, titled: assignmentTitle)
 
-        app.buttons["Tasks"].tap()
+        app.buttons["Home"].tap()
         let card = app.staticTexts[assignmentTitle]
         XCTAssertTrue(card.waitForExistence(timeout: 90),
-                      "the assignment is missing from Tasks")
+                      "the assignment is missing from Home")
 
         card.firstMatch.tap()
         XCTAssertTrue(app.staticTexts["ALBUS'S PLAN"].waitForExistence(timeout: 10),
@@ -115,7 +115,7 @@ final class CoreLoopUITests: XCTestCase {
     /// which one they get depends on what ran before them.
     private func reachApp(_ app: XCUIApplication) {
         let onboarding = app.staticTexts["A few things first."]
-        let home = app.buttons["Tasks"]   // tab bar: present in the app, absent in onboarding
+        let home = app.buttons["Home"]   // tab bar: present in the app, absent in onboarding
 
         // Whichever appears first decides the path.
         let start = Date()

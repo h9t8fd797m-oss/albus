@@ -34,24 +34,28 @@ final class PlanCoordinator {
     /// The assignment is saved *before* the network call. If generation fails
     /// the student keeps their work and a deadline, which is the difference
     /// between a slow moment and losing what they typed.
-    func addAssignment(title: String, taskType: String, deadline: Date,
-                       estimatedMinutes: Int, course: Course?,
+    func addAssignment(_ draft: NewAssignment,
                        context: ModelContext,
                        availability: Availability = .default,
                        now: Date = .now) async {
         status = .planning
 
         let assignment = Assignment(
-            title: title, taskType: taskType, deadline: deadline,
-            estimatedMinutes: estimatedMinutes, course: course
+            title: draft.title, notes: draft.notes, taskType: draft.taskType,
+            deadline: draft.deadline, estimatedMinutes: draft.estimatedMinutes,
+            priority: draft.priority, course: draft.course, rubric: draft.rubric
         )
         context.insert(assignment)
         save(context, "insert assignment")
 
         do {
             let result = try await plans.breakdown(
-                title: title, taskType: taskType,
-                deadline: deadline, estimatedMinutes: estimatedMinutes
+                title: draft.title, taskType: draft.taskType,
+                deadline: draft.deadline, estimatedMinutes: draft.estimatedMinutes,
+                courseID: draft.course?.remoteID,
+                notes: draft.notes,
+                rubricID: draft.rubric?.id,
+                priority: draft.priority
             )
 
             // Server-assigned id, so a later sync can match rows rather than
@@ -188,6 +192,112 @@ final class PlanCoordinator {
             print("[Albus] missed-session sweep failed: \(error)")
             return 0
         }
+    }
+
+    // MARK: - Editing the plan
+    //
+    // Albus proposes; the student decides. A plan you cannot correct is one you
+    // stop trusting the first time it is wrong about how long something takes.
+    // Every edit re-flows the schedule, because changing a step's length without
+    // moving what comes after it would leave the plan quietly inconsistent.
+
+    func updateStep(_ subtask: Subtask, title: String, minutes: Int,
+                    context: ModelContext,
+                    availability: Availability = .default,
+                    now: Date = .now) {
+        let trimmed = title.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+
+        let clamped = max(5, min(600, minutes))
+        guard subtask.title != trimmed || subtask.estimatedMinutes != clamped else { return }
+
+        subtask.title = trimmed
+        subtask.estimatedMinutes = clamped
+        subtask.assignment?.updatedAt = now
+        save(context, "edit step")
+        reschedule(context: context, availability: availability, now: now)
+    }
+
+    func addStep(to assignment: Assignment, title: String, minutes: Int,
+                 context: ModelContext,
+                 availability: Availability = .default,
+                 now: Date = .now) {
+        let trimmed = title.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+
+        let ordinal = (assignment.subtasks.map(\.ordinal).max() ?? -1) + 1
+        context.insert(Subtask(title: trimmed, ordinal: ordinal,
+                               estimatedMinutes: max(5, min(600, minutes)),
+                               assignment: assignment))
+        assignment.updatedAt = now
+        // A hand-written step can reopen a finished assignment, which is what
+        // frees or consumes a slot against the free-tier cap.
+        assignment.statusValue = assignment.isComplete ? .completed : .active
+        save(context, "add step")
+        reschedule(context: context, availability: availability, now: now)
+    }
+
+    func deleteStep(_ subtask: Subtask, context: ModelContext,
+                    availability: Availability = .default,
+                    now: Date = .now) {
+        let assignment = subtask.assignment
+        context.delete(subtask)
+        assignment?.updatedAt = now
+        save(context, "delete step")
+        if let assignment {
+            renumber(assignment)
+            assignment.statusValue = assignment.isComplete ? .completed : .active
+            save(context, "renumber after delete")
+        }
+        reschedule(context: context, availability: availability, now: now)
+    }
+
+    func moveSteps(in assignment: Assignment, from source: IndexSet, to destination: Int,
+                   context: ModelContext,
+                   availability: Availability = .default,
+                   now: Date = .now) {
+        var ordered = assignment.subtasks.sorted { $0.ordinal < $1.ordinal }
+        ordered.move(fromOffsets: source, toOffset: destination)
+        for (index, step) in ordered.enumerated() { step.ordinal = index }
+        assignment.updatedAt = now
+        save(context, "reorder steps")
+        reschedule(context: context, availability: availability, now: now)
+    }
+
+    /// Ordinals must stay contiguous: the scheduler places work in ordinal
+    /// order, and a gap is harmless while a duplicate is not.
+    private func renumber(_ assignment: Assignment) {
+        for (index, step) in assignment.subtasks.sorted(by: { $0.ordinal < $1.ordinal }).enumerated() {
+            step.ordinal = index
+        }
+    }
+
+    /// The session to open Focus Mode with for this step.
+    ///
+    /// Prefers the block the scheduler already placed — that is the plan, and
+    /// starting it keeps measured time attached to the slot it was meant for. If
+    /// there is none (the student got to it early, or the step was added by
+    /// hand), one is created starting now. Returning nil would mean a button
+    /// that sometimes silently does nothing.
+    func session(toStart subtask: Subtask, context: ModelContext,
+                 now: Date = .now) -> PlanSessionRecord? {
+        let candidates = subtask.sessions
+            .filter { $0.sessionState == .scheduled || $0.sessionState == .missed }
+            .sorted { $0.startsAt < $1.startsAt }
+
+        if let planned = candidates.first(where: { $0.endsAt > now }) ?? candidates.first {
+            return planned
+        }
+
+        let minutes = max(5, min(600, subtask.estimatedMinutes))
+        let record = PlanSessionRecord(
+            startsAt: now,
+            endsAt: now.addingTimeInterval(TimeInterval(minutes * 60)),
+            subtask: subtask
+        )
+        context.insert(record)
+        save(context, "create ad-hoc session")
+        return record
     }
 
     /// Re-places everything that still needs time.

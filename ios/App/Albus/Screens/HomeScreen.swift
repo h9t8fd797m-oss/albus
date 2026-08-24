@@ -2,46 +2,77 @@ import SwiftUI
 import SwiftData
 import AlbusCore
 
-/// Home: what is happening now, and everything still ahead.
+/// Home: the work, not the work's parts.
 ///
-/// Was "Today", and only ever showed sessions the scheduler had placed today —
-/// so a plan built in the evening, correctly scheduled for tomorrow morning,
-/// made the app look empty at the exact moment the student had just used it.
-/// It now shows the whole road ahead, with today at the top.
+/// This screen listed individual scheduled blocks, and a separate Tasks tab
+/// listed the assignments those blocks belonged to — the same information twice,
+/// with the less useful half given the more prominent slot. A student keeps
+/// track of *assignments*; the steps are what they open an assignment to see.
+///
+/// So Home is the assignment list now, and the plan lives one tap in. The single
+/// exception is the "up next" row: what to do *right now* is the one question a
+/// planner must answer without navigation, and it names the assignment rather
+/// than exposing the plan.
 struct HomeScreen: View {
     @Environment(\.modelContext) private var context
     @Environment(SessionService.self) private var session
     @Environment(PlanCoordinator.self) private var coordinator
     @Environment(Preferences.self) private var preferences
+    @Environment(EntitlementService.self) private var entitlements
 
+    @Query(sort: \Assignment.deadline) private var assignments: [Assignment]
     @Query(sort: \PlanSessionRecord.startsAt) private var sessions: [PlanSessionRecord]
 
+    @State private var filter: Filter = .all
     @State private var addingTask = false
     @State private var showingMonth = false
+    @State private var showingPaywall = false
     @State private var focusing: PlanSessionRecord?
 
+    enum Filter: String, CaseIterable, Identifiable {
+        case all, dueSoon, overdue, done
+        var id: String { rawValue }
+
+        var title: String {
+            switch self {
+            case .all: "All"
+            case .dueSoon: "Due soon"
+            case .overdue: "Overdue"
+            case .done: "Done"
+            }
+        }
+    }
+
+    /// Grouping is by deadline; "done" is a filter rather than a group, because
+    /// a finished assignment still belongs to the week it was due in.
+    private enum Group: String, CaseIterable {
+        case overdue = "Overdue"
+        case today = "Due today"
+        case thisWeek = "This week"
+        case later = "Later"
+        case done = "Done"
+    }
+
     var body: some View {
-        // Re-renders once a minute so "happening now", the countdown to the
-        // next block and the greeting all stay true without being revisited.
+        // Once a minute: the greeting, the countdown and "happening now" all go
+        // stale on their own.
         TimelineView(.periodic(from: .now, by: 60)) { timeline in
             content(now: timeline.date)
         }
         .sheet(isPresented: $addingTask) {
-            AddTaskSheet { title, type, deadline, minutes in
+            AddTaskSheet { draft in
                 Task {
-                    await coordinator.addAssignment(
-                        title: title, taskType: type, deadline: deadline,
-                        estimatedMinutes: minutes, course: nil, context: context,
-                        availability: preferences.availability
-                    )
+                    await coordinator.addAssignment(draft, context: context,
+                                                    availability: preferences.availability)
                 }
             }
         }
+        .sheet(isPresented: $showingPaywall) { PaywallScreen() }
         .fullScreenCover(item: $focusing) { record in
             FocusModeScreen(record: record)
         }
-        // Catch up on anything missed since the app was last open. This is
-        // where "it finds a new spot for what you skipped" actually happens.
+        // Catch up on anything missed since the app was last open. This is where
+        // "it finds a new spot for what you skipped" actually happens.
         .task {
             coordinator.sweepMissedSessions(context: context,
                                             availability: preferences.availability)
@@ -52,23 +83,43 @@ struct HomeScreen: View {
     }
 
     private func content(now: Date) -> some View {
-        let upcoming = upcomingSessions(now: now)
-        let today = upcoming.filter { Calendar.current.isDateInToday($0.startsAt) }
-        let current = upcoming.first { $0.startsAt <= now && $0.endsAt > now }
+        let visible = assignments.filter { matches($0, now: now) }
+        let grouped = Dictionary(grouping: visible) { group(for: $0, now: now) }
 
         return ScrollView {
             LazyVStack(alignment: .leading, spacing: Tokens.Spacing.l) {
                 header(now: now)
                 status
+                freeLimitNotice
 
-                FocusCard(sessions: today, studiedMinutes: studiedToday(),
-                          next: upcoming.first { $0.startsAt > now })
+                if let next = upNext(now: now) {
+                    UpNextCard(record: next, now: now) { focusing = next }
+                }
+
                 WeekStrip(sessions: sessions, now: now) { showingMonth = true }
 
-                if upcoming.isEmpty {
+                FilterChipRow(filters: Filter.allCases, selection: $filter) { $0.title }
+                    .padding(.horizontal, -Tokens.Spacing.xl)
+
+                if visible.isEmpty {
                     emptyState
                 } else {
-                    schedule(upcoming: upcoming, current: current, now: now)
+                    ForEach(Group.allCases, id: \.self) { section in
+                        if let items = grouped[section], !items.isEmpty {
+                            SectionHeader(section.rawValue, count: items.count)
+                                .padding(.top, Tokens.Spacing.xs)
+                            VStack(spacing: Tokens.Spacing.s + 2) {
+                                ForEach(items) { assignment in
+                                    NavigationLink {
+                                        Screen { TaskDetailScreen(assignment: assignment) }
+                                    } label: {
+                                        AssignmentCard(assignment: assignment, now: now)
+                                    }
+                                    .buttonStyle(.plain)
+                                }
+                            }
+                        }
+                    }
                 }
             }
             .padding(.horizontal, Tokens.Spacing.xl)
@@ -77,18 +128,34 @@ struct HomeScreen: View {
         .scrollContentBackground(.hidden)
     }
 
-    /// Everything not yet done, from the current block onward. Sessions whose
-    /// window has passed but which were never completed stay visible: silently
-    /// dropping missed work is how a planner loses a student's trust.
-    private func upcomingSessions(now: Date) -> [PlanSessionRecord] {
-        sessions.filter { $0.subtask?.completedAt == nil && $0.endsAt > now.addingTimeInterval(-86_400) }
+    // MARK: - Selection
+
+    private func group(for assignment: Assignment, now: Date) -> Group {
+        if assignment.isComplete { return .done }
+        let cal = Calendar.current
+        if assignment.deadline < now { return .overdue }
+        if cal.isDateInToday(assignment.deadline) { return .today }
+        if let week = cal.date(byAdding: .day, value: 7, to: now),
+           assignment.deadline <= week { return .thisWeek }
+        return .later
     }
 
-    private func studiedToday() -> Int {
-        sessions
-            .filter { Calendar.current.isDateInToday($0.startsAt) }
-            .compactMap(\.measuredMinutes)
-            .reduce(0, +)
+    private func matches(_ assignment: Assignment, now: Date) -> Bool {
+        switch filter {
+        case .all: !assignment.isComplete
+        case .dueSoon: !assignment.isComplete
+            && assignment.deadline >= now
+            && assignment.deadline <= (Calendar.current.date(byAdding: .day, value: 7, to: now) ?? now)
+        case .overdue: !assignment.isComplete && assignment.deadline < now
+        case .done: assignment.isComplete
+        }
+    }
+
+    /// The block happening now, or the next one due. Nil once everything is done.
+    private func upNext(now: Date) -> PlanSessionRecord? {
+        let live = sessions.filter { $0.subtask?.completedAt == nil }
+        return live.first { $0.startsAt <= now && $0.endsAt > now }
+            ?? live.first { $0.startsAt > now }
     }
 
     // MARK: - Header
@@ -102,7 +169,6 @@ struct HomeScreen: View {
                     .textCase(.uppercase)
                     .foregroundStyle(Tokens.Palette.inkMuted)
 
-                // Two lines, with the name set apart — the design's own shape.
                 VStack(alignment: .leading, spacing: -2) {
                     Text(greeting(at: now) + ",")
                         .font(Tokens.Typography.displayLarge)
@@ -155,350 +221,120 @@ struct HomeScreen: View {
         }
     }
 
-    // MARK: - Schedule
-
-    @ViewBuilder
-    private func schedule(upcoming: [PlanSessionRecord],
-                          current: PlanSessionRecord?, now: Date) -> some View {
-        let groups = Dictionary(grouping: upcoming) {
-            Calendar.current.startOfDay(for: $0.startsAt)
-        }
-
-        ForEach(groups.keys.sorted(), id: \.self) { day in
-            let items = (groups[day] ?? []).sorted { $0.startsAt < $1.startsAt }
-            let minutes = items.reduce(0) { $0 + $1.plannedSeconds / 60 }
-
-            SectionHeader(label: dayLabel(day, now: now), count: items.count) {
-                Text(DurationText.short(minutes: minutes))
-                    .font(Tokens.Typography.mono)
-                    .foregroundStyle(Tokens.Palette.inkMuted)
-            }
-            .padding(.top, Tokens.Spacing.xs)
-
-            VStack(spacing: Tokens.Spacing.s + 2) {
-                ForEach(items) { record in
-                    SessionCard(record: record,
-                                isNow: record.id == current?.id,
-                                isOverdue: record.endsAt < now) {
-                        focusing = record
-                    }
-                }
-            }
+    /// Mirrors the server's free-tier cap. Guidance only — the database enforces
+    /// it in the same transaction as the insert, so this being wrong costs a
+    /// clearer message, never a bypassed limit.
+    @ViewBuilder private var freeLimitNotice: some View {
+        if !entitlements.isPlus && assignments.count(where: { !$0.isComplete }) >= 3 {
+            StatusBanner(tone: .warning,
+                         message: "Free plans cover three assignments at a time.",
+                         retryTitle: "See Plus") { showingPaywall = true }
         }
     }
 
-    private func dayLabel(_ day: Date, now: Date) -> String {
-        let cal = Calendar.current
-        if cal.isDateInToday(day) { return "Today" }
-        if cal.isDateInTomorrow(day) { return "Tomorrow" }
-        if cal.isDateInYesterday(day) { return "Yesterday" }
-        // Within the week, the weekday alone is enough to orient.
-        if let days = cal.dateComponents([.day], from: cal.startOfDay(for: now), to: day).day,
-           days > 0, days < 7 {
-            return day.formatted(.dateTime.weekday(.wide))
-        }
-        return day.formatted(.dateTime.weekday(.abbreviated).month(.abbreviated).day())
-    }
-
-    private var emptyState: some View {
-        EmptyState(
-            icon: "calendar",
-            title: sessions.isEmpty ? "Nothing planned yet" : "You're all caught up",
-            message: sessions.isEmpty
-                ? "Add an assignment and Albus will break it into steps and find time for them."
-                : "Every step is done. Add the next thing when you're ready.",
-            actionTitle: "Add an assignment"
-        ) { addingTask = true }
-    }
-}
-
-// MARK: - Home-only pieces
-
-/// "Two down, four to go" — the day at a glance.
-private struct FocusCard: View {
-    let sessions: [PlanSessionRecord]
-    let studiedMinutes: Int
-    let next: PlanSessionRecord?
-
-    private var total: Int { sessions.count }
-    private var done: Int { sessions.filter { $0.subtask?.completedAt != nil }.count }
-    private var fraction: Double { total == 0 ? 0 : Double(done) / Double(total) }
-
-    var body: some View {
-        GlassCard {
-            HStack(spacing: Tokens.Spacing.l) {
-                ProgressRing(fraction: fraction, label: "\(done)/\(total)")
-
-                VStack(alignment: .leading, spacing: Tokens.Spacing.xs) {
-                    Text(headline)
-                        .font(Tokens.Typography.cardTitle)
-                        .foregroundStyle(Tokens.Palette.ink)
-                    Text(detail)
-                        .font(Tokens.Typography.caption)
-                        .foregroundStyle(Tokens.Palette.inkSecondary)
-                        .fixedSize(horizontal: false, vertical: true)
-
-                    if total > 0 {
-                        HStack(spacing: Tokens.Spacing.xs + 2) {
-                            ForEach(0..<total, id: \.self) { i in
-                                Capsule()
-                                    .fill(i < done ? Tokens.Palette.accent
-                                          : Tokens.Palette.ink.opacity(0.10))
-                                    .frame(height: 4)
-                            }
-                        }
-                        .padding(.top, Tokens.Spacing.xs)
-                        .accessibilityHidden(true)
-                    }
-                }
-                Spacer(minLength: 0)
-            }
-        }
-    }
-
-    private var headline: String {
-        guard total > 0 else {
-            return next == nil ? "Nothing scheduled" : "Nothing today"
-        }
-        if done == 0 { return "\(total) block\(total == 1 ? "" : "s") today" }
-        if done == total { return "Day complete" }
-        return "\(done) down, \(total - done) to go"
-    }
-
-    private var detail: String {
-        var parts: [String] = []
-        if studiedMinutes > 0 {
-            parts.append("\(DurationText.short(minutes: studiedMinutes)) focused")
-        }
-        if let next {
-            let when = Calendar.current.isDateInToday(next.startsAt)
-                ? next.startsAt.formatted(date: .omitted, time: .shortened)
-                : next.startsAt.formatted(.dateTime.weekday(.abbreviated).hour().minute())
-            parts.append("next at \(when)")
-        }
-        return parts.isEmpty ? "Add an assignment to fill the day." : parts.joined(separator: " · ")
-    }
-}
-
-/// The week, with a dot per scheduled session.
-private struct WeekStrip: View {
-    let sessions: [PlanSessionRecord]
-    let now: Date
-    let onMonthTap: () -> Void
-
-    private var days: [Date] {
-        let cal = Calendar.current
-        guard let week = cal.dateInterval(of: .weekOfYear, for: now) else { return [] }
-        return (0..<7).compactMap { cal.date(byAdding: .day, value: $0, to: week.start) }
-    }
-
-    private func count(on day: Date) -> Int {
-        sessions.filter { Calendar.current.isDate($0.startsAt, inSameDayAs: day) }.count
-    }
-
-    private var weekNumber: Int {
-        Calendar.current.component(.weekOfYear, from: now)
-    }
-
-    var body: some View {
-        GlassCard(padding: Tokens.Spacing.m) {
-            VStack(spacing: Tokens.Spacing.m) {
-                HStack(alignment: .firstTextBaseline, spacing: Tokens.Spacing.s - 2) {
-                    Text(now, format: .dateTime.month(.wide))
-                        .font(Tokens.Typography.cardTitle)
-                        .foregroundStyle(Tokens.Palette.ink)
-                    Text(verbatim: "\(now.formatted(.dateTime.year())) · Week \(weekNumber)")
-                        .font(Tokens.Typography.micro)
-                        .foregroundStyle(Tokens.Palette.inkMuted)
-                    Spacer()
-                    Button(action: onMonthTap) {
-                        HStack(spacing: 2) {
-                            Text("Month view")
-                            Image(systemName: "chevron.right")
-                                .font(.system(size: 9, weight: .semibold))
-                        }
-                        .font(Tokens.Typography.micro)
-                        .fontWeight(.semibold)
-                        .tracking(0.5)
-                        .foregroundStyle(Tokens.Palette.accent)
-                    }
-                    .buttonStyle(.plain)
-                }
-                .padding(.horizontal, Tokens.Spacing.xs)
-
-                HStack(spacing: Tokens.Spacing.xs) {
-                    ForEach(days, id: \.self) { day in
-                        DayCell(day: day,
-                                isToday: Calendar.current.isDate(day, inSameDayAs: now),
-                                dots: count(on: day))
-                    }
-                }
-            }
-        }
-    }
-
-    private struct DayCell: View {
-        let day: Date
-        let isToday: Bool
-        let dots: Int
-
-        var body: some View {
-            VStack(spacing: 2) {
-                Text(day, format: .dateTime.weekday(.abbreviated))
-                    .font(.system(size: 9.5, weight: .medium))
-                    .tracking(Tokens.Tracking.overline)
-                    .textCase(.uppercase)
-                    .foregroundStyle(isToday ? .white.opacity(0.85) : Tokens.Palette.inkMuted)
-                Text(day, format: .dateTime.day())
-                    .font(Tokens.Typography.dayNumber)
-                    .tracking(Tokens.Tracking.display)
-                    .foregroundStyle(isToday ? .white : Tokens.Palette.ink)
-                HStack(spacing: 2) {
-                    ForEach(0..<min(dots, 3), id: \.self) { i in
-                        Circle()
-                            .fill(isToday ? .white.opacity(0.8) : Tokens.Palette.accent)
-                            .opacity(isToday ? 1 : 0.4 + Double(i) * 0.2)
-                            .frame(width: 4, height: 4)
-                    }
-                }
-                .frame(height: 4)
-                .padding(.top, 4)
-            }
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, Tokens.Spacing.s)
-            .background {
-                if isToday {
-                    RoundedRectangle(cornerRadius: Tokens.Radius.icon, style: .continuous)
-                        .fill(Tokens.Palette.accent)
-                        .shadow(color: Tokens.Palette.accent.opacity(0.53), radius: 11, y: 5)
-                }
-            }
-            .accessibilityElement(children: .combine)
-            .accessibilityLabel(day.formatted(.dateTime.weekday(.wide).month().day()))
-            .accessibilityValue(dots == 0 ? "Nothing scheduled" : "\(dots) session\(dots == 1 ? "" : "s")")
-            .accessibilityAddTraits(isToday ? [.isSelected] : [])
+    @ViewBuilder private var emptyState: some View {
+        switch filter {
+        case .all:
+            EmptyState(icon: "tray", title: assignments.isEmpty ? "Nothing here yet" : "No open work",
+                       message: assignments.isEmpty
+                         ? "Add an assignment and Albus will break it into steps and find time for them."
+                         : "Everything you have added is finished. Add the next thing when you're ready.",
+                       actionTitle: "Add an assignment") { addingTask = true }
+        case .dueSoon:
+            EmptyState(icon: "calendar", title: "Nothing due this week",
+                       message: "Your next deadline is further out. A good week to get ahead.")
+        case .overdue:
+            EmptyState(icon: "checkmark.circle", title: "Nothing overdue",
+                       message: "You're on top of every deadline.")
+        case .done:
+            EmptyState(icon: "checkmark.seal", title: "Nothing finished yet",
+                       message: "Completed assignments collect here.")
         }
     }
 }
 
-/// One scheduled block.
+/// One assignment in the list.
 ///
-/// Tapping opens Focus Mode. There is deliberately **no** tick box here: a
-/// checkbox that banks a whole session in one tap is what made the estimator's
-/// data worthless, and it is the thing this screen most needed to lose.
-private struct SessionCard: View {
-    let record: PlanSessionRecord
-    let isNow: Bool
-    let isOverdue: Bool
-    let onOpen: () -> Void
+/// No completion toggle. Ticking a whole assignment off from a list is how a
+/// student banks six steps they did not do, and it is the same shortcut that
+/// made the duration estimates worthless. Completion belongs where the steps
+/// are visible.
+private struct AssignmentCard: View {
+    let assignment: Assignment
+    let now: Date
 
     private var subject: Tokens.SubjectColor {
-        record.subtask?.assignment?.course?.subjectColor ?? .violet
+        assignment.course?.subjectColor ?? .violet
     }
-    private var partial: Int? { record.measuredMinutes }
 
     var body: some View {
-        Button(action: onOpen) {
-            GlassCard(isProminent: isNow, tint: subject.color, padding: 0) {
-                ZStack(alignment: .topTrailing) {
-                    HStack(alignment: .center, spacing: Tokens.Spacing.m) {
-                        // Inset rail, following the card's curve rather than
-                        // butting against its edge.
-                        Capsule()
-                            .fill(subject.color)
-                            .frame(width: 3)
-                            .padding(.vertical, Tokens.Spacing.m + 2)
-                            .padding(.leading, 6)
-                            .accessibilityHidden(true)
-
-                        VStack(alignment: .leading, spacing: Tokens.Spacing.xs) {
-                            if let assignment = record.subtask?.assignment {
-                                CourseTag(
-                                    code: assignment.course?.displayName ?? assignment.taskType,
-                                    kind: assignment.course == nil ? nil : assignment.taskType,
-                                    subject: subject
-                                )
-                            }
-
-                            Text(record.subtask?.title ?? "Study session")
-                                .font(Tokens.Typography.cardTitle)
-                                .foregroundStyle(Tokens.Palette.ink)
-                                .multilineTextAlignment(.leading)
-                                .fixedSize(horizontal: false, vertical: true)
-
-                            HStack(spacing: Tokens.Spacing.s) {
-                                Text(timeRange)
-                                    .font(Tokens.Typography.caption)
-                                    .fontWeight(.medium)
-                                    .foregroundStyle(Tokens.Palette.inkSecondary)
-                                if let note {
-                                    MetaDot()
-                                    Text(note)
-                                        .font(Tokens.Typography.caption)
-                                        .foregroundStyle(noteTint)
-                                }
-                            }
+        SubjectStripeCard(subject: subject, padding: Tokens.Spacing.m + 2) {
+            HStack(spacing: Tokens.Spacing.m + 2) {
+                VStack(alignment: .leading, spacing: Tokens.Spacing.s) {
+                    HStack(spacing: Tokens.Spacing.s) {
+                        CourseTag(code: assignment.course?.displayName ?? "General",
+                                  kind: assignment.taskType, subject: subject)
+                        if assignment.priorityValue == .high, !assignment.isComplete {
+                            PriorityFlag()
                         }
-
-                        Spacer(minLength: 0)
-
-                        Image(systemName: "chevron.right")
-                            .font(.system(size: 13, weight: .semibold))
-                            .foregroundStyle(isNow ? .white : Tokens.Palette.ink)
-                            .frame(width: 32, height: 32)
-                            .background(
-                                isNow ? AnyShapeStyle(subject.color)
-                                      : AnyShapeStyle(Tokens.Palette.ink.opacity(0.06)),
-                                in: RoundedRectangle(cornerRadius: Tokens.Radius.control,
-                                                     style: .continuous)
-                            )
                     }
-                    .padding(.trailing, Tokens.Spacing.l)
-                    .padding(.vertical, Tokens.Spacing.m + 2)
 
-                    if isNow { happeningNow }
+                    Text(assignment.title)
+                        .font(Tokens.Typography.cardTitle)
+                        .foregroundStyle(Tokens.Palette.ink)
+                        .strikethrough(assignment.isComplete)
+                        .opacity(assignment.isComplete ? 0.55 : 1)
+                        .multilineTextAlignment(.leading)
+                        .fixedSize(horizontal: false, vertical: true)
+
+                    if assignment.subtasks.isEmpty {
+                        Text("No plan yet")
+                            .font(Tokens.Typography.micro)
+                            .foregroundStyle(Tokens.Palette.inkMuted)
+                    } else {
+                        HStack(spacing: Tokens.Spacing.s + 2) {
+                            ProgressBar(fraction: assignment.progress, tint: subject.color)
+                            Text("\(assignment.subtasks.count(where: { $0.completedAt != nil }))/\(assignment.subtasks.count)")
+                                .font(Tokens.Typography.mono)
+                                .foregroundStyle(Tokens.Palette.inkMuted)
+                                .frame(minWidth: 34, alignment: .trailing)
+                        }
+                    }
+
+                    HStack(spacing: Tokens.Spacing.s) {
+                        DeadlineLabel(deadline: assignment.deadline, now: now)
+                        if assignment.rubric != nil {
+                            MetaDot()
+                            Label("Rubric", systemImage: "list.bullet.rectangle.portrait")
+                                .labelStyle(.titleAndIcon)
+                                .font(Tokens.Typography.micro)
+                                .foregroundStyle(Tokens.Palette.inkMuted)
+                        }
+                    }
                 }
+
+                Spacer(minLength: 0)
+
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(Tokens.Palette.inkMuted)
             }
         }
-        .buttonStyle(.plain)
-        .accessibilityElement(children: .combine)
-        .accessibilityHint("Opens focus mode")
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel(assignment.title)
+        .accessibilityHint("Opens the plan")
     }
+}
 
-    private var happeningNow: some View {
-        HStack(spacing: 5) {
-            Circle().fill(.white).frame(width: 5, height: 5)
-            Text("HAPPENING NOW")
-                .font(.system(size: 9, weight: .bold))
-                .tracking(Tokens.Tracking.overline)
-        }
-        .foregroundStyle(.white)
-        .padding(.horizontal, Tokens.Spacing.s + 2)
-        .padding(.vertical, 4)
-        .background(subject.color, in: UnevenRoundedRectangle(
-            topLeadingRadius: Tokens.Radius.control,
-            bottomLeadingRadius: Tokens.Radius.control,
-            bottomTrailingRadius: 0,
-            topTrailingRadius: Tokens.Radius.session
-        ))
-    }
-
-    private var timeRange: String {
-        "\(record.startsAt.formatted(date: .omitted, time: .shortened)) – \(record.endsAt.formatted(date: .omitted, time: .shortened))"
-    }
-
-    /// One line of context, in priority order: work already banked, then a
-    /// missed window, then the rubric criterion.
-    private var note: String? {
-        if let partial { return "\(DurationText.short(minutes: partial)) done" }
-        if isOverdue { return "missed" }
-        if let code = record.subtask?.criterionCode { return "Criterion \(code)" }
-        return nil
-    }
-
-    private var noteTint: Color {
-        if partial != nil { return Tokens.SubjectColor.green.color }
-        if isOverdue { return Tokens.Palette.danger }
-        return Tokens.Palette.accent
+private struct PriorityFlag: View {
+    var body: some View {
+        Label("High", systemImage: "exclamationmark")
+            .labelStyle(.titleAndIcon)
+            .font(Tokens.Typography.micro)
+            .foregroundStyle(Tokens.Tint.orange.foreground)
+            .padding(.horizontal, Tokens.Spacing.s)
+            .padding(.vertical, 2)
+            .background(Tokens.Tint.orange.background,
+                        in: RoundedRectangle(cornerRadius: Tokens.Radius.chip, style: .continuous))
     }
 }

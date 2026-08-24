@@ -17,6 +17,10 @@ struct TaskDetailScreen: View {
 
     @State private var expanded: UUID?
     @State private var asking = false
+    @State private var editing: StepDraft?
+    @State private var addingStep = false
+    @State private var focusing: PlanSessionRecord?
+    @State private var reordering = false
 
     private var subject: Tokens.SubjectColor { assignment.course?.subjectColor ?? .violet }
     private var steps: [Subtask] { assignment.subtasks.sorted { $0.ordinal < $1.ordinal } }
@@ -51,6 +55,38 @@ struct TaskDetailScreen: View {
         .sheet(isPresented: $asking) {
             AskAlbusSheet(assignment: assignment)
         }
+        .sheet(item: $editing) { draft in
+            StepEditorSheet(draft: draft) { saved in
+                guard let step = steps.first(where: { $0.id == saved.id }) else { return }
+                coordinator.updateStep(step, title: saved.title, minutes: saved.minutes,
+                                       context: context, availability: preferences.availability)
+            } onDelete: {
+                guard let step = steps.first(where: { $0.id == draft.id }) else { return }
+                coordinator.deleteStep(step, context: context,
+                                       availability: preferences.availability)
+            }
+        }
+        .sheet(isPresented: $addingStep) {
+            StepEditorSheet(draft: .empty) { saved in
+                coordinator.addStep(to: assignment, title: saved.title, minutes: saved.minutes,
+                                    context: context, availability: preferences.availability)
+            }
+        }
+        .fullScreenCover(item: $focusing) { record in
+            FocusModeScreen(record: record)
+        }
+        .sheet(isPresented: $reordering) {
+            StepReorderSheet(steps: steps) { source, destination in
+                coordinator.moveSteps(in: assignment, from: source, to: destination,
+                                      context: context, availability: preferences.availability)
+            }
+        }
+    }
+
+    /// Opens Focus Mode on the block the scheduler placed for this step, or a
+    /// fresh one starting now when the student got there early.
+    private func start(_ step: Subtask) {
+        focusing = coordinator.session(toStart: step, context: context)
     }
 
     // MARK: - Chrome
@@ -104,7 +140,25 @@ struct TaskDetailScreen: View {
                     }
                 }
 
-                DeadlineLabel(deadline: assignment.deadline)
+                HStack(spacing: Tokens.Spacing.s) {
+                    DeadlineLabel(deadline: assignment.deadline)
+                    if assignment.priorityValue == .high {
+                        MetaDot()
+                        Text("High priority")
+                            .font(Tokens.Typography.micro)
+                            .foregroundStyle(Tokens.Tint.orange.foreground)
+                    }
+                }
+
+                if let rubric = assignment.rubric {
+                    HStack(spacing: Tokens.Spacing.s - 2) {
+                        Image(systemName: "list.bullet.rectangle.portrait")
+                            .font(.system(size: 11, weight: .medium))
+                        Text("Marked against \(rubric.name)")
+                            .font(Tokens.Typography.caption)
+                    }
+                    .foregroundStyle(Tokens.Palette.inkSecondary)
+                }
 
                 if !steps.isEmpty {
                     VStack(spacing: Tokens.Spacing.s) {
@@ -127,7 +181,8 @@ struct TaskDetailScreen: View {
     @ViewBuilder private var albusNote: some View {
         if steps.isEmpty {
             StatusBanner(tone: .warning,
-                         message: "This assignment has no plan yet. Albus couldn't reach the planner when you added it.")
+                         message: "This assignment has no plan yet. Albus couldn't reach the planner when you added it.",
+                         retryTitle: "Add a step") { addingStep = true }
         } else if let next = steps.first(where: { $0.completedAt == nil }) {
             AlbusNote("**\(next.title)** is the step that makes the rest shorter.", isBusy: true)
         } else {
@@ -140,9 +195,26 @@ struct TaskDetailScreen: View {
     @ViewBuilder private var plan: some View {
         if !steps.isEmpty {
             SectionHeader(label: "Albus's plan", count: steps.count) {
-                Text(DurationText.short(minutes: totalMinutes))
-                    .font(Tokens.Typography.mono)
-                    .foregroundStyle(Tokens.Palette.inkMuted)
+                HStack(spacing: Tokens.Spacing.m) {
+                    Text(DurationText.short(minutes: totalMinutes))
+                        .font(Tokens.Typography.mono)
+                        .foregroundStyle(Tokens.Palette.inkMuted)
+                    Menu {
+                        Button("Add a step", systemImage: "plus") { addingStep = true }
+                        if steps.count > 1 {
+                            Button("Reorder", systemImage: "arrow.up.arrow.down") {
+                                reordering = true
+                            }
+                        }
+                    } label: {
+                        Image(systemName: "ellipsis")
+                            .font(.system(size: 14, weight: .semibold))
+                            .foregroundStyle(Tokens.Palette.inkSecondary)
+                            .frame(width: 28, height: 28)
+                            .contentShape(Rectangle())
+                    }
+                    .accessibilityLabel("Edit plan")
+                }
             }
             .padding(.top, Tokens.Spacing.xs)
 
@@ -159,6 +231,8 @@ struct TaskDetailScreen: View {
                             coordinator.setCompleted(step, step.completedAt == nil, context: context,
                                      availability: preferences.availability)
                         },
+                        onStartSession: { start(step) },
+                        onEdit: { editing = StepDraft(step) },
                         onTap: {
                             withAnimation(Tokens.Motion.quick) {
                                 expanded = expanded == step.id ? nil : step.id
@@ -180,6 +254,8 @@ private struct StepRow: View {
     let isExpanded: Bool
     let subject: Tokens.SubjectColor
     let onToggleDone: () -> Void
+    let onStartSession: () -> Void
+    let onEdit: () -> Void
     let onTap: () -> Void
 
     private var isDone: Bool { step.completedAt != nil }
@@ -296,12 +372,25 @@ private struct StepRow: View {
         }
 
         if isNext {
+            // This button used to call onToggleDone — the *same* closure as
+            // "Mark done". Starting a session silently completed the step
+            // instead, which is the one-tap fake completion this app is
+            // supposed to be the cure for. It opens Focus Mode now.
             HStack(spacing: Tokens.Spacing.s) {
-                PrimaryButton(title: "Start \(DurationText.short(minutes: step.estimatedMinutes)) session") {
-                    onToggleDone()
-                }
-                SecondaryButton(title: "Mark done", action: onToggleDone)
+                PrimaryButton(title: "Start \(DurationText.short(minutes: step.estimatedMinutes)) session",
+                              action: onStartSession)
+                SecondaryButton(title: isDone ? "Reopen" : "Mark done", action: onToggleDone)
             }
+            .padding(.top, Tokens.Spacing.xs)
+        }
+
+        if showsCard {
+            Button(action: onEdit) {
+                Label("Edit step", systemImage: "pencil")
+                    .font(Tokens.Typography.micro)
+                    .foregroundStyle(Tokens.Palette.inkMuted)
+            }
+            .buttonStyle(.plain)
             .padding(.top, Tokens.Spacing.xs)
         }
     }

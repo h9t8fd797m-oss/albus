@@ -12,13 +12,21 @@ public struct ScheduleItem: Sendable, Equatable, Identifiable {
     public let ordinal: Int
     public let duration: TimeInterval
     public let deadline: Date
+    /// The student's own urgency, higher first.
+    ///
+    /// Only ever breaks a tie between two pieces of work already competing for
+    /// the same window — see `Scheduler.priorityOrder`. It cannot move anything
+    /// past a deadline, because deadline remains the leading sort key.
+    public let priority: Int
 
-    public init(id: UUID, assignmentID: UUID, ordinal: Int, minutes: Int, deadline: Date) {
+    public init(id: UUID, assignmentID: UUID, ordinal: Int, minutes: Int,
+                deadline: Date, priority: Int = 1) {
         self.id = id
         self.assignmentID = assignmentID
         self.ordinal = ordinal
         self.duration = TimeInterval(max(1, minutes) * 60)
         self.deadline = deadline
+        self.priority = priority
     }
 }
 
