@@ -2,6 +2,8 @@
 // Model routing and prompt construction. Deliberately pure — no network, no
 // database — so the interesting decisions are unit-testable without Docker.
 
+import { MAX_STEPS } from "./breakdown_schema.ts";
+
 export interface RubricCriterion {
   id: string;
   code: string;
@@ -60,6 +62,9 @@ export interface BreakdownInput {
   deadlineISO: string;
   estimatedMinutes: number;
   nowISO: string;
+  /** What the student says they can study in a day. Sets the sitting length,
+   *  and therefore how many steps the work divides into. */
+  dailyCapacityMinutes: number;
   rubric: RubricContext | null;
   /**
    * What the student typed about the assignment. This was accepted by the
@@ -133,7 +138,29 @@ Rules:
   "Research the topic" is useless. "Find and skim three sources on X" is not.
 - The first step must be the smallest one. Starting is the hard part.
 - Step durations must sum to roughly the time the student has budgeted.
-- Between two and eight steps. Fewer, larger steps beat many trivial ones.
+- A step is ONE SITTING: something the student starts and finishes in a single
+  session. Aim for 20-90 minutes. Never write a step longer than the sitting
+  limit given below — the scheduler places each step as one unbroken block, so
+  an oversized step cannot be placed on any day and vanishes from the plan.
+- The NUMBER of steps follows from the work, not from a range. Divide the
+  budgeted time into sittings and use as many as that needs: a 45-minute
+  homework is 2-3 steps, a week-long essay 5-8, a month-long project 10-15, a
+  three-month major assignment 15-20. Never pad a short task to fill a plan.
+- Size each step by what it actually takes, not by dividing the total evenly.
+  Reading a chapter and writing a thesis statement are not the same length.
+  Simple mechanical work — collecting materials, formatting a bibliography,
+  logging results — is 10-20 minutes and must not be inflated to look
+  substantial.
+- The user message states a target number of steps. Treat it as the right
+  ballpark, not a quota — a task that genuinely needs fewer should have fewer.
+- The budgeted time is the student's own guess at a slider, not a fact. Plan
+  the work the assignment actually needs. If that is less than they budgeted,
+  plan less: padding steps to fill the number is the failure this is trying to
+  avoid. If it is genuinely more, say so in the last step's guidance.
+- Spread a long deadline across the time available rather than compressing it
+  into a few enormous sessions. Work the student can only do late (revising a
+  draft that does not exist yet) still belongs late; work that can start now
+  should start now.
 - guidance is one sentence on how to do the step, in plain language.
 - tool_need says what the step needs doing to it, so the app can offer the right
   tools for it. Choose the ONE that fits best, or null if none does:
@@ -238,11 +265,40 @@ export function buildUserPrompt(input: BreakdownInput): string {
 
   const hours = (input.estimatedMinutes / 60).toFixed(1).replace(/\.0$/, "");
 
+  // The arithmetic the step count should follow from, given rather than left
+  // for the model to infer. Without the days and the daily capacity it has no
+  // basis for deciding whether this is a three-step evening or a fifteen-step
+  // project, so it fell back on the range the rules used to state.
+  const sitting = Math.max(30, Math.min(120, Math.floor(input.dailyCapacityMinutes)));
+  const workingDays = Math.max(1, days);
+  const perDay = Math.round(input.estimatedMinutes / workingDays);
+
+  // The step count, as arithmetic rather than a hint.
+  //
+  // Told only to "add up to roughly the budget", the model under-planned in
+  // proportion to how large the budget was: 100% of a 45-minute homework, 71%
+  // of an eight-hour essay, 30% of a forty-hour IA. It settled near fourteen
+  // steps whatever it was given. Handing it the division removes the judgement
+  // it was getting wrong and costs nothing.
+  const typicalSitting = Math.min(75, sitting);
+  const targetSteps = Math.max(
+    2,
+    Math.min(MAX_STEPS, Math.round(input.estimatedMinutes / typicalSitting)),
+  );
+
   const parts = [
     `Assignment: ${input.title}`,
     `Type: ${input.taskType}`,
     `Deadline: ${when}`,
     `Time the student has budgeted: ${hours} hours (${input.estimatedMinutes} minutes)`,
+    `Sitting limit: ${sitting} minutes — no step may be longer than this.`,
+    `Days available: ${workingDays}. Spread across them, that is about ` +
+      `${perDay} minutes of work a day.`,
+    `Roughly ${targetSteps} steps looks right for this, averaging about ${
+      Math.round(input.estimatedMinutes / targetSteps)
+    } minutes. ` +
+      `Size each one by what it actually takes rather than dividing the total ` +
+      `evenly, and use fewer if the work genuinely needs fewer.`,
   ];
 
   // Priority is the student's own urgency signal. It changes the shape of the

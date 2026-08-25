@@ -35,6 +35,7 @@ const base: BreakdownInput = {
   deadlineISO: "2026-05-23T23:59:00Z",
   estimatedMinutes: 480,
   nowISO: "2026-05-20T09:00:00Z",
+  dailyCapacityMinutes: 150,
   rubric: null,
   notes: null,
   priority: "normal",
@@ -250,4 +251,54 @@ Deno.test("the prompt tells the model to prefer the specific need over the gener
   // a future prompt rewrite cannot drop it silently.
   const system = buildSystemPrompt(null);
   assertStringIncludes(system, "citation, not proofreading");
+});
+
+// MARK: - Step sizing
+
+/** The numbers the planner is handed, for one scenario. */
+function targets(estimatedMinutes: number, days: number, capacity: number): string {
+  const now = new Date("2026-05-20T09:00:00Z");
+  const deadline = new Date(now.getTime() + days * 86_400_000);
+  return buildUserPrompt({
+    title: "Task",
+    taskType: "essay",
+    deadlineISO: deadline.toISOString(),
+    estimatedMinutes,
+    nowISO: now.toISOString(),
+    dailyCapacityMinutes: capacity,
+    rubric: null,
+    notes: null,
+    priority: "normal",
+  });
+}
+
+Deno.test("step count scales with the work, instead of a fixed range", () => {
+  // The rule used to read "between two and eight steps", which is exactly the
+  // 5-8 every plan came out as regardless of size.
+  assertStringIncludes(targets(45, 1, 150), "Roughly 2 steps");      // homework
+  assertStringIncludes(targets(480, 7, 150), "Roughly 6 steps");     // week essay
+  assertStringIncludes(targets(1200, 30, 150), "Roughly 16 steps");  // month project
+});
+
+Deno.test("the sitting limit follows the student's daily capacity", () => {
+  // A step longer than a day's capacity can never be scheduled — findSlot skips
+  // any day without room for the whole block, so it silently disappears.
+  assertStringIncludes(targets(300, 5, 90), "Sitting limit: 90 minutes");
+  assertStringIncludes(targets(300, 5, 150), "Sitting limit: 120 minutes");
+  // Capped at two hours however much time the student has.
+  assertStringIncludes(targets(300, 5, 600), "Sitting limit: 120 minutes");
+});
+
+Deno.test("a tiny task is not padded into a plan", () => {
+  const tiny = targets(15, 1, 150);
+  assertStringIncludes(tiny, "Roughly 2 steps");
+  assert(!tiny.includes("Roughly 8 steps"));
+});
+
+Deno.test("the planner is told how long it has, not just how much work", () => {
+  const long = targets(1200, 90, 150);
+  assertStringIncludes(long, "Days available: 90");
+  // 1200 minutes over 90 days is ~13 minutes a day — the fact that makes
+  // spreading obvious rather than something to infer.
+  assertStringIncludes(long, "13 minutes of work a day");
 });

@@ -42,6 +42,7 @@ interface RequestBody {
   notes?: unknown;
   rubric_id?: unknown;
   priority?: unknown;
+  daily_capacity_minutes?: unknown;
 }
 
 const PRIORITIES = new Set(["low", "normal", "high"]);
@@ -86,6 +87,13 @@ function parseBody(body: RequestBody) {
     courseTemplateCode: curriculumCode(body.course_template_code),
     assessmentCode: curriculumCode(body.assessment_code),
     notes: typeof body.notes === "string" ? body.notes.slice(0, 2000) : null,
+    // Bounded, not trusted. It only sizes a sitting, so a hostile value costs
+    // the sender their own plan's shape and nothing else — but an unbounded
+    // number here would reach the prompt as text.
+    dailyCapacityMinutes: (() => {
+      const raw = Number(body.daily_capacity_minutes);
+      return Number.isFinite(raw) ? Math.max(30, Math.min(960, Math.round(raw))) : 150;
+    })(),
     rubricId: uuid(body.rubric_id),
     // Normalised, not rejected: an unknown priority is a client bug and is not
     // worth refusing to plan the student's assignment over.
@@ -134,6 +142,7 @@ Deno.serve(async (req) => {
       deadlineISO: input.deadlineISO,
       estimatedMinutes: input.estimatedMinutes,
       nowISO: new Date().toISOString(),
+      dailyCapacityMinutes: input.dailyCapacityMinutes,
       rubric,
       notes: input.notes,
       priority: input.priority,
@@ -158,7 +167,8 @@ Deno.serve(async (req) => {
 
     let plan;
     try {
-      plan = validateAndNormalise(generated.raw, input.estimatedMinutes);
+      plan = validateAndNormalise(
+        generated.raw, input.estimatedMinutes, input.dailyCapacityMinutes);
     } catch (e) {
       if (e instanceof InvalidPlanError) {
         console.error("model produced an unusable plan:", e.message);
