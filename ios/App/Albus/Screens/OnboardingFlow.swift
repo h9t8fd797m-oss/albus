@@ -14,18 +14,24 @@ struct OnboardingFlow: View {
     @Environment(PlanCoordinator.self) private var coordinator
     @Environment(Preferences.self) private var preferences
 
-    enum Step { case profile, deadline, building, meetAlbus }
+    enum Step { case profile, subjects, deadline, building, meetAlbus }
 
     @State private var step: Step = .profile
 
     // Screen 1
     @State private var name = ""
     @State private var program: Preferences.Program = .ib
+    @State private var board = Preferences.defaultExamBoard
     @State private var load: Preferences.StudyLoad = .standard
 
-    // Screen 2
+    // Screen 2 — only shown when Albus has verified data for the programme.
+    @State private var selectedSubjectCodes: Set<String> = []
+
+    // Screen 3
     @State private var taskTitle = ""
     @State private var taskType = "essay"
+    @State private var subjectCode = ""
+    @State private var componentCode = ""
     @State private var deadline = Calendar.current.date(byAdding: .day, value: 3, to: .now) ?? .now
     @State private var hours = 2.0
 
@@ -41,6 +47,7 @@ struct OnboardingFlow: View {
             BackgroundGradient()
             switch step {
             case .profile:    profileStep
+            case .subjects:   subjectsStep
             case .deadline:   deadlineStep
             case .building:   buildingStep
             case .meetAlbus:  meetAlbusStep
@@ -58,14 +65,35 @@ struct OnboardingFlow: View {
 
     // MARK: - 1. Profile
 
+    /// The subjects Albus can actually plan against, for what the student has
+    /// picked so far. Read from the local choices rather than `Preferences`,
+    /// which is only written when the profile step is left.
+    private var offeredSubjects: [CurriculumSubject] {
+        guard let qualification = program.qualification else { return [] }
+        return CurriculumSubject.subjects(
+            qualification: qualification,
+            board: qualification == .aLevel ? board : nil
+        )
+    }
+
+    /// Boards worth asking about. One board is not a question, so the control
+    /// hides itself rather than presenting a list of length one.
+    private var offeredBoards: [String] {
+        let boards = program.qualification.map { CurriculumSubject.boards(for: $0) } ?? []
+        return boards.count > 1 ? boards : []
+    }
+
+    /// Two form steps, or three when there are subjects to choose.
+    private var formStepCount: Double { offeredSubjects.isEmpty ? 2 : 3 }
+
     private var profileStep: some View {
         OnboardingScaffold(
-            progress: 0.5,
+            progress: 1 / formStepCount,
             title: "A few things first.",
             subtitle: "So Albus can build your first plan.",
             actionTitle: "Next",
             isEnabled: true,
-            action: { step = .deadline }
+            action: { step = offeredSubjects.isEmpty ? .deadline : .subjects }
         ) {
             VStack(alignment: .leading, spacing: Tokens.Spacing.xl) {
                 field("Your name") {
@@ -87,6 +115,16 @@ struct OnboardingFlow: View {
                                selection: $program) { $0.rawValue }
                 }
 
+                // Boards genuinely assess the same subject differently, so this
+                // is part of what the student studies, not a detail.
+                if !offeredBoards.isEmpty {
+                    field("Exam board") {
+                        CodeGrid(columns: 3,
+                                 options: offeredBoards.map { (value: $0, title: $0) },
+                                 selection: $board)
+                    }
+                }
+
                 field("Daily study hours") {
                     ChoiceGrid(columns: 3, options: Preferences.StudyLoad.allCases,
                                selection: $load) { $0.title }
@@ -95,7 +133,46 @@ struct OnboardingFlow: View {
         }
     }
 
-    // MARK: - 2. First deadline
+    // MARK: - 2. Subjects
+
+    /// Which of Albus's own subjects the student takes.
+    ///
+    /// Only reached when there are any — a student on a qualification whose
+    /// official documents are not in the corpus never sees an empty grid, they
+    /// simply go straight to their deadline and name subjects themselves later.
+    private var subjectsStep: some View {
+        OnboardingScaffold(
+            progress: 2 / formStepCount,
+            title: "Which of these do you take?",
+            subtitle: "Albus knows how each of these is assessed, and plans around it.",
+            actionTitle: selectedSubjectCodes.isEmpty ? "Skip for now" : "Next",
+            isEnabled: true,
+            action: { step = .deadline }
+        ) {
+            VStack(alignment: .leading, spacing: Tokens.Spacing.l) {
+                MultiChoiceGrid(
+                    columns: 2,
+                    options: offeredSubjects.map { (value: $0.code, title: $0.shortName) },
+                    selection: $selectedSubjectCodes
+                )
+                Text("You can add any other subject later, whether or not Albus knows it.")
+                    .font(Tokens.Typography.micro)
+                    .foregroundStyle(Tokens.Palette.inkMuted)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+    }
+
+    // MARK: - 3. First deadline
+
+    /// The subjects the student picked, in a stable order.
+    private var chosenSubjects: [CurriculumSubject] {
+        offeredSubjects.filter { selectedSubjectCodes.contains($0.code) }
+    }
+
+    private var chosenSubject: CurriculumSubject? {
+        chosenSubjects.first { $0.code == subjectCode }
+    }
 
     private var deadlineStep: some View {
         OnboardingScaffold(
@@ -127,6 +204,33 @@ struct OnboardingFlow: View {
                                 set: { taskType = $0.rawValue })) { $0.title }
                 }
 
+                // Asked here, on the very first plan, because this is the one
+                // plan every student sees — and it is the difference between a
+                // generic breakdown and one shaped by what the paper is worth.
+                // Absent entirely for a student with no curriculum subjects, so
+                // it costs them nothing.
+                if !chosenSubjects.isEmpty {
+                    field("Which subject") {
+                        CodeGrid(
+                            columns: 2,
+                            options: [(value: "", title: "Not a subject")]
+                                + chosenSubjects.map { (value: $0.code, title: $0.shortName) },
+                            selection: $subjectCode
+                        )
+                    }
+
+                    if let components = chosenSubject?.components, !components.isEmpty {
+                        field("Which part of the course") {
+                            CodeGrid(
+                                columns: 2,
+                                options: [(value: "", title: "Not sure yet")]
+                                    + components.map { (value: $0.code, title: $0.name) },
+                                selection: $componentCode
+                            )
+                        }
+                    }
+                }
+
                 field("Deadline") {
                     DatePicker("", selection: $deadline, in: Date.now...,
                                displayedComponents: [.date, .hourAndMinute])
@@ -149,6 +253,10 @@ struct OnboardingFlow: View {
                 }
             }
         }
+        // Paper 3 of a subject the student just switched away from would send a
+        // code that resolves to nothing — an ungrounded plan with no sign that
+        // anything went wrong.
+        .onChange(of: subjectCode) { componentCode = "" }
     }
 
     private enum TaskKind: String, CaseIterable, Identifiable {
@@ -242,6 +350,7 @@ struct OnboardingFlow: View {
         failure = nil
         preferences.name = name
         preferences.program = program
+        preferences.examBoard = board
         preferences.load = load
 
         if case .signedIn = session.state {
@@ -282,14 +391,20 @@ struct OnboardingFlow: View {
         // Now that there is an account, tell the server what the student is
         // studying. Best-effort: a failed sync costs slightly less specific
         // answers from Albus, never the assignment they are here to create.
-        await ProfileService().syncCurriculum(preferences.program.curriculumCode)
+        await ProfileService().syncCurriculum(preferences.curriculumCode)
+
+        // Subjects are created here rather than when they were picked: a flow
+        // abandoned on the deadline screen should leave nothing behind.
+        let course = await createChosenSubjects()
 
         await coordinator.addAssignment(
             NewAssignment(
                 title: taskTitle.trimmingCharacters(in: .whitespaces),
                 taskType: taskType,
                 deadline: deadline,
-                estimatedMinutes: Int(hours * 60)
+                estimatedMinutes: Int(hours * 60),
+                course: course,
+                assessmentCode: componentCode.nilIfEmpty
             ),
             context: context,
             availability: preferences.availability
@@ -298,6 +413,42 @@ struct OnboardingFlow: View {
         // A failed generation must not trap the student in onboarding: the
         // assignment is saved either way, and Task detail explains the gap.
         step = .meetAlbus
+    }
+
+    /// Creates every subject the student picked and returns the one their first
+    /// assignment belongs to, if any.
+    ///
+    /// The remote ids are awaited rather than fired off in the background: the
+    /// breakdown that runs immediately after this needs them to attach the
+    /// assignment to a course, and the whole step costs a handful of small
+    /// inserts against a call that already takes seconds.
+    private func createChosenSubjects() async -> Course? {
+        guard !chosenSubjects.isEmpty else { return nil }
+
+        let palette = Tokens.SubjectColor.allCases
+        var created: [(subject: CurriculumSubject, course: Course)] = []
+
+        for (index, subject) in chosenSubjects.enumerated() {
+            let course = Course(displayName: subject.shortName,
+                                colorKey: palette[index % palette.count],
+                                curriculumSubjectCode: subject.code)
+            context.insert(course)
+            created.append((subject, course))
+        }
+        try? context.save()
+
+        // Best-effort, exactly as everywhere else: a subject that did not sync
+        // is still a working subject on the device, just not yet on the server.
+        let profiles = ProfileService()
+        for (_, course) in created {
+            if let remote = await profiles.createCourse(displayName: course.displayName,
+                                                        colorKey: course.colorKey) {
+                course.remoteID = remote
+            }
+        }
+        try? context.save()
+
+        return created.first { $0.subject.code == subjectCode }?.course
     }
 
     private func field<Content: View>(_ label: String,
@@ -391,6 +542,86 @@ private struct ChoiceGrid<Option: Identifiable & Hashable>: View {
                 }
                 .buttonStyle(.plain)
                 .accessibilityAddTraits(isSelected ? [.isSelected] : [])
+            }
+        }
+    }
+}
+
+/// `ChoiceGrid` for values that are already codes rather than model types.
+///
+/// The subject and component grids choose between strings that came out of the
+/// bundled curriculum data, and wrapping each one in an `Identifiable` shim just
+/// to satisfy a generic constraint would be more code than this.
+private struct CodeGrid: View {
+    let columns: Int
+    let options: [(value: String, title: String)]
+    @Binding var selection: String
+
+    var body: some View {
+        ChipGrid(columns: columns, options: options,
+                 isSelected: { $0 == selection },
+                 toggle: { selection = $0 })
+    }
+}
+
+/// The same grid, but any number of chips can be on at once.
+private struct MultiChoiceGrid: View {
+    let columns: Int
+    let options: [(value: String, title: String)]
+    @Binding var selection: Set<String>
+
+    var body: some View {
+        ChipGrid(columns: columns, options: options,
+                 isSelected: { selection.contains($0) },
+                 toggle: { code in
+                     if selection.contains(code) { selection.remove(code) }
+                     else { selection.insert(code) }
+                 })
+    }
+}
+
+/// What both grids are made of. Kept separate from `ChoiceGrid` rather than
+/// generalising it: that one is bound to a single value of a model type and
+/// making one control serve both would mean a generic signature harder to read
+/// than the two call sites it saves.
+private struct ChipGrid: View {
+    let columns: Int
+    let options: [(value: String, title: String)]
+    let isSelected: (String) -> Bool
+    let toggle: (String) -> Void
+
+    var body: some View {
+        LazyVGrid(
+            columns: Array(repeating: GridItem(.flexible(), spacing: Tokens.Spacing.s),
+                           count: columns),
+            spacing: Tokens.Spacing.s
+        ) {
+            ForEach(options, id: \.value) { option in
+                let on = isSelected(option.value)
+                Button { toggle(option.value) } label: {
+                    Text(option.title)
+                        .font(Tokens.Typography.label)
+                        .foregroundStyle(on ? .white : Tokens.Palette.ink)
+                        .lineLimit(2)
+                        .minimumScaleFactor(0.85)
+                        .multilineTextAlignment(.center)
+                        .padding(.horizontal, Tokens.Spacing.xs)
+                        .frame(maxWidth: .infinity)
+                        .frame(minHeight: 44)
+                        .background(
+                            on ? AnyShapeStyle(Tokens.Palette.accent)
+                               : AnyShapeStyle(Tokens.Glass.fill),
+                            in: RoundedRectangle(cornerRadius: Tokens.Radius.control,
+                                                 style: .continuous)
+                        )
+                        .overlay {
+                            RoundedRectangle(cornerRadius: Tokens.Radius.control, style: .continuous)
+                                .strokeBorder(on ? .clear : Tokens.Palette.hairline, lineWidth: 0.5)
+                        }
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityAddTraits(on ? [.isSelected] : [])
             }
         }
     }

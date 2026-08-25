@@ -6,7 +6,8 @@
 import { requireUser } from "../_shared/auth.ts";
 import { errorResponse, HttpError, jsonResponse, mapPostgresError } from "../_shared/http.ts";
 import { assertCanGeneratePlan, recordTokensInBackground } from "../_shared/quota.ts";
-import { loadPersonalRubric, loadRubric } from "../_shared/curriculum.ts";
+import { loadCurriculumComponent, loadPersonalRubric } from "../_shared/curriculum.ts";
+import { curriculumCode } from "../_shared/codes.ts";
 import { generateBreakdown } from "../_shared/anthropic.ts";
 import {
   type BreakdownInput,
@@ -36,7 +37,8 @@ interface RequestBody {
   deadline?: unknown;
   estimated_minutes?: unknown;
   course_id?: unknown;
-  assessment_type_id?: unknown;
+  course_template_code?: unknown;
+  assessment_code?: unknown;
   notes?: unknown;
   rubric_id?: unknown;
   priority?: unknown;
@@ -79,7 +81,10 @@ function parseBody(body: RequestBody) {
     deadlineISO: new Date(deadlineMs).toISOString(),
     estimatedMinutes: Math.round(minutes),
     courseId: uuid(body.course_id),
-    assessmentTypeId: uuid(body.assessment_type_id),
+    // Dropped rather than rejected when malformed: an unrecognised code costs
+    // the student their grounding, which is a worse plan, not a failed one.
+    courseTemplateCode: curriculumCode(body.course_template_code),
+    assessmentCode: curriculumCode(body.assessment_code),
     notes: typeof body.notes === "string" ? body.notes.slice(0, 2000) : null,
     rubricId: uuid(body.rubric_id),
     // Normalised, not rejected: an unknown priority is a client bug and is not
@@ -109,11 +114,19 @@ Deno.serve(async (req) => {
     // The authoritative check lives in the RPC, inside the insert transaction.
     await assertCanGeneratePlan(caller);
 
+    // Resolve the component the client named, so the assignment records which
+    // paper it is even when the student also pasted their own rubric.
+    const component = await loadCurriculumComponent(
+      caller.db,
+      input.courseTemplateCode,
+      input.assessmentCode,
+    );
+
     // The student's own rubric wins over the curriculum default: they pasted it
-    // off the sheet they are actually being marked against. Only one lookup runs
-    // in the common case, because the second is skipped once the first hits.
+    // off the sheet they are actually being marked against.
     const rubric = (await loadPersonalRubric(caller.db, input.rubricId))
-      ?? (await loadRubric(caller.db, input.assessmentTypeId));
+      ?? component?.rubric
+      ?? null;
 
     const promptInput: BreakdownInput = {
       title: input.title,
@@ -182,7 +195,7 @@ Deno.serve(async (req) => {
         p_estimated_minutes: input.estimatedMinutes,
         p_subtasks: subtasks,
         p_course_id: input.courseId,
-        p_assessment_type_id: input.assessmentTypeId,
+        p_assessment_type_id: component?.assessmentTypeId ?? null,
         p_notes: input.notes,
         p_rubric_id: input.rubricId,
         p_priority: input.priority,
