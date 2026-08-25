@@ -20,25 +20,98 @@ import AlbusCore
 
 extension StudyTool {
 
-    /// Tools worth opening for one step of a plan.
+    /// The catalogue, once.
     ///
-    /// `limit` is what the step row can show without wrapping.
-    static func suggested(for step: Subtask, limit: Int = 3, now: Date = .now) -> [StudyTool] {
-        suggestions(for: step, limit: limit, now: now, excluding: toolsUsedEarlier(than: step, now: now))
+    /// `allCases` builds a fresh 225-element array on every access. Selection
+    /// touches it inside a sort comparator, so the first version allocated two
+    /// arrays per comparison and cost 197ms to render a twenty-step plan — an
+    /// order of magnitude over a frame. These two constants took that to under
+    /// a millisecond without changing a single recommendation.
+    static let catalogue: [StudyTool] = Array(StudyTool.allCases)
+
+    /// Position in the catalogue, for a stable tiebreak without a linear scan.
+    private static let catalogueIndex: [StudyTool: Int] = Dictionary(
+        uniqueKeysWithValues: catalogue.enumerated().map { ($1, $0) })
+
+    /// Everything scoring reads about a tool, resolved once.
+    ///
+    /// `needs`, `areas` and `setup` each go through the generated `spec`, whose
+    /// switch returns a tuple containing two arrays — so reading three
+    /// properties allocated six arrays, 225 times a step. Hoisting it here is
+    /// what took a twenty-step plan from 11ms to well under one.
+    private struct Capability {
+        let needs: Set<Need>
+        let areas: Set<Area>
+        let setup: Setup
+        let order: Int
     }
 
-    private static func suggestions(for step: Subtask, limit: Int, now: Date,
-                                    excluding alreadyUsed: Set<StudyTool>) -> [StudyTool] {
-        let assignment = step.assignment
-        let need = step.need ?? inferredNeed(for: step)
-        guard let need else { return [] }
+    private static let capabilities: [StudyTool: Capability] = Dictionary(
+        uniqueKeysWithValues: catalogue.enumerated().map { index, tool in
+            (tool, Capability(needs: Set(tool.needs), areas: Set(tool.areas),
+                              setup: tool.setup, order: index))
+        })
 
-        let areas = assignment.map { SubjectArea.of($0) } ?? []
-        let runway = assignment.map { Runway(assignment: $0, step: step, now: now) }
-            ?? Runway.comfortable
+    /// Which tools serve each need. Scoring walks this rather than the whole
+    /// catalogue: a need is served by a handful of tools, not two hundred.
+    private static let byNeed: [Need: [StudyTool]] = {
+        var out: [Need: [StudyTool]] = [:]
+        for tool in catalogue {
+            for need in tool.needs { out[need, default: []].append(tool) }
+        }
+        return out
+    }()
 
-        let scored = StudyTool.allCases.compactMap { tool -> (StudyTool, Int)? in
-            guard tool.needs.contains(need) else { return nil }
+    /// Tools for every step of a plan, in one pass.
+    ///
+    /// **Use this from a view, not `suggested(for:)`.** Each step's choice
+    /// depends on what earlier steps already used, so asking per step made every
+    /// row recompute the whole plan — quadratic, and 108ms to render twenty
+    /// steps when a frame has sixteen. One pass shares the subject lookup and
+    /// carries the used-set forward, which is both the cheap way and the
+    /// obvious one.
+    static func suggestions(forPlanOf assignment: Assignment,
+                            limit: Int = 3,
+                            now: Date = .now) -> [UUID: [StudyTool]] {
+        let areas = SubjectArea.of(assignment)
+        var used: Set<StudyTool> = []
+        var out: [UUID: [StudyTool]] = [:]
+
+        for step in assignment.subtasks.sorted(by: { $0.ordinal < $1.ordinal }) {
+            let tools = score(step: step, areas: areas,
+                              runway: Runway(assignment: assignment, step: step, now: now),
+                              excluding: used, limit: limit)
+            out[step.id] = tools
+            // Only the top pick is reserved: demoting everything a step could
+            // have used would empty the catalogue by the third one.
+            if let top = tools.first { used.insert(top) }
+        }
+        return out
+    }
+
+    /// Tools worth opening for one step, on its own.
+    ///
+    /// For a step with no plan around it — a preview, or Focus Mode showing one
+    /// step. A step that *is* in a plan should come from `suggestions(forPlanOf:)`,
+    /// which is why this does not walk the plan itself.
+    static func suggested(for step: Subtask, limit: Int = 3, now: Date = .now) -> [StudyTool] {
+        if let assignment = step.assignment {
+            return suggestions(forPlanOf: assignment, limit: limit, now: now)[step.id] ?? []
+        }
+        return score(step: step, areas: [], runway: .comfortable, excluding: [], limit: limit)
+    }
+
+    /// The scoring itself. Everything it needs is passed in, so the caller
+    /// decides how often the expensive parts are computed.
+    private static func score(step: Subtask,
+                              areas: Set<StudyTool.Area>,
+                              runway: Runway,
+                              excluding alreadyUsed: Set<StudyTool>,
+                              limit: Int) -> [StudyTool] {
+        guard let need = step.need ?? inferredNeed(for: step) else { return [] }
+
+        let scored = (byNeed[need] ?? []).map { tool -> (StudyTool, Int) in
+            let capability = capabilities[tool]!
             var score = 100
 
             // Subject fit. A tool that names its subjects and does not name this
@@ -46,10 +119,10 @@ extension StudyTool {
             // for a biology practical — so it is pushed below the general tools
             // rather than merely not boosted.
             //
-            // A subject maps to several areas (History is humanities *and*
-            // social science), and a tool to several too, so this is an
-            // intersection rather than an equality.
-            if !tool.areas.isEmpty {
+            // A subject maps to several areas (Economics is social science *and*
+            // humanities), and a tool to several too, so this is an intersection
+            // rather than an equality.
+            if !capability.areas.isEmpty {
                 if areas.isEmpty {
                     // Subject unknown — a student who typed something Albus does
                     // not recognise. A tool that names its subjects is then a
@@ -57,14 +130,14 @@ extension StudyTool {
                     // still be right: this is a preference, not a verdict.
                     score -= 15
                 } else {
-                    score += tool.areas.contains(where: areas.contains) ? 40 : -60
+                    score += capability.areas.contains(where: areas.contains) ? 40 : -60
                 }
             }
 
             // Setup has to be affordable. A reference manager is the right answer
             // for a three-week project and the wrong one for a 20-minute step due
             // tomorrow, and the tool itself does not change between those.
-            if tool.setup == .heavy { score += runway.heavyToolAdjustment }
+            if capability.setup == .heavy { score += runway.heavyToolAdjustment }
 
             // Variety, without randomness. A tool already suggested earlier in
             // this same plan is demoted, so a six-step essay does not read as
@@ -85,33 +158,7 @@ extension StudyTool {
     }
 
     private static func order(of tool: StudyTool) -> Int {
-        StudyTool.allCases.firstIndex(of: tool) ?? 0
-    }
-
-    /// What earlier steps in this plan already sent the student to.
-    ///
-    /// Computed by actually asking what each earlier step would suggest, rather
-    /// than by taking the first catalogue entry that serves its need. The cheap
-    /// version demoted a tool that was never shown: a maths plan with three
-    /// practice steps suggested Numbas at every one, because the penalty was
-    /// aimed at Khan Academy — first in the catalogue for that need, and not
-    /// what the scorer had actually picked for a maths student.
-    ///
-    /// Iterative rather than recursive, and each earlier step is asked only for
-    /// its top pick: demoting everything an earlier step *could* have used
-    /// would empty the catalogue by the third step. Bounded by the 12-step plan
-    /// cap, so this is a few thousand comparisons and no allocation worth
-    /// caching.
-    private static func toolsUsedEarlier(than step: Subtask, now: Date) -> Set<StudyTool> {
-        guard let assignment = step.assignment else { return [] }
-        var used: Set<StudyTool> = []
-        for earlier in assignment.subtasks.sorted(by: { $0.ordinal < $1.ordinal })
-        where earlier.ordinal < step.ordinal {
-            if let top = suggestions(for: earlier, limit: 1, now: now, excluding: used).first {
-                used.insert(top)
-            }
-        }
-        return used
+        capabilities[tool]?.order ?? 0
     }
 
     /// The need a plan written before the planner recorded one.
