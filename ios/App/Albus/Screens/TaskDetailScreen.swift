@@ -335,9 +335,17 @@ private struct StepRow: View {
     /// The card opens for the next step automatically, and for anything tapped.
     private var showsCard: Bool { isNext || isExpanded }
 
-    /// Tools are suggested from the step's own text. Deterministic and local —
-    /// no extra model call to decide that an outline benefits from Claude.
+    /// Tools come from what the planner said this step is *for*, scored against
+    /// the subject, the deadline and what earlier steps already used.
+    /// Deterministic and local — no extra model call to decide that an outline
+    /// benefits from a mind-mapping tool.
     private var tools: [StudyTool] { StudyTool.suggested(for: step) }
+
+    /// The reason those tools are here, in a student's words. Without it the
+    /// chips are three logos with no argument behind them.
+    private var toolReason: String? {
+        (step.need ?? StudyTool.inferredNeed(for: step))?.label
+    }
 
     var body: some View {
         HStack(alignment: .top, spacing: Tokens.Spacing.m) {
@@ -436,10 +444,18 @@ private struct StepRow: View {
         }
 
         if !tools.isEmpty {
-            // Wraps rather than scrolls: a horizontal scroller inside a
-            // vertical one steals the drag and makes the list feel broken.
-            FlowLayout(spacing: Tokens.Spacing.s) {
-                ForEach(tools) { ToolChip(tool: $0) }
+            VStack(alignment: .leading, spacing: Tokens.Spacing.xs) {
+                if let toolReason {
+                    Text(toolReason.uppercased())
+                        .font(Tokens.Typography.micro)
+                        .tracking(Tokens.Tracking.overline)
+                        .foregroundStyle(Tokens.Palette.inkMuted)
+                }
+                // Wraps rather than scrolls: a horizontal scroller inside a
+                // vertical one steals the drag and makes the list feel broken.
+                FlowLayout(spacing: Tokens.Spacing.s) {
+                    ForEach(tools) { ToolChip(tool: $0) }
+                }
             }
             .padding(.top, Tokens.Spacing.xs)
         }

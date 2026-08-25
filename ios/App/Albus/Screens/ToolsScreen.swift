@@ -95,7 +95,7 @@ struct ToolsScreen: View {
                 .font(Tokens.Typography.displayLarge)
                 .tracking(Tokens.Tracking.display)
                 .foregroundStyle(Tokens.Palette.ink)
-            Text("\(StudyTool.allCases.count) tools. Albus suggests the right one inside a step.")
+            Text("\(StudyTool.allCases.count) tools. Albus picks from all of them inside a step, by what the step is for.")
                 .font(Tokens.Typography.caption)
                 .foregroundStyle(Tokens.Palette.inkSecondary)
                 .fixedSize(horizontal: false, vertical: true)

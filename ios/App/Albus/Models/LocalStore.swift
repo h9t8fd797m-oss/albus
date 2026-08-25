@@ -188,6 +188,14 @@ final class Subtask {
     var completedAt: Date?
     /// The rubric criterion this step serves, e.g. "A". Nil for general work.
     var criterionCode: String?
+    /// What this step needs doing to it — `source_research`, `worked_examples`.
+    /// Written by the planner, which knows why it wrote the step; the tool
+    /// selector reads it instead of guessing from the title.
+    ///
+    /// Stored raw so an unknown value from a newer server is ignored rather
+    /// than crashing an older client, and defaulted in the declaration because
+    /// SwiftData needs a value for rows written before this column existed.
+    var toolNeed: String? = nil
 
     var assignment: Assignment?
 
@@ -196,7 +204,7 @@ final class Subtask {
 
     init(id: UUID = UUID(), remoteID: UUID? = nil, title: String, guidance: String? = nil,
          ordinal: Int, estimatedMinutes: Int, criterionCode: String? = nil,
-         assignment: Assignment? = nil) {
+         toolNeed: String? = nil, assignment: Assignment? = nil) {
         self.id = id
         self.remoteID = remoteID
         self.title = title
@@ -204,8 +212,12 @@ final class Subtask {
         self.ordinal = ordinal
         self.estimatedMinutes = estimatedMinutes
         self.criterionCode = criterionCode
+        self.toolNeed = toolNeed
         self.assignment = assignment
     }
+
+    /// The planner's recorded need, if it is one this build understands.
+    var need: StudyTool.Need? { toolNeed.flatMap(StudyTool.Need.init(rawValue:)) }
 }
 
 @Model

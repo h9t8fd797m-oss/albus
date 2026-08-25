@@ -14,11 +14,15 @@ struct PlanService {
         let guidance: String
         let estimatedMinutes: Int
         let criterionCode: String?
+        /// What this step needs doing to it. Decides which tools the step row
+        /// offers, out of the whole catalogue rather than a hard-coded few.
+        let toolNeed: String?
 
         private enum CodingKeys: String, CodingKey {
             case title, guidance
             case estimatedMinutes = "estimated_minutes"
             case criterionCode = "rubric_criterion_code"
+            case toolNeed = "tool_need"
         }
     }
 

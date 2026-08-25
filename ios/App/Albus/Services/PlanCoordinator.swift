@@ -72,6 +72,7 @@ final class PlanCoordinator {
                     ordinal: i,
                     estimatedMinutes: step.estimatedMinutes,
                     criterionCode: step.criterionCode,
+                    toolNeed: step.toolNeed,
                     assignment: assignment
                 ))
             }
