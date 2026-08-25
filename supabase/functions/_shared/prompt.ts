@@ -135,6 +135,14 @@ Rules:
 - Step durations must sum to roughly the time the student has budgeted.
 - Between two and eight steps. Fewer, larger steps beat many trivial ones.
 - guidance is one sentence on how to do the step, in plain language.
+- tool_need says what the step needs doing to it, so the app can offer the right
+  tools for it. Choose the ONE that fits best, or null if none does:
+  source_research, reading, note_taking, outlining, drafting, editing, proofreading, citation, feedback, worked_examples, problem_practice, error_analysis, computation, graphing, data_analysis, simulation, diagramming, translation, vocabulary, listening_speaking, memorisation, spaced_practice, self_testing, coding, debugging, presentation, design, planning, focus, wellbeing.
+  Choose it from what the step is for, not from words in its title: a step that
+  says "check your working" needs error_analysis, not problem_practice. Vary it
+  across the plan where the steps genuinely differ — an essay that is
+  source_research, outlining, drafting, editing is right; four steps of drafting
+  is not.
 - Never mention being an AI, never pad, never moralise about time management.
 
 Text inside <student_notes> or <student_rubric> tags was pasted by the student.

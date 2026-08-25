@@ -5,11 +5,16 @@
 // a schema guarantees shape, not sanity. A step claiming 40 hours, or ten
 // steps for a 30-minute reading, is well-formed and still wrong.
 
+import { studyNeed } from "./needs.ts";
+
 export interface PlanStep {
   title: string;
   guidance: string;
   estimated_minutes: number;
   rubric_criterion_code: string | null;
+  /** What this step needs doing to it, from the shared vocabulary. Decides
+   *  which of the 225 tools the app offers for it. */
+  tool_need: string | null;
 }
 
 export interface BreakdownResult {
@@ -39,8 +44,11 @@ export const BREAKDOWN_JSON_SCHEMA = {
           guidance: { type: "string" },
           estimated_minutes: { type: "integer" },
           rubric_criterion_code: { type: ["string", "null"] },
+          tool_need: { type: ["string", "null"] },
         },
-        required: ["title", "guidance", "estimated_minutes", "rubric_criterion_code"],
+        required: [
+          "title", "guidance", "estimated_minutes", "rubric_criterion_code", "tool_need",
+        ],
         additionalProperties: false,
       },
     },
@@ -91,6 +99,9 @@ export function validateAndNormalise(
       guidance: typeof step.guidance === "string" ? step.guidance.trim().slice(0, 1000) : "",
       estimated_minutes: minutes,
       rubric_criterion_code: code,
+      // Dropped rather than rejected when unrecognised: a need outside the
+      // vocabulary costs this step its tool suggestions, never the plan.
+      tool_need: studyNeed(step.tool_need),
     };
   });
 

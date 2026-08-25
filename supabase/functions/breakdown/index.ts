@@ -184,6 +184,9 @@ Deno.serve(async (req) => {
       rubric_criterion_id: s.rubric_criterion_code
         ? codeToId.get(s.rubric_criterion_code) ?? null
         : null,
+      // Already validated against the shared vocabulary; the column's check
+      // constraint is the second line of defence, not the first.
+      tool_need: s.tool_need,
     }));
 
     const { data: assignmentId, error } = await caller.db.rpc(
