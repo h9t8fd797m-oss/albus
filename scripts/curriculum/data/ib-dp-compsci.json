@@ -1,0 +1,51 @@
+{
+  "code": "IB_DP_COMPSCI",
+  "qualification": "IB_DP",
+  "subject": "Computer science",
+  "specVersion": "First assessment 2027",
+  "source": "https://www.ibo.org/programmes/diploma-programme/curriculum/",
+  "retrievedAt": "2026-08-25",
+  "verifiedPages": "knowledge base 7.2, 7.12",
+  "objectives": [],
+  "components": [
+    {
+      "code": "IA_SL",
+      "name": "Computational solution (SL)",
+      "kind": "internal_assessment",
+      "minutes": 2100,
+      "marks": 30,
+      "weighting": 30,
+      "level": "SL",
+      "criteria": []
+    },
+    {
+      "code": "EXTERNAL_SL",
+      "name": "Examinations (SL)",
+      "kind": "exam",
+      "weighting": 70,
+      "level": "SL"
+    },
+    {
+      "code": "IA_HL",
+      "name": "Computational solution (HL)",
+      "kind": "internal_assessment",
+      "minutes": 2100,
+      "marks": 30,
+      "weighting": 20,
+      "level": "HL",
+      "criteria": []
+    },
+    {
+      "code": "EXTERNAL_HL",
+      "name": "Examinations (HL)",
+      "kind": "exam",
+      "weighting": 80,
+      "level": "HL"
+    }
+  ],
+  "notes": [
+    "First assessment 2027; marks and criteria are still settling in public sources.",
+    "Documentation-based, with a video.",
+    "Figures taken from the Albus IB knowledge base v1.0 (compiled August 2026), which paraphrases the official IB subject guides rather than reproducing them. Verify against the current guide before quoting marks to a student."
+  ]
+}

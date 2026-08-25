@@ -26,8 +26,32 @@ export interface RubricContext {
   courseName: string;
   assessmentName: string;
   criteria: RubricCriterion[];
+  /**
+   * Assessment objectives — AO1/AO2/AO3 and their weightings. Belong to the
+   * subject, not the component, and are what a paper with no per-criterion
+   * marks is actually assessed against.
+   */
+  objectives?: AssessmentObjective[];
+  /** Scheduled length of the component, where the board publishes one. */
+  componentMinutes?: number | null;
   /** The pasted sheet, when the student did not break it into criteria. */
   body: string | null;
+}
+
+export interface AssessmentObjective {
+  code: string;
+  name: string;
+  weightingMin: number | null;
+  weightingMax: number | null;
+}
+
+/** "30-35%", or "30%" where a board publishes a single figure. */
+export function objectiveWeighting(o: AssessmentObjective): string {
+  if (o.weightingMin == null && o.weightingMax == null) return "";
+  if (o.weightingMin != null && o.weightingMax != null && o.weightingMin !== o.weightingMax) {
+    return ` (${o.weightingMin}-${o.weightingMax}%)`;
+  }
+  return ` (${o.weightingMin ?? o.weightingMax}%)`;
 }
 
 export interface BreakdownInput {
@@ -57,7 +81,11 @@ export const MODEL_GENERIC = "claude-haiku-4-5";
  * goes to the cheap one. See docs/backend.md for the cost working.
  */
 export function hasRubricContent(r: RubricContext | null): boolean {
-  return r != null && (r.criteria.length > 0 || (r.body ?? "").trim().length > 0);
+  return r != null && (
+    r.criteria.length > 0 ||
+    (r.objectives?.length ?? 0) > 0 ||
+    (r.body ?? "").trim().length > 0
+  );
 }
 
 export function selectModel(input: BreakdownInput): string {
@@ -149,12 +177,40 @@ on every step.`;
     })
     .join("\n");
 
+  const objectives = (rubricCtx.objectives ?? [])
+    .map((o) => `- ${o.code}: ${o.name}${objectiveWeighting(o)}`)
+    .join("\n");
+
+  const length = rubricCtx.componentMinutes
+    ? `\nIt is a ${rubricCtx.componentMinutes}-minute component.`
+    : "";
+
+  // Two shapes, because two things are being described. A component with marked
+  // criteria (an IB internal assessment) gets steps mapped onto those criteria.
+  // A component with only assessment objectives (an A-level paper) has no
+  // per-criterion marks to map onto — steps there are revision and practice
+  // shaped by what the paper rewards, and telling the model to emit criterion
+  // codes would invite it to invent them.
+  if (criteria.length === 0) {
+    return `${VOICE}
+
+This is assessed work: ${rubricCtx.assessmentName}, ${rubricCtx.courseName} (${rubricCtx.curriculumName}).${length}
+
+It is assessed against these objectives:
+${objectives}
+
+Weight the plan towards what this component actually rewards — an objective
+carrying 45% deserves more of the student's time than one carrying 25%. Set
+rubric_criterion_code to null on every step: this component is not marked by
+criterion, and inventing a code would be worse than leaving it empty.`;
+  }
+
   return `${VOICE}
 
-This assignment is assessed work: ${rubricCtx.assessmentName}, ${rubricCtx.courseName} (${rubricCtx.curriculumName}).
+This assignment is assessed work: ${rubricCtx.assessmentName}, ${rubricCtx.courseName} (${rubricCtx.curriculumName}).${length}
 
 It is marked against these criteria:
-${criteria}
+${criteria}${objectives ? `\n\nAnd assessed against these objectives:\n${objectives}` : ""}
 
 Shape the steps around these criteria in the order a student would actually
 work through them. Set rubric_criterion_code to the matching code for steps

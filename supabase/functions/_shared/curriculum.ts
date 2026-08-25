@@ -3,25 +3,50 @@
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import type { RubricContext } from "./prompt.ts";
 
-/**
- * Read through the caller's own client so RLS applies. Curriculum data is
- * world-readable to signed-in users, so this succeeds for any authenticated
- * caller and returns null when the assignment has no assessment attached.
- */
-export async function loadRubric(
-  db: SupabaseClient,
-  assessmentTypeId: string | null,
-): Promise<RubricContext | null> {
-  if (!assessmentTypeId) return null;
+/** What the client named, resolved against our own copy of the specification. */
+export interface CurriculumComponent {
+  /** The real `assessment_types.id`, for the foreign key on the assignment. */
+  assessmentTypeId: string;
+  /** Null when we hold the component but nothing useful about how it is marked. */
+  rubric: RubricContext | null;
+}
 
+/**
+ * Resolve a subject + component the client named by code.
+ *
+ * Codes, not ids. The device has the subject list compiled in and must be able
+ * to offer it before it has ever reached the network, so it cannot know a uuid
+ * the server generated. Both codes are attacker-controlled, which costs nothing
+ * here: they are equality filters against world-readable reference data, and the
+ * worst a forged pair achieves is grounding the student's own plan in a subject
+ * they do not take.
+ *
+ * Read through the caller's own client so RLS applies.
+ */
+export async function loadCurriculumComponent(
+  db: SupabaseClient,
+  courseTemplateCode: string | null,
+  assessmentCode: string | null,
+): Promise<CurriculumComponent | null> {
+  if (!courseTemplateCode || !assessmentCode) return null;
+
+  // `!inner` is what lets the filter on the parent's code actually exclude
+  // rows; a plain embed would return every matching component and simply leave
+  // the parent null.
   const { data, error } = await db
     .from("assessment_types")
     .select(`
-      name,
-      course_templates ( name, curricula ( name ) ),
+      id, name, typical_minutes,
+      course_templates!inner (
+        code,
+        name,
+        curricula ( name ),
+        assessment_objectives ( code, name, weighting_min, weighting_max, ordinal )
+      ),
       rubric_criteria ( id, code, name, marks, guidance, ordinal )
     `)
-    .eq("id", assessmentTypeId)
+    .eq("code", assessmentCode)
+    .eq("course_templates.code", courseTemplateCode)
     .maybeSingle();
 
   // A missing rubric must not fail the request — it degrades to a generic
@@ -36,7 +61,11 @@ export async function loadRubric(
   const one = <T>(v: unknown): T | null =>
     Array.isArray(v) ? (v[0] as T ?? null) : ((v as T) ?? null);
 
-  const course = one<{ name: string; curricula: unknown }>(data.course_templates);
+  const course = one<{
+    name: string;
+    curricula: unknown;
+    assessment_objectives?: unknown[];
+  }>(data.course_templates);
   const curriculum = one<{ name: string }>(course?.curricula);
 
   const criteria = ((data.rubric_criteria ?? []) as Array<{
@@ -50,15 +79,46 @@ export async function loadRubric(
     .sort((a, b) => a.ordinal - b.ordinal)
     .map(({ id, code, name, marks, guidance }) => ({ id, code, name, marks, guidance }));
 
-  if (criteria.length === 0) return null;
+  // Assessment objectives, which is what makes an A-level paper groundable.
+  //
+  // A-level components carry no per-criterion marks — the marks live in the
+  // paper as a whole — so before this the function found no criteria and
+  // returned null, and every A-level plan silently fell back to generic. The
+  // objectives are the thing that says what the paper actually rewards.
+  const objectives = ((course?.assessment_objectives ?? []) as Array<{
+    code: string;
+    name: string;
+    weighting_min: number | null;
+    weighting_max: number | null;
+    ordinal: number;
+  }>)
+    .sort((a, b) => a.ordinal - b.ordinal)
+    .map(({ code, name, weighting_min, weighting_max }) => ({
+      code,
+      name,
+      weightingMin: weighting_min,
+      weightingMax: weighting_max,
+    }));
+
+  // The component itself is always worth returning — it is what the assignment
+  // records as its own. Only the *grounding* needs us to know something useful
+  // about how it is marked: criteria, or objectives.
+  const known = criteria.length > 0 || objectives.length > 0;
 
   return {
-    kind: "curriculum",
-    curriculumName: curriculum?.name ?? "General",
-    courseName: course?.name ?? "Course",
-    assessmentName: data.name as string,
-    criteria,
-    body: null,
+    assessmentTypeId: data.id as string,
+    rubric: known
+      ? {
+        kind: "curriculum",
+        curriculumName: curriculum?.name ?? "General",
+        courseName: course?.name ?? "Course",
+        assessmentName: data.name as string,
+        criteria,
+        objectives,
+        componentMinutes: (data.typical_minutes as number | null) ?? null,
+        body: null,
+      }
+      : null,
   };
 }
 

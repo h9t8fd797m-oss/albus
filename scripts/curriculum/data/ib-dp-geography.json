@@ -1,0 +1,52 @@
+{
+  "code": "IB_DP_GEOGRAPHY",
+  "qualification": "IB_DP",
+  "subject": "Geography",
+  "specVersion": "Current guide",
+  "source": "https://www.ibo.org/programmes/diploma-programme/curriculum/",
+  "retrievedAt": "2026-08-25",
+  "verifiedPages": "knowledge base 7.2, 7.8",
+  "objectives": [],
+  "components": [
+    {
+      "code": "IA_SL",
+      "name": "Fieldwork report (SL)",
+      "kind": "internal_assessment",
+      "minutes": 1200,
+      "marks": 25,
+      "weighting": 25,
+      "level": "SL",
+      "criteria": []
+    },
+    {
+      "code": "EXTERNAL_SL",
+      "name": "Examinations (SL)",
+      "kind": "exam",
+      "weighting": 75,
+      "level": "SL"
+    },
+    {
+      "code": "IA_HL",
+      "name": "Fieldwork report (HL)",
+      "kind": "internal_assessment",
+      "minutes": 1200,
+      "marks": 25,
+      "weighting": 20,
+      "level": "HL",
+      "criteria": []
+    },
+    {
+      "code": "EXTERNAL_HL",
+      "name": "Examinations (HL)",
+      "kind": "exam",
+      "weighting": 80,
+      "level": "HL"
+    }
+  ],
+  "notes": [
+    "Maximum 2,500 words; markers are advised to stop reading past the limit, which hits the later criteria hardest.",
+    "Six criteria A to F; the per-criterion marks are not confirmed in the source used.",
+    "Primary data collected at a local scale.",
+    "Figures taken from the Albus IB knowledge base v1.0 (compiled August 2026), which paraphrases the official IB subject guides rather than reproducing them. Verify against the current guide before quoting marks to a student."
+  ]
+}

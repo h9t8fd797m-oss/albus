@@ -1,0 +1,53 @@
+{
+  "code": "IB_DP_BUSINESS",
+  "qualification": "IB_DP",
+  "subject": "Business management",
+  "specVersion": "First assessment 2024",
+  "source": "https://www.ibo.org/programmes/diploma-programme/curriculum/",
+  "retrievedAt": "2026-08-25",
+  "verifiedPages": "knowledge base 7.2, 7.7",
+  "objectives": [],
+  "components": [
+    {
+      "code": "IA_SL",
+      "name": "Business research project (SL)",
+      "kind": "internal_assessment",
+      "minutes": 1200,
+      "marks": 25,
+      "weighting": 30,
+      "level": "SL",
+      "criteria": []
+    },
+    {
+      "code": "EXTERNAL_SL",
+      "name": "Examinations (SL)",
+      "kind": "exam",
+      "weighting": 70,
+      "level": "SL"
+    },
+    {
+      "code": "IA_HL",
+      "name": "Business research project (HL)",
+      "kind": "internal_assessment",
+      "minutes": 1200,
+      "marks": 25,
+      "weighting": 20,
+      "level": "HL",
+      "criteria": []
+    },
+    {
+      "code": "EXTERNAL_HL",
+      "name": "Examinations (HL)",
+      "kind": "exam",
+      "weighting": 80,
+      "level": "HL"
+    }
+  ],
+  "notes": [
+    "Maximum 1,800 words; only the first 1,800 are marked.",
+    "One real organisation, and exactly one of change, creativity, ethics or sustainability as the lens.",
+    "Three to five supporting documents must be attached.",
+    "The published criterion mark split is not confirmed in the source used; do not quote per-criterion marks.",
+    "Figures taken from the Albus IB knowledge base v1.0 (compiled August 2026), which paraphrases the official IB subject guides rather than reproducing them. Verify against the current guide before quoting marks to a student."
+  ]
+}

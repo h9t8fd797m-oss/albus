@@ -1,0 +1,31 @@
+{
+  "code": "AQA_ALEVEL_PHYSICS",
+  "qualification": "A_LEVEL",
+  "board": "AQA",
+  "subject": "Physics",
+  "specCode": "7408",
+  "specVersion": "1.3 (1 June 2017), first teaching 2015",
+  "source": "https://filestore.aqa.org.uk/resources/physics/specifications/AQA-7407-7408-SP-2015.PDF",
+  "retrievedAt": "2026-08-24",
+  "verifiedPages": "9 (Paper 1), 71 (assessment objectives)",
+  "objectives": [
+    { "code": "AO1", "name": "Demonstrate knowledge and understanding of scientific ideas, processes, techniques and procedures", "weightingMin": 33, "weightingMax": 33 },
+    { "code": "AO2", "name": "Apply knowledge and understanding of scientific ideas, processes, techniques and procedures", "weightingMin": 42, "weightingMax": 42 },
+    { "code": "AO3", "name": "Analyse, interpret and evaluate scientific information, ideas and evidence", "weightingMin": 25, "weightingMax": 25 }
+  ],
+  "components": [
+    { "code": "PAPER_1", "name": "Paper 1", "kind": "exam", "minutes": 120, "marks": 85, "weighting": 34,
+      "covers": "Sections 1-5 and 6.1 (Periodic motion)",
+      "format": "60 marks of short and long answer questions and 25 multiple choice questions" },
+    { "code": "PAPER_2", "name": "Paper 2", "kind": "exam", "minutes": 120, "marks": 85, "weighting": 34,
+      "covers": null, "format": null },
+    { "code": "PAPER_3", "name": "Paper 3", "kind": "exam", "minutes": 120, "marks": 80, "weighting": 32,
+      "covers": null, "format": null }
+  ],
+  "notes": [
+    "Assessment objectives are set by Ofqual and are identical across every board's A-level Physics; only the weightings differ.",
+    "40% of the overall assessment contains mathematical skills at Level 2 or above.",
+    "At least 15% of the overall assessment covers practical work.",
+    "Paper 3 includes an options section; students answer on one option from sections 9-13."
+  ]
+}

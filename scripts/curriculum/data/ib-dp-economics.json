@@ -1,0 +1,53 @@
+{
+  "code": "IB_DP_ECONOMICS",
+  "qualification": "IB_DP",
+  "subject": "Economics",
+  "specVersion": "First assessment 2022",
+  "source": "https://www.ibo.org/programmes/diploma-programme/curriculum/",
+  "retrievedAt": "2026-08-25",
+  "verifiedPages": "knowledge base 7.2, 7.6",
+  "objectives": [],
+  "components": [
+    {
+      "code": "IA_SL",
+      "name": "Portfolio of three commentaries (SL)",
+      "kind": "internal_assessment",
+      "minutes": 1200,
+      "marks": 45,
+      "weighting": 30,
+      "level": "SL",
+      "criteria": []
+    },
+    {
+      "code": "EXTERNAL_SL",
+      "name": "Examinations (SL)",
+      "kind": "exam",
+      "weighting": 70,
+      "level": "SL"
+    },
+    {
+      "code": "IA_HL",
+      "name": "Portfolio of three commentaries (HL)",
+      "kind": "internal_assessment",
+      "minutes": 1200,
+      "marks": 45,
+      "weighting": 20,
+      "level": "HL",
+      "criteria": []
+    },
+    {
+      "code": "EXTERNAL_HL",
+      "name": "Examinations (HL)",
+      "kind": "exam",
+      "weighting": 80,
+      "level": "HL"
+    }
+  ],
+  "notes": [
+    "Three commentaries, maximum 800 words each, marked out of 14, plus 3 portfolio marks.",
+    "Each must use a different syllabus unit, a different key concept and a different source.",
+    "Articles must have been published within a year of the commentary.",
+    "At SL this is the highest-weighted IA of the major group 3 subjects.",
+    "Figures taken from the Albus IB knowledge base v1.0 (compiled August 2026), which paraphrases the official IB subject guides rather than reproducing them. Verify against the current guide before quoting marks to a student."
+  ]
+}

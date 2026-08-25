@@ -5,6 +5,7 @@ import {
   buildUserPrompt,
   daysUntil,
   MODEL_GENERIC,
+  hasRubricContent,
   MODEL_RUBRIC,
   type RubricContext,
   selectModel,
@@ -175,4 +176,65 @@ Deno.test("priority colours the advice without inventing a schedule", () => {
   assertStringIncludes(buildUserPrompt({ ...base, priority: "low" }), "keep the plan lean");
   const normal = buildUserPrompt({ ...base, priority: "normal" });
   assert(!normal.includes("front-load") && !normal.includes("keep the plan lean"));
+});
+
+// MARK: - Curriculum grounding via assessment objectives
+
+const AQA_PAPER: RubricContext = {
+  kind: "curriculum",
+  curriculumName: "A-Level (AQA)",
+  courseName: "Biology",
+  assessmentName: "Paper 3",
+  criteria: [],
+  objectives: [
+    { code: "AO1", name: "Demonstrate knowledge and understanding", weightingMin: 30, weightingMax: 35 },
+    { code: "AO2", name: "Apply knowledge and understanding", weightingMin: 40, weightingMax: 45 },
+    { code: "AO3", name: "Analyse, interpret and evaluate", weightingMin: 25, weightingMax: 25 },
+  ],
+  componentMinutes: 120,
+  body: null,
+};
+
+Deno.test("an exam paper with only objectives still counts as grounded", () => {
+  // The regression this exists for: A-level components carry no per-criterion
+  // marks, so a criteria-only check returned null and every A-level plan
+  // silently fell back to generic.
+  assert(hasRubricContent(AQA_PAPER));
+  assertEquals(selectModel({ ...base, rubric: AQA_PAPER }), MODEL_RUBRIC);
+});
+
+Deno.test("objectives and their weightings reach the system prompt", () => {
+  const system = buildSystemPrompt(AQA_PAPER);
+  assertStringIncludes(system, "AO1");
+  assertStringIncludes(system, "(30-35%)");
+  assertStringIncludes(system, "(25%)");   // single figure, not "25-25%"
+  assertStringIncludes(system, "Paper 3");
+  assertStringIncludes(system, "120-minute");
+});
+
+Deno.test("a paper with no criteria is told not to invent criterion codes", () => {
+  // Left to itself the model will happily emit "Criterion A" for an AQA paper
+  // that has no criteria at all, and the client would render it.
+  const system = buildSystemPrompt(AQA_PAPER).replace(/\s+/g, " ");
+  assertStringIncludes(system, "rubric_criterion_code to null on every step");
+});
+
+Deno.test("weighting drives emphasis, not just decoration", () => {
+  const system = buildSystemPrompt(AQA_PAPER).replace(/\s+/g, " ");
+  assertStringIncludes(system, "deserves more of the student's time");
+});
+
+Deno.test("a criteria-bearing component still maps steps onto criteria", () => {
+  const withBoth: RubricContext = { ...RUBRIC, objectives: AQA_PAPER.objectives };
+  const system = buildSystemPrompt(withBoth);
+  assertStringIncludes(system, "A: Identifying and evaluating sources");
+  assertStringIncludes(system, "never invent one");
+  // Objectives are additive context, they must not replace the criteria.
+  assertStringIncludes(system, "AO2");
+});
+
+Deno.test("an empty curriculum context is still not grounded", () => {
+  const empty: RubricContext = { ...AQA_PAPER, objectives: [], criteria: [] };
+  assert(!hasRubricContent(empty));
+  assertEquals(selectModel({ ...base, rubric: empty }), MODEL_GENERIC);
 });

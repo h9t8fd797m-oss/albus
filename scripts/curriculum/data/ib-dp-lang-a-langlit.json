@@ -1,0 +1,52 @@
+{
+  "code": "IB_DP_LANG_A_LANGLIT",
+  "qualification": "IB_DP",
+  "subject": "Language A: language and literature",
+  "specVersion": "First assessment 2021",
+  "source": "https://www.ibo.org/programmes/diploma-programme/curriculum/",
+  "retrievedAt": "2026-08-25",
+  "verifiedPages": "knowledge base 7.2, 7.9",
+  "objectives": [],
+  "components": [
+    {
+      "code": "IA_SL",
+      "name": "Individual oral (SL)",
+      "kind": "internal_assessment",
+      "minutes": 15,
+      "marks": 40,
+      "weighting": 30,
+      "level": "SL",
+      "criteria": []
+    },
+    {
+      "code": "EXTERNAL_SL",
+      "name": "Examinations (SL)",
+      "kind": "exam",
+      "weighting": 70,
+      "level": "SL"
+    },
+    {
+      "code": "IA_HL",
+      "name": "Individual oral (HL)",
+      "kind": "internal_assessment",
+      "minutes": 15,
+      "marks": 40,
+      "weighting": 20,
+      "level": "HL",
+      "criteria": []
+    },
+    {
+      "code": "EXTERNAL_HL",
+      "name": "Examinations (HL)",
+      "kind": "exam",
+      "weighting": 80,
+      "level": "HL"
+    }
+  ],
+  "notes": [
+    "Two extracts, one literary and one non-literary, connected by a global issue.",
+    "A global issue must be significant at scale, transnational, and felt locally.",
+    "Works used for the oral may not be reused for the HL essay or paper 2.",
+    "Figures taken from the Albus IB knowledge base v1.0 (compiled August 2026), which paraphrases the official IB subject guides rather than reproducing them. Verify against the current guide before quoting marks to a student."
+  ]
+}

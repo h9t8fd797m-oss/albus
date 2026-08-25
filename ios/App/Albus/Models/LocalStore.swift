@@ -18,6 +18,14 @@ final class Course {
     /// error rather than silent data corruption.
     var colorKey: String
     var courseTemplateID: UUID?
+    /// Which bundled curriculum subject this is, by code — `AQA_ALEVEL_BIOLOGY`.
+    ///
+    /// A code rather than the server's uuid, because this has to work before the
+    /// device has ever reached the network: the subject list, its components and
+    /// their durations are all compiled in. The server resolves the code against
+    /// its own copy, so a modified client can pick a different subject's
+    /// structure but can never invent one.
+    var curriculumSubjectCode: String?
     var createdAt: Date
 
     @Relationship(deleteRule: .cascade, inverse: \Assignment.course)
@@ -25,13 +33,20 @@ final class Course {
 
     init(id: UUID = UUID(), remoteID: UUID? = nil, displayName: String,
          colorKey: Tokens.SubjectColor = .violet, courseTemplateID: UUID? = nil,
-         createdAt: Date = .now) {
+         curriculumSubjectCode: String? = nil, createdAt: Date = .now) {
         self.id = id
         self.remoteID = remoteID
         self.displayName = displayName
         self.colorKey = colorKey.rawValue
         self.courseTemplateID = courseTemplateID
+        self.curriculumSubjectCode = curriculumSubjectCode
         self.createdAt = createdAt
+    }
+
+    /// What Albus knows about how this subject is assessed, or nil for a
+    /// subject the student named themselves.
+    var curriculum: CurriculumSubject? {
+        curriculumSubjectCode.flatMap(CurriculumSubject.find(code:))
     }
 
     /// Subject colour is a property of the course, never of the card showing
@@ -58,7 +73,12 @@ final class Assignment {
     /// Defaulted in the declaration, not just the initialiser: SwiftData needs a
     /// value for rows written before this column existed.
     var priority: String = AssignmentPriority.normal.rawValue
-    var assessmentTypeID: UUID?
+    /// Which component of the course this is — `PAPER_3`, `IA` — or nil.
+    ///
+    /// Paired with the course's `curriculumSubjectCode`, this is what makes a
+    /// plan curriculum-grounded. It was a server uuid, which the device had no
+    /// way of knowing offline and no screen could therefore ever set.
+    var assessmentCode: String?
     var createdAt: Date
     var updatedAt: Date
 
@@ -80,7 +100,7 @@ final class Assignment {
          taskType: String = "other", deadline: Date, estimatedMinutes: Int,
          status: AssignmentStatus = .active,
          priority: AssignmentPriority = .normal,
-         assessmentTypeID: UUID? = nil,
+         assessmentCode: String? = nil,
          course: Course? = nil, rubric: Rubric? = nil, createdAt: Date = .now) {
         self.id = id
         self.remoteID = remoteID
@@ -91,7 +111,7 @@ final class Assignment {
         self.estimatedMinutes = estimatedMinutes
         self.status = status.rawValue
         self.priority = priority.rawValue
-        self.assessmentTypeID = assessmentTypeID
+        self.assessmentCode = assessmentCode
         self.course = course
         self.rubric = rubric
         self.createdAt = createdAt
@@ -417,6 +437,14 @@ struct NewAssignment {
     var priority: AssignmentPriority = .normal
     var course: Course?
     var rubric: Rubric?
+    /// Which component of the course this is — "Paper 3", "Internal assessment" —
+    /// by code.
+    ///
+    /// Only the *code* travels to the server, never the criteria. The server
+    /// reads its own copy of what that component is; a modified client can name
+    /// a different component but cannot put invented assessment criteria into
+    /// the model's context.
+    var assessmentCode: String?
     /// What the student typed about the assignment. Capped at what the server
     /// accepts, so a note that saves is a note that syncs.
     var notes: String?

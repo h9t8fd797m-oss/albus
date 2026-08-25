@@ -1,0 +1,102 @@
+{
+  "code": "IB_DP_CHEMISTRY",
+  "qualification": "IB_DP",
+  "subject": "Chemistry",
+  "specVersion": "First assessment 2025",
+  "source": "https://www.ibo.org/programmes/diploma-programme/curriculum/",
+  "retrievedAt": "2026-08-25",
+  "verifiedPages": "knowledge base 7.2, 7.3",
+  "objectives": [],
+  "components": [
+    {
+      "code": "IA_SL",
+      "name": "Scientific investigation (SL)",
+      "kind": "internal_assessment",
+      "minutes": 600,
+      "marks": 24,
+      "weighting": 20,
+      "level": "SL",
+      "criteria": [
+        {
+          "code": "A",
+          "name": "Research design",
+          "marks": 6,
+          "guidance": "State the question with its variables and enough method to repeat."
+        },
+        {
+          "code": "B",
+          "name": "Data analysis",
+          "marks": 6,
+          "guidance": "Record, process and present data so a conclusion can be drawn, uncertainties included."
+        },
+        {
+          "code": "C",
+          "name": "Conclusion",
+          "marks": 6,
+          "guidance": "Answer your own question against the analysis and published science, uncertainties included."
+        },
+        {
+          "code": "D",
+          "name": "Evaluation",
+          "marks": 6,
+          "guidance": "Name the specific weaknesses that mattered most and improvements that address them."
+        }
+      ]
+    },
+    {
+      "code": "EXTERNAL_SL",
+      "name": "Examinations (SL)",
+      "kind": "exam",
+      "weighting": 80,
+      "level": "SL"
+    },
+    {
+      "code": "IA_HL",
+      "name": "Scientific investigation (HL)",
+      "kind": "internal_assessment",
+      "minutes": 600,
+      "marks": 24,
+      "weighting": 20,
+      "level": "HL",
+      "criteria": [
+        {
+          "code": "A",
+          "name": "Research design",
+          "marks": 6,
+          "guidance": "State the question with its variables and enough method to repeat."
+        },
+        {
+          "code": "B",
+          "name": "Data analysis",
+          "marks": 6,
+          "guidance": "Record, process and present data so a conclusion can be drawn, uncertainties included."
+        },
+        {
+          "code": "C",
+          "name": "Conclusion",
+          "marks": 6,
+          "guidance": "Answer your own question against the analysis and published science, uncertainties included."
+        },
+        {
+          "code": "D",
+          "name": "Evaluation",
+          "marks": 6,
+          "guidance": "Name the specific weaknesses that mattered most and improvements that address them."
+        }
+      ]
+    },
+    {
+      "code": "EXTERNAL_HL",
+      "name": "Examinations (HL)",
+      "kind": "exam",
+      "weighting": 80,
+      "level": "HL"
+    }
+  ],
+  "notes": [
+    "Identical IA across Biology, Chemistry and Physics under the first-assessment-2025 guides.",
+    "Report maximum 3,000 words; tables, calculations, citations, graphs and appendices are excluded.",
+    "Conclusion and Evaluation are together half the marks.",
+    "Figures taken from the Albus IB knowledge base v1.0 (compiled August 2026), which paraphrases the official IB subject guides rather than reproducing them. Verify against the current guide before quoting marks to a student."
+  ]
+}

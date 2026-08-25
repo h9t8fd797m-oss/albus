@@ -1,0 +1,113 @@
+{
+  "code": "IB_DP_MATHS_AI",
+  "qualification": "IB_DP",
+  "subject": "Mathematics: applications and interpretation",
+  "specVersion": "First assessment 2021",
+  "source": "https://www.ibo.org/programmes/diploma-programme/curriculum/",
+  "retrievedAt": "2026-08-25",
+  "verifiedPages": "knowledge base 7.2, 7.4",
+  "objectives": [],
+  "components": [
+    {
+      "code": "IA_SL",
+      "name": "Mathematical exploration (SL)",
+      "kind": "internal_assessment",
+      "minutes": 750,
+      "marks": 20,
+      "weighting": 20,
+      "level": "SL",
+      "criteria": [
+        {
+          "code": "A",
+          "name": "Presentation",
+          "marks": 4,
+          "guidance": "How the exploration is organised and whether it coheres."
+        },
+        {
+          "code": "B",
+          "name": "Mathematical communication",
+          "marks": 4,
+          "guidance": "Whether the notation, terminology and representation suit the mathematics."
+        },
+        {
+          "code": "C",
+          "name": "Personal engagement",
+          "marks": 3,
+          "guidance": "Evidence of engaging with the mathematics itself, not enthusiasm for the topic."
+        },
+        {
+          "code": "D",
+          "name": "Reflection",
+          "marks": 3,
+          "guidance": "Reviewing and evaluating the exploration, not describing what was done."
+        },
+        {
+          "code": "E",
+          "name": "Use of mathematics",
+          "marks": 6,
+          "guidance": "Mathematics at the right level, correct, and visibly understood."
+        }
+      ]
+    },
+    {
+      "code": "EXTERNAL_SL",
+      "name": "Examinations (SL)",
+      "kind": "exam",
+      "weighting": 80,
+      "level": "SL"
+    },
+    {
+      "code": "IA_HL",
+      "name": "Mathematical exploration (HL)",
+      "kind": "internal_assessment",
+      "minutes": 750,
+      "marks": 20,
+      "weighting": 20,
+      "level": "HL",
+      "criteria": [
+        {
+          "code": "A",
+          "name": "Presentation",
+          "marks": 4,
+          "guidance": "How the exploration is organised and whether it coheres."
+        },
+        {
+          "code": "B",
+          "name": "Mathematical communication",
+          "marks": 4,
+          "guidance": "Whether the notation, terminology and representation suit the mathematics."
+        },
+        {
+          "code": "C",
+          "name": "Personal engagement",
+          "marks": 3,
+          "guidance": "Evidence of engaging with the mathematics itself, not enthusiasm for the topic."
+        },
+        {
+          "code": "D",
+          "name": "Reflection",
+          "marks": 3,
+          "guidance": "Reviewing and evaluating the exploration, not describing what was done."
+        },
+        {
+          "code": "E",
+          "name": "Use of mathematics",
+          "marks": 6,
+          "guidance": "Mathematics at the right level, correct, and visibly understood."
+        }
+      ]
+    },
+    {
+      "code": "EXTERNAL_HL",
+      "name": "Examinations (HL)",
+      "kind": "exam",
+      "weighting": 80,
+      "level": "HL"
+    }
+  ],
+  "notes": [
+    "No word limit; 12 to 20 pages recommended.",
+    "HL expects greater sophistication and rigour in Use of mathematics.",
+    "Figures taken from the Albus IB knowledge base v1.0 (compiled August 2026), which paraphrases the official IB subject guides rather than reproducing them. Verify against the current guide before quoting marks to a student."
+  ]
+}
