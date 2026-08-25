@@ -95,6 +95,10 @@ struct AlbusApp: App {
                     // Only meaningful once signed in; refresh reads the
                     // caller's own row and no-ops otherwise.
                     await entitlements.refresh()
+                    // Anything deleted while offline. No-ops with nothing
+                    // pending, and until it lands those rows still count
+                    // against the student's active-plan limit.
+                    await PendingDeletions.flush()
                 }
         }
         .modelContainer(container)

@@ -12,6 +12,7 @@ struct TaskDetailScreen: View {
     @Environment(\.modelContext) private var context
     @Environment(PlanCoordinator.self) private var coordinator
     @Environment(Preferences.self) private var preferences
+    @Environment(FocusSession.self) private var focusSession
 
     let assignment: Assignment
 
@@ -23,6 +24,7 @@ struct TaskDetailScreen: View {
     @State private var reordering = false
     @State private var grading = false
     @State private var viewingGrade: Grading?
+    @State private var confirmingDelete = false
 
     private var subject: Tokens.SubjectColor { assignment.course?.subjectColor ?? .violet }
     private var steps: [Subtask] { assignment.subtasks.sorted { $0.ordinal < $1.ordinal } }
@@ -52,6 +54,18 @@ struct TaskDetailScreen: View {
     private var nextStepID: UUID? { steps.first { $0.completedAt == nil }?.id }
 
     var body: some View {
+        // A deleted assignment can still be rendered once before the navigation
+        // stack tears this screen down, and reading a deleted SwiftData object's
+        // relationships is undefined. Nothing rather than a crash on the way
+        // out.
+        if assignment.isDeleted {
+            Color.clear
+        } else {
+            content
+        }
+    }
+
+    private var content: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: Tokens.Spacing.l) {
                 topBar
@@ -138,8 +152,43 @@ struct TaskDetailScreen: View {
                 .foregroundStyle(Tokens.Palette.inkSecondary)
 
             Spacer()
+
+            Menu {
+                Button("Delete assignment", systemImage: "trash", role: .destructive) {
+                    confirmingDelete = true
+                }
+            } label: {
+                Image(systemName: "ellipsis")
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundStyle(Tokens.Palette.ink)
+                    .frame(width: 34, height: 34)
+                    .background(Tokens.Glass.fill,
+                                in: RoundedRectangle(cornerRadius: Tokens.Radius.control,
+                                                     style: .continuous))
+                    .overlay {
+                        RoundedRectangle(cornerRadius: Tokens.Radius.control, style: .continuous)
+                            .strokeBorder(Tokens.Glass.stroke, lineWidth: 1)
+                    }
+            }
+            .accessibilityLabel("Assignment options")
         }
         .padding(.top, Tokens.Spacing.s)
+        // Asked before, not undone after. Nothing here is recoverable, and a
+        // plan represents real work the student did on top of it.
+        .confirmationDialog("Delete this assignment?",
+                            isPresented: $confirmingDelete, titleVisibility: .visible) {
+            Button("Delete", role: .destructive) {
+                // Dismiss first: the pop starts before the row disappears, so
+                // this screen is never asked to lay out work that is gone.
+                dismiss()
+                coordinator.deleteAssignment(assignment, context: context,
+                                             focusSession: focusSession,
+                                             availability: preferences.availability)
+            }
+            Button("Keep it", role: .cancel) {}
+        } message: {
+            Text("Its plan, scheduled time and any marking go with it. This cannot be undone.")
+        }
     }
 
     // MARK: - Summary

@@ -97,6 +97,52 @@ final class PlanCoordinator {
         }
     }
 
+    /// Removes an assignment and everything that came from it.
+    ///
+    /// "Delete" has to mean gone, not hidden. Locally the cascade rules take the
+    /// steps, their scheduled sessions and any gradings with the assignment;
+    /// server-side the same happens through `on delete cascade`. What is left
+    /// after this is a schedule with the freed hours reused, which is why it
+    /// re-flows rather than leaving a hole where the work used to be.
+    ///
+    /// The focus session is stopped first when it is running on one of these
+    /// steps. Deleting the row underneath a running timer leaves it counting
+    /// against a step that no longer exists, and the measurement it banks on
+    /// finishing would be attached to nothing.
+    ///
+    /// One thing deliberately survives: `CompletionRecord`s. They carry no title
+    /// and no link back to an assignment — only a task type, two durations and
+    /// an hour — because they are what the on-device estimator learns from. They
+    /// cannot be found by assignment, and adding a link so they could would make
+    /// the learning data less anonymous than it is now, which is the wrong trade
+    /// for a privacy property this app deliberately has.
+    func deleteAssignment(_ assignment: Assignment,
+                          context: ModelContext,
+                          focusSession: FocusSession? = nil,
+                          availability: Availability = .default,
+                          now: Date = .now) {
+        // Stop a timer running on any step of this assignment.
+        if let focusSession,
+           let running = focusSession.record?.subtask,
+           running.assignment?.id == assignment.id {
+            focusSession.cancel(context: context)
+        }
+
+        // Fire-and-forget with a retry queue behind it: the row is gone from the
+        // device the moment the student asks, and the server catches up.
+        if let remoteID = assignment.remoteID {
+            Task {
+                if await !AssignmentService().delete(remoteID: remoteID) {
+                    PendingDeletions.record(remoteID)
+                }
+            }
+        }
+
+        context.delete(assignment)
+        save(context, "delete assignment")
+        reschedule(context: context, availability: availability, now: now)
+    }
+
     /// Marks a step done or undone and re-flows what is left.
     ///
     /// This is the other half of the core loop. Completing a step frees the
