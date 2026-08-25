@@ -199,4 +199,48 @@ final class CoreLoopUITests: XCTestCase {
 
         app.buttons["Plan it"].tap()
     }
+
+
+    /// Deleting an assignment, through the screens a student actually uses.
+    ///
+    /// Deliberately end-to-end: the risk is not the delete itself but what the
+    /// app does immediately afterwards — a detail screen laying out work that no
+    /// longer exists, or a card that stays on Home.
+    ///
+    /// Deletes whatever is already on Home rather than adding first. The free
+    /// plan caps active assignments at three, so a suite that always adds one
+    /// eventually meets the paywall instead of the add sheet — which is the
+    /// situation this feature exists to get a student out of.
+    func testDeleteRemovesTheAssignmentFromHome() throws {
+        app.launch()
+        reachApp(app)
+        app.buttons["Home"].tap()
+
+        let cards = app.descendants(matching: .any).matching(identifier: "assignmentCard")
+        if !cards.element(boundBy: 0).waitForExistence(timeout: 20) {
+            addAssignment(app, titled: assignmentTitle)
+            app.buttons["Home"].tap()
+            XCTAssertTrue(cards.element(boundBy: 0).waitForExistence(timeout: 90),
+                          "no assignment to delete")
+        }
+
+        let before = cards.count
+        let card = cards.element(boundBy: 0)
+
+        // Long-press, because Home is a stack of cards rather than a List.
+        card.press(forDuration: 1.1)
+        let delete = app.buttons["Delete assignment"]
+        XCTAssertTrue(delete.waitForExistence(timeout: 5), "no way to delete from Home")
+        delete.tap()
+
+        let confirm = app.buttons["Delete"]
+        XCTAssertTrue(confirm.waitForExistence(timeout: 5), "deleted without asking first")
+        confirm.tap()
+
+        // One fewer card, and the app is still standing.
+        let fewer = NSPredicate(format: "count == %d", before - 1)
+        expectation(for: fewer, evaluatedWith: cards)
+        waitForExpectations(timeout: 15)
+        XCTAssertTrue(app.buttons["Home"].exists, "the app did not survive the delete")
+    }
 }

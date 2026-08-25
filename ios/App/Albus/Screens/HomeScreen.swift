@@ -19,6 +19,7 @@ struct HomeScreen: View {
     @Environment(PlanCoordinator.self) private var coordinator
     @Environment(Preferences.self) private var preferences
     @Environment(EntitlementService.self) private var entitlements
+    @Environment(FocusSession.self) private var focusSession
 
     @Query(sort: \Assignment.deadline) private var assignments: [Assignment]
     @Query(sort: \PlanSessionRecord.startsAt) private var sessions: [PlanSessionRecord]
@@ -27,6 +28,9 @@ struct HomeScreen: View {
     @State private var addingTask = false
     @State private var showingMonth = false
     @State private var showingPaywall = false
+    /// The assignment awaiting a yes. Held rather than a bool so the dialog can
+    /// name the thing it is about to destroy.
+    @State private var confirmingDelete: Assignment?
     @State private var focusing: PlanSessionRecord?
 
     enum Filter: String, CaseIterable, Identifiable {
@@ -68,6 +72,24 @@ struct HomeScreen: View {
             }
         }
         .sheet(isPresented: $showingPaywall) { PaywallScreen() }
+        .confirmationDialog("Delete this assignment?",
+                            isPresented: Binding(get: { confirmingDelete != nil },
+                                                 set: { if !$0 { confirmingDelete = nil } }),
+                            titleVisibility: .visible) {
+            Button("Delete", role: .destructive) {
+                if let assignment = confirmingDelete {
+                    coordinator.deleteAssignment(assignment, context: context,
+                                                 focusSession: focusSession,
+                                                 availability: preferences.availability)
+                }
+                confirmingDelete = nil
+            }
+            Button("Keep it", role: .cancel) { confirmingDelete = nil }
+        } message: {
+            Text(confirmingDelete.map {
+                "\($0.title) — its plan, scheduled time and any marking go with it. This cannot be undone."
+            } ?? "")
+        }
         .fullScreenCover(item: $focusing) { record in
             FocusModeScreen(record: record)
         }
@@ -123,6 +145,15 @@ struct HomeScreen: View {
                                     // wrong one lands in Focus Mode and reports
                                     // that the plan is missing.
                                     .accessibilityIdentifier("assignmentCard")
+                                    // Long-press rather than swipe: this is a
+                                    // LazyVStack of cards, not a List, so there
+                                    // is no swipe affordance to hang it off.
+                                    .contextMenu {
+                                        Button("Delete assignment", systemImage: "trash",
+                                               role: .destructive) {
+                                            confirmingDelete = assignment
+                                        }
+                                    }
                                 }
                             }
                         }
