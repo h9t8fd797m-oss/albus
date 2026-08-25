@@ -57,3 +57,31 @@ struct OversizedStepTests {
         #expect(result.sessions.count == 8)
     }
 }
+
+/// An impossible workload must be reported, not silently dropped.
+@Suite("Impossible workloads")
+struct ImpossibleWorkloadTests {
+
+    @Test("work that cannot fit before the deadline is reported as unplaceable")
+    func overloadedDeadlineIsReported() {
+        let now = Date(timeIntervalSince1970: 1_770_000_000)
+        // Twenty hours of sittable steps, due tomorrow, three hours a day.
+        let deadline = Calendar.current.date(byAdding: .day, value: 1, to: now)!
+        let assignment = UUID()
+        let items = (0..<16).map {
+            ScheduleItem(id: UUID(), assignmentID: assignment, ordinal: $0,
+                         minutes: 75, deadline: deadline)
+        }
+        let result = Scheduler().schedule(
+            items: items, existing: [], commitments: [],
+            availability: Availability(dailyCapacityMinutes: 180), now: now)
+
+        print("── 16 x 75min due tomorrow, 180min/day")
+        print("   placed: \(result.sessions.count)  unplaceable: \(result.unplaceable.count)")
+        #expect(!result.unplaceable.isEmpty,
+                "an impossible workload reported nothing unplaceable")
+        // The app reads this now; before, it was computed and discarded, so a
+        // plan that did not fit looked exactly like one that did.
+        #expect(result.sessions.count < items.count)
+    }
+}

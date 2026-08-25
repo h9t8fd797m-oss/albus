@@ -32,6 +32,13 @@ struct TaskDetailScreen: View {
     /// Not per row: which tools a step gets depends on what earlier steps used,
     /// so asking row by row made each one re-derive the whole plan. Measured at
     /// 197ms to render twenty steps, against a 16ms frame.
+    /// How much of this plan the scheduler could not place.
+    private var unplacedCount: Int {
+        steps.reduce(into: 0) { n, step in
+            if coordinator.unplacedStepIDs.contains(step.id) { n += 1 }
+        }
+    }
+
     private var toolsByStep: [UUID: [StudyTool]] {
         StudyTool.suggestions(forPlanOf: assignment)
     }
@@ -299,6 +306,19 @@ struct TaskDetailScreen: View {
                 }
             }
             .padding(.top, Tokens.Spacing.xs)
+
+            if unplacedCount > 0 {
+                // Said plainly rather than hidden: the student needs to move the
+                // deadline, cut scope, or study more hours, and none of those
+                // decisions are the app's to make quietly.
+                StatusBanner(
+                    tone: .warning,
+                    message: unplacedCount == steps.count
+                        ? "This plan doesn't fit before the deadline. You'd need more study hours, or more time."
+                        : "\(unplacedCount) of these steps don't fit before the deadline."
+                )
+                .padding(.top, Tokens.Spacing.xs)
+            }
 
             VStack(spacing: 0) {
                 let tools = toolsByStep

@@ -151,11 +151,12 @@ Rules:
   Simple mechanical work — collecting materials, formatting a bibliography,
   logging results — is 10-20 minutes and must not be inflated to look
   substantial.
-- The user message states a target number of steps and a total to reach. Hit
-  both. Falling short of the total means work is MISSING, not that a shortcut
-  was found — add the steps the assignment actually needs rather than
-  lengthening the ones you have. A 20-hour project planned as 11 hours of steps
-  leaves the student believing they are finished when they are not.
+- The user message states a target number of steps. Treat it as the right
+  ballpark, not a quota — a task that genuinely needs fewer should have fewer.
+- The budgeted time is the student's own guess at a slider, not a fact. Plan
+  the work the assignment actually needs. If that is less than they budgeted,
+  plan less: padding steps to fill the number is the failure this is trying to
+  avoid. If it is genuinely more, say so in the last step's guidance.
 - Spread a long deadline across the time available rather than compressing it
   into a few enormous sessions. Work the student can only do late (revising a
   draft that does not exist yet) still belongs late; work that can start now
@@ -293,12 +294,11 @@ export function buildUserPrompt(input: BreakdownInput): string {
     `Sitting limit: ${sitting} minutes — no step may be longer than this.`,
     `Days available: ${workingDays}. Spread across them, that is about ` +
       `${perDay} minutes of work a day.`,
-    `Aim for about ${targetSteps} steps averaging ${
+    `Roughly ${targetSteps} steps looks right for this, averaging about ${
       Math.round(input.estimatedMinutes / targetSteps)
-    } minutes each, ` +
-      `totalling close to ${input.estimatedMinutes} minutes. Vary the lengths ` +
-      `by what each step actually takes — do not divide the total evenly, and ` +
-      `do not stop short of the total.`,
+    } minutes. ` +
+      `Size each one by what it actually takes rather than dividing the total ` +
+      `evenly, and use fewer if the work genuinely needs fewer.`,
   ];
 
   // Priority is the student's own urgency signal. It changes the shape of the

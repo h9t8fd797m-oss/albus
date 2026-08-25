@@ -275,9 +275,9 @@ function targets(estimatedMinutes: number, days: number, capacity: number): stri
 Deno.test("step count scales with the work, instead of a fixed range", () => {
   // The rule used to read "between two and eight steps", which is exactly the
   // 5-8 every plan came out as regardless of size.
-  assertStringIncludes(targets(45, 1, 150), "about 2 steps");      // homework
-  assertStringIncludes(targets(480, 7, 150), "about 6 steps");     // week essay
-  assertStringIncludes(targets(1200, 30, 150), "about 16 steps");  // month project
+  assertStringIncludes(targets(45, 1, 150), "Roughly 2 steps");      // homework
+  assertStringIncludes(targets(480, 7, 150), "Roughly 6 steps");     // week essay
+  assertStringIncludes(targets(1200, 30, 150), "Roughly 16 steps");  // month project
 });
 
 Deno.test("the sitting limit follows the student's daily capacity", () => {
@@ -291,8 +291,8 @@ Deno.test("the sitting limit follows the student's daily capacity", () => {
 
 Deno.test("a tiny task is not padded into a plan", () => {
   const tiny = targets(15, 1, 150);
-  assertStringIncludes(tiny, "about 2 steps");
-  assert(!tiny.includes("about 8 steps"));
+  assertStringIncludes(tiny, "Roughly 2 steps");
+  assert(!tiny.includes("Roughly 8 steps"));
 });
 
 Deno.test("the planner is told how long it has, not just how much work", () => {

@@ -22,6 +22,14 @@ final class PlanCoordinator {
 
     private(set) var status: Status = .idle
 
+    /// Steps the scheduler could not fit before their deadline.
+    ///
+    /// The scheduler has always reported these and nothing ever read them, so a
+    /// plan that does not fit looked exactly like one that does: the steps are
+    /// listed, they simply never appear on any day. Twenty hours of work due
+    /// tomorrow produced a full plan and a nearly empty calendar, silently.
+    private(set) var unplacedStepIDs: Set<UUID> = []
+
     private let plans: PlanService
     private let scheduler = Scheduler()
 
@@ -331,6 +339,7 @@ final class PlanCoordinator {
                                          uniquingKeysWith: { a, _ in a }),
                 existing: existing
             )
+            unplacedStepIDs = Set(result.unplaceable.map(\.id))
             save(context, "apply schedule")
         } catch {
             status = .failed("Couldn't rebuild your plan.")
