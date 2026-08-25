@@ -1,5 +1,9 @@
-import { assert, assertEquals, assertThrows } from "jsr:@std/assert@1";
-import { InvalidPlanError, validateAndNormalise } from "../_shared/breakdown_schema.ts";
+import { assert, assertEquals, assertStringIncludes, assertThrows } from "jsr:@std/assert@1";
+import {
+  InvalidPlanError,
+  MAX_STEPS,
+  validateAndNormalise,
+} from "../_shared/breakdown_schema.ts";
 
 const ok = {
   steps: [
@@ -80,7 +84,40 @@ Deno.test("caps runaway step counts", () => {
       rubric_criterion_code: null,
     })),
   };
-  assertEquals(validateAndNormalise(many, 400).steps.length, 12);
+  // Asserted against the constant, not a literal: the cap is the database RPC's
+  // 20-subtask limit rather than a taste judgement, and hard-coding 12 here is
+  // what made raising it look like a regression.
+  assertEquals(validateAndNormalise(many, 400).steps.length, MAX_STEPS);
+});
+
+Deno.test("a step longer than one sitting is split, not clamped", () => {
+  // Clamping deleted the excess: a 300-minute step became 120 and the plan
+  // quietly claimed less work than the assignment needs. The scheduler places
+  // each step as one unbroken block, so the length also has to be placeable.
+  const plan = validateAndNormalise({
+    steps: [{
+      title: "Draft the essay",
+      guidance: "",
+      estimated_minutes: 300,
+      rubric_criterion_code: null,
+      tool_need: "drafting",
+    }],
+  }, 300, 180);
+
+  assertEquals(plan.steps.length, 3);
+  assertEquals(plan.steps.every((s) => s.estimated_minutes <= 120), true);
+  // The work survives the split.
+  assertEquals(plan.steps.reduce((n, s) => n + s.estimated_minutes, 0), 300);
+  assertStringIncludes(plan.steps[0].title, "1 of 3");
+});
+
+Deno.test("the sitting limit follows the student, not a constant", () => {
+  const long = { steps: [{ title: "Read", guidance: "", estimated_minutes: 200,
+                           rubric_criterion_code: null, tool_need: "reading" }] };
+  // A student with 90 minutes a day cannot sit for 120: the scheduler would
+  // never find a day with room, and the step would vanish.
+  assertEquals(validateAndNormalise(long, 200, 90).steps.every((s) => s.estimated_minutes <= 90), true);
+  assertEquals(validateAndNormalise(long, 200, 300).steps.every((s) => s.estimated_minutes <= 120), true);
 });
 
 Deno.test("normalises an empty criterion code to null", () => {

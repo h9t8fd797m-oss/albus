@@ -89,6 +89,9 @@ struct PlanService {
         /// forged id resolves to nothing rather than to someone else's rubric.
         let rubric_id: String?
         let priority: String
+        /// What the student can study in a day. Sets how long one step may be,
+        /// and so how many steps the work divides into.
+        let daily_capacity_minutes: Int
     }
 
     private struct ErrorBody: Decodable { let error: String?; let message: String? }
@@ -104,7 +107,8 @@ struct PlanService {
                    courseTemplateCode: String? = nil, assessmentCode: String? = nil,
                    courseID: UUID? = nil, notes: String? = nil,
                    rubricID: UUID? = nil,
-                   priority: AssignmentPriority = .normal) async throws -> Result {
+                   priority: AssignmentPriority = .normal,
+                   dailyCapacityMinutes: Int = 150) async throws -> Result {
         let trimmedNotes = notes?.trimmingCharacters(in: .whitespacesAndNewlines)
 
         let body = Request(
@@ -117,7 +121,8 @@ struct PlanService {
             course_id: courseID?.uuidString,
             notes: (trimmedNotes?.isEmpty ?? true) ? nil : trimmedNotes,
             rubric_id: rubricID?.uuidString,
-            priority: priority.rawValue
+            priority: priority.rawValue,
+            daily_capacity_minutes: dailyCapacityMinutes
         )
 
         guard let client else { throw Failure.unavailable }
