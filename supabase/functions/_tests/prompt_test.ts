@@ -238,3 +238,16 @@ Deno.test("an empty curriculum context is still not grounded", () => {
   assert(!hasRubricContent(empty));
   assertEquals(selectModel({ ...base, rubric: empty }), MODEL_GENERIC);
 });
+
+// MARK: - Tool-need precedence
+
+Deno.test("the prompt tells the model to prefer the specific need over the generic one", () => {
+  // A real generated plan tagged "Check citations, grammar, and formatting" as
+  // proofreading rather than citation — the model folded two things into one
+  // step and picked the generic label. Every proofreading tool is light-setup,
+  // so a citation step due tomorrow and one due in three weeks rendered
+  // identically. This line is what fixes it going forward; the test is here so
+  // a future prompt rewrite cannot drop it silently.
+  const system = buildSystemPrompt(null);
+  assertStringIncludes(system, "citation, not proofreading");
+});
