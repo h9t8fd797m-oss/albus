@@ -1,0 +1,36 @@
+{
+  "code": "IB_DP_TOK",
+  "qualification": "IB_DP",
+  "subject": "Theory of knowledge",
+  "specVersion": "First assessment 2022",
+  "source": "https://www.ibo.org/programmes/diploma-programme/curriculum/",
+  "retrievedAt": "2026-08-25",
+  "verifiedPages": "knowledge base 6.2.1",
+  "objectives": [],
+  "components": [
+    {
+      "code": "ESSAY",
+      "name": "TOK essay",
+      "kind": "coursework",
+      "minutes": 1200,
+      "marks": 10,
+      "weighting": 66.67,
+      "format": "1,600 words on a prescribed title, externally assessed; counted twice in the aggregate"
+    },
+    {
+      "code": "EXHIBITION",
+      "name": "TOK exhibition",
+      "kind": "internal_assessment",
+      "minutes": 900,
+      "marks": 10,
+      "weighting": 33.33,
+      "format": "950 words on three objects, internally assessed and externally moderated"
+    }
+  ],
+  "notes": [
+    "The essay is worth exactly twice the exhibition.",
+    "The exhibition draws on the core and optional themes; the essay emphasises areas of knowledge.",
+    "An E in TOK is a failing condition for the diploma regardless of total points.",
+    "Figures taken from the Albus IB knowledge base v1.0 (compiled August 2026), which paraphrases the official IB subject guides rather than reproducing them. Verify against the current guide before quoting marks to a student."
+  ]
+}

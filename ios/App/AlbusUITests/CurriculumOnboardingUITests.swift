@@ -54,7 +54,13 @@ final class CurriculumOnboardingUITests: XCTestCase {
 
         XCTAssertTrue(app.staticTexts["WHICH PART OF THE COURSE"].waitForExistence(timeout: 5),
                       "no component picker for a subject Albus has a specification for")
-        XCTAssertTrue(app.buttons["Paper 3"].exists, "Biology's papers are missing")
+
+        // The chips sit in a LazyVGrid below the fold, and lazy means they are
+        // not in the tree until they are near the viewport — `exists` was false
+        // for a control that renders perfectly well once scrolled to.
+        let paper = app.buttons["Paper 3"]
+        for _ in 0..<4 where !paper.exists { app.swipeUp() }
+        XCTAssertTrue(paper.exists, "Biology's papers are missing")
     }
 
     /// The other half of the same guarantee: a student on a programme Albus

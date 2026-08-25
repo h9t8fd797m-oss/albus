@@ -37,29 +37,34 @@ struct ProfileService {
 
     /// Creates a subject server-side and returns its id.
     ///
-    /// `user_id` is set from the verified session rather than passed in, and RLS
-    /// would reject anything else regardless — the row cannot be attributed to
-    /// another student even if this code were wrong.
-    func createCourse(displayName: String, colorKey: String) async -> UUID? {
-        guard let client, let userID = currentUserID(client) else { return nil }
+    /// Through an RPC rather than a plain insert, so the subject is linked to its
+    /// specification in the same statement. `curriculumSubjectCode` is the
+    /// bundled code (`IB_DP_HISTORY`); the server resolves it to a
+    /// `course_templates` row, which is what lets Ask Albus know that this
+    /// student's History IA is 25% at SL and marked out of 25.
+    ///
+    /// `user_id` is set from the verified session inside the function rather
+    /// than passed in, and RLS would reject anything else regardless — the row
+    /// cannot be attributed to another student even if this code were wrong.
+    func createCourse(displayName: String, colorKey: String,
+                      curriculumSubjectCode: String? = nil) async -> UUID? {
+        guard let client else { return nil }
 
-        struct NewCourse: Encodable {
-            let user_id: String
-            let display_name: String
-            let color_key: String
+        struct Params: Encodable {
+            let p_display_name: String
+            let p_color_key: String
+            let p_template_code: String?
         }
-        struct Created: Decodable { let id: UUID }
 
         do {
-            let created: Created = try await client.from("courses")
-                .insert(NewCourse(user_id: userID.uuidString.lowercased(),
-                                  display_name: displayName,
-                                  color_key: colorKey))
-                .select("id")
-                .single()
-                .execute()
-                .value
-            return created.id
+            return try await client.rpc(
+                "create_course",
+                params: Params(p_display_name: displayName,
+                               p_color_key: colorKey,
+                               p_template_code: curriculumSubjectCode)
+            )
+            .execute()
+            .value
         } catch {
             print("[Albus] course sync failed: \(error)")
             return nil

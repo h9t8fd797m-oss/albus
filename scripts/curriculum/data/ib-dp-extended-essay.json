@@ -1,0 +1,59 @@
+{
+  "code": "IB_DP_EXTENDED_ESSAY",
+  "qualification": "IB_DP",
+  "subject": "Extended essay",
+  "specVersion": "First assessment 2027",
+  "source": "https://www.ibo.org/programmes/diploma-programme/curriculum/",
+  "retrievedAt": "2026-08-25",
+  "verifiedPages": "knowledge base 6.1.3",
+  "objectives": [],
+  "components": [
+    {
+      "code": "ESSAY",
+      "name": "Extended essay",
+      "kind": "coursework",
+      "minutes": 2400,
+      "marks": 30,
+      "weighting": 100,
+      "format": "4,000 words, graded A to E; contributes to the core points with TOK",
+      "criteria": [
+        {
+          "code": "A",
+          "name": "Framework for the essay",
+          "marks": 6,
+          "guidance": "A genuine, focused question, methods that suit the subject, and a structure that follows its conventions."
+        },
+        {
+          "code": "B",
+          "name": "Knowledge and understanding",
+          "marks": 6,
+          "guidance": "Findings used to build subject knowledge, with accurate terminology and correct key concepts."
+        },
+        {
+          "code": "C",
+          "name": "Analysis and line of argument",
+          "marks": 6,
+          "guidance": "Evidence-backed findings joined by a signposted thread from question to conclusion."
+        },
+        {
+          "code": "D",
+          "name": "Discussion and evaluation",
+          "marks": 8,
+          "guidance": "The heaviest criterion: weigh the significance of findings and appraise your sources' strengths and limits."
+        },
+        {
+          "code": "E",
+          "name": "Reflection",
+          "marks": 4,
+          "guidance": "Assessed from the 500-word reflective statement, not the essay."
+        }
+      ]
+    }
+  ],
+  "notes": [
+    "30 marks from May 2027; the legacy 34-mark model applies to November 2026 and earlier.",
+    "Criterion D alone is 8 of 30 marks.",
+    "An E in the extended essay is a failing condition for the diploma regardless of total points.",
+    "Figures taken from the Albus IB knowledge base v1.0 (compiled August 2026), which paraphrases the official IB subject guides rather than reproducing them. Verify against the current guide before quoting marks to a student."
+  ]
+}

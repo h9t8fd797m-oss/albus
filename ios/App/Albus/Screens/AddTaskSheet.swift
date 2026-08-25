@@ -229,7 +229,8 @@ struct AddTaskSheet: View {
             // assignment to a course. Without it the subject stays local, which
             // is worse but not broken.
             if let remote = await ProfileService().createCourse(
-                displayName: name, colorKey: colour.rawValue
+                displayName: name, colorKey: colour.rawValue,
+                curriculumSubjectCode: choice.curriculumCode
             ) {
                 course.remoteID = remote
                 try? modelContext.save()

@@ -440,9 +440,12 @@ struct OnboardingFlow: View {
         // Best-effort, exactly as everywhere else: a subject that did not sync
         // is still a working subject on the device, just not yet on the server.
         let profiles = ProfileService()
-        for (_, course) in created {
-            if let remote = await profiles.createCourse(displayName: course.displayName,
-                                                        colorKey: course.colorKey) {
+        for (subject, course) in created {
+            if let remote = await profiles.createCourse(
+                displayName: course.displayName,
+                colorKey: course.colorKey,
+                curriculumSubjectCode: subject.code
+            ) {
                 course.remoteID = remote
             }
         }

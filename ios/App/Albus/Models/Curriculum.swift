@@ -167,6 +167,305 @@ extension CurriculumSubject {
             source: "https://filestore.aqa.org.uk/resources/physics/specifications/AQA-7407-7408-SP-2015.PDF",
             retrievedAt: "2026-08-24"
         ),
+        .init(
+            code: "IB_DP_BIOLOGY",
+            qualification: .ibDP,
+            board: nil,
+            subject: "Biology",
+            specCode: nil,
+            objectives: [
+
+            ],
+            components: [
+            .init(code: "IA_SL", name: "Scientific investigation (SL)", kind: .internalAssessment, minutes: 600, marks: 24, weighting: 20, level: "SL", covers: nil, format: nil, criteria: [.init(code: "A", name: "Research design", marks: 6, guidance: "State the question with its variables and enough method to repeat."), .init(code: "B", name: "Data analysis", marks: 6, guidance: "Record, process and present data so a conclusion can be drawn, uncertainties included."), .init(code: "C", name: "Conclusion", marks: 6, guidance: "Answer your own question against the analysis and published science, uncertainties included."), .init(code: "D", name: "Evaluation", marks: 6, guidance: "Name the specific weaknesses that mattered most and improvements that address them.")]),
+            .init(code: "EXTERNAL_SL", name: "Examinations (SL)", kind: .exam, minutes: nil, marks: nil, weighting: 80, level: "SL", covers: nil, format: nil, criteria: []),
+            .init(code: "IA_HL", name: "Scientific investigation (HL)", kind: .internalAssessment, minutes: 600, marks: 24, weighting: 20, level: "HL", covers: nil, format: nil, criteria: [.init(code: "A", name: "Research design", marks: 6, guidance: "State the question with its variables and enough method to repeat."), .init(code: "B", name: "Data analysis", marks: 6, guidance: "Record, process and present data so a conclusion can be drawn, uncertainties included."), .init(code: "C", name: "Conclusion", marks: 6, guidance: "Answer your own question against the analysis and published science, uncertainties included."), .init(code: "D", name: "Evaluation", marks: 6, guidance: "Name the specific weaknesses that mattered most and improvements that address them.")]),
+            .init(code: "EXTERNAL_HL", name: "Examinations (HL)", kind: .exam, minutes: nil, marks: nil, weighting: 80, level: "HL", covers: nil, format: nil, criteria: [])
+            ],
+            notes: ["Identical IA across Biology, Chemistry and Physics under the first-assessment-2025 guides.", "Report maximum 3,000 words; tables, calculations, citations, graphs and appendices are excluded.", "Conclusion and Evaluation are together half the marks.", "Figures taken from the Albus IB knowledge base v1.0 (compiled August 2026), which paraphrases the official IB subject guides rather than reproducing them. Verify against the current guide before quoting marks to a student."],
+            source: "https://www.ibo.org/programmes/diploma-programme/curriculum/",
+            retrievedAt: "2026-08-25"
+        ),
+        .init(
+            code: "IB_DP_BUSINESS",
+            qualification: .ibDP,
+            board: nil,
+            subject: "Business management",
+            specCode: nil,
+            objectives: [
+
+            ],
+            components: [
+            .init(code: "IA_SL", name: "Business research project (SL)", kind: .internalAssessment, minutes: 1200, marks: 25, weighting: 30, level: "SL", covers: nil, format: nil, criteria: []),
+            .init(code: "EXTERNAL_SL", name: "Examinations (SL)", kind: .exam, minutes: nil, marks: nil, weighting: 70, level: "SL", covers: nil, format: nil, criteria: []),
+            .init(code: "IA_HL", name: "Business research project (HL)", kind: .internalAssessment, minutes: 1200, marks: 25, weighting: 20, level: "HL", covers: nil, format: nil, criteria: []),
+            .init(code: "EXTERNAL_HL", name: "Examinations (HL)", kind: .exam, minutes: nil, marks: nil, weighting: 80, level: "HL", covers: nil, format: nil, criteria: [])
+            ],
+            notes: ["Maximum 1,800 words; only the first 1,800 are marked.", "One real organisation, and exactly one of change, creativity, ethics or sustainability as the lens.", "Three to five supporting documents must be attached.", "The published criterion mark split is not confirmed in the source used; do not quote per-criterion marks.", "Figures taken from the Albus IB knowledge base v1.0 (compiled August 2026), which paraphrases the official IB subject guides rather than reproducing them. Verify against the current guide before quoting marks to a student."],
+            source: "https://www.ibo.org/programmes/diploma-programme/curriculum/",
+            retrievedAt: "2026-08-25"
+        ),
+        .init(
+            code: "IB_DP_CHEMISTRY",
+            qualification: .ibDP,
+            board: nil,
+            subject: "Chemistry",
+            specCode: nil,
+            objectives: [
+
+            ],
+            components: [
+            .init(code: "IA_SL", name: "Scientific investigation (SL)", kind: .internalAssessment, minutes: 600, marks: 24, weighting: 20, level: "SL", covers: nil, format: nil, criteria: [.init(code: "A", name: "Research design", marks: 6, guidance: "State the question with its variables and enough method to repeat."), .init(code: "B", name: "Data analysis", marks: 6, guidance: "Record, process and present data so a conclusion can be drawn, uncertainties included."), .init(code: "C", name: "Conclusion", marks: 6, guidance: "Answer your own question against the analysis and published science, uncertainties included."), .init(code: "D", name: "Evaluation", marks: 6, guidance: "Name the specific weaknesses that mattered most and improvements that address them.")]),
+            .init(code: "EXTERNAL_SL", name: "Examinations (SL)", kind: .exam, minutes: nil, marks: nil, weighting: 80, level: "SL", covers: nil, format: nil, criteria: []),
+            .init(code: "IA_HL", name: "Scientific investigation (HL)", kind: .internalAssessment, minutes: 600, marks: 24, weighting: 20, level: "HL", covers: nil, format: nil, criteria: [.init(code: "A", name: "Research design", marks: 6, guidance: "State the question with its variables and enough method to repeat."), .init(code: "B", name: "Data analysis", marks: 6, guidance: "Record, process and present data so a conclusion can be drawn, uncertainties included."), .init(code: "C", name: "Conclusion", marks: 6, guidance: "Answer your own question against the analysis and published science, uncertainties included."), .init(code: "D", name: "Evaluation", marks: 6, guidance: "Name the specific weaknesses that mattered most and improvements that address them.")]),
+            .init(code: "EXTERNAL_HL", name: "Examinations (HL)", kind: .exam, minutes: nil, marks: nil, weighting: 80, level: "HL", covers: nil, format: nil, criteria: [])
+            ],
+            notes: ["Identical IA across Biology, Chemistry and Physics under the first-assessment-2025 guides.", "Report maximum 3,000 words; tables, calculations, citations, graphs and appendices are excluded.", "Conclusion and Evaluation are together half the marks.", "Figures taken from the Albus IB knowledge base v1.0 (compiled August 2026), which paraphrases the official IB subject guides rather than reproducing them. Verify against the current guide before quoting marks to a student."],
+            source: "https://www.ibo.org/programmes/diploma-programme/curriculum/",
+            retrievedAt: "2026-08-25"
+        ),
+        .init(
+            code: "IB_DP_COMPSCI",
+            qualification: .ibDP,
+            board: nil,
+            subject: "Computer science",
+            specCode: nil,
+            objectives: [
+
+            ],
+            components: [
+            .init(code: "IA_SL", name: "Computational solution (SL)", kind: .internalAssessment, minutes: 2100, marks: 30, weighting: 30, level: "SL", covers: nil, format: nil, criteria: []),
+            .init(code: "EXTERNAL_SL", name: "Examinations (SL)", kind: .exam, minutes: nil, marks: nil, weighting: 70, level: "SL", covers: nil, format: nil, criteria: []),
+            .init(code: "IA_HL", name: "Computational solution (HL)", kind: .internalAssessment, minutes: 2100, marks: 30, weighting: 20, level: "HL", covers: nil, format: nil, criteria: []),
+            .init(code: "EXTERNAL_HL", name: "Examinations (HL)", kind: .exam, minutes: nil, marks: nil, weighting: 80, level: "HL", covers: nil, format: nil, criteria: [])
+            ],
+            notes: ["First assessment 2027; marks and criteria are still settling in public sources.", "Documentation-based, with a video.", "Figures taken from the Albus IB knowledge base v1.0 (compiled August 2026), which paraphrases the official IB subject guides rather than reproducing them. Verify against the current guide before quoting marks to a student."],
+            source: "https://www.ibo.org/programmes/diploma-programme/curriculum/",
+            retrievedAt: "2026-08-25"
+        ),
+        .init(
+            code: "IB_DP_ECONOMICS",
+            qualification: .ibDP,
+            board: nil,
+            subject: "Economics",
+            specCode: nil,
+            objectives: [
+
+            ],
+            components: [
+            .init(code: "IA_SL", name: "Portfolio of three commentaries (SL)", kind: .internalAssessment, minutes: 1200, marks: 45, weighting: 30, level: "SL", covers: nil, format: nil, criteria: []),
+            .init(code: "EXTERNAL_SL", name: "Examinations (SL)", kind: .exam, minutes: nil, marks: nil, weighting: 70, level: "SL", covers: nil, format: nil, criteria: []),
+            .init(code: "IA_HL", name: "Portfolio of three commentaries (HL)", kind: .internalAssessment, minutes: 1200, marks: 45, weighting: 20, level: "HL", covers: nil, format: nil, criteria: []),
+            .init(code: "EXTERNAL_HL", name: "Examinations (HL)", kind: .exam, minutes: nil, marks: nil, weighting: 80, level: "HL", covers: nil, format: nil, criteria: [])
+            ],
+            notes: ["Three commentaries, maximum 800 words each, marked out of 14, plus 3 portfolio marks.", "Each must use a different syllabus unit, a different key concept and a different source.", "Articles must have been published within a year of the commentary.", "At SL this is the highest-weighted IA of the major group 3 subjects.", "Figures taken from the Albus IB knowledge base v1.0 (compiled August 2026), which paraphrases the official IB subject guides rather than reproducing them. Verify against the current guide before quoting marks to a student."],
+            source: "https://www.ibo.org/programmes/diploma-programme/curriculum/",
+            retrievedAt: "2026-08-25"
+        ),
+        .init(
+            code: "IB_DP_ESS",
+            qualification: .ibDP,
+            board: nil,
+            subject: "Environmental systems and societies",
+            specCode: nil,
+            objectives: [
+
+            ],
+            components: [
+            .init(code: "IA_SL", name: "Individual investigation (SL)", kind: .internalAssessment, minutes: 600, marks: 30, weighting: 25, level: "SL", covers: nil, format: nil, criteria: []),
+            .init(code: "EXTERNAL_SL", name: "Examinations (SL)", kind: .exam, minutes: nil, marks: nil, weighting: 75, level: "SL", covers: nil, format: nil, criteria: []),
+            .init(code: "IA_HL", name: "Individual investigation (HL)", kind: .internalAssessment, minutes: 600, marks: 30, weighting: 20, level: "HL", covers: nil, format: nil, criteria: []),
+            .init(code: "EXTERNAL_HL", name: "Examinations (HL)", kind: .exam, minutes: nil, marks: nil, weighting: 80, level: "HL", covers: nil, format: nil, criteria: [])
+            ],
+            notes: ["Maximum 3,000 words, up from 2,250 under the previous guide.", "Common criteria at SL and HL, including a criterion on strategy and the tensions in environmental issues.", "ESS may satisfy either the group 3 or the group 4 requirement, but not both.", "Figures taken from the Albus IB knowledge base v1.0 (compiled August 2026), which paraphrases the official IB subject guides rather than reproducing them. Verify against the current guide before quoting marks to a student."],
+            source: "https://www.ibo.org/programmes/diploma-programme/curriculum/",
+            retrievedAt: "2026-08-25"
+        ),
+        .init(
+            code: "IB_DP_EXTENDED_ESSAY",
+            qualification: .ibDP,
+            board: nil,
+            subject: "Extended essay",
+            specCode: nil,
+            objectives: [
+
+            ],
+            components: [
+            .init(code: "ESSAY", name: "Extended essay", kind: .coursework, minutes: 2400, marks: 30, weighting: 100, level: nil, covers: nil, format: "4,000 words, graded A to E; contributes to the core points with TOK", criteria: [.init(code: "A", name: "Framework for the essay", marks: 6, guidance: "A genuine, focused question, methods that suit the subject, and a structure that follows its conventions."), .init(code: "B", name: "Knowledge and understanding", marks: 6, guidance: "Findings used to build subject knowledge, with accurate terminology and correct key concepts."), .init(code: "C", name: "Analysis and line of argument", marks: 6, guidance: "Evidence-backed findings joined by a signposted thread from question to conclusion."), .init(code: "D", name: "Discussion and evaluation", marks: 8, guidance: "The heaviest criterion: weigh the significance of findings and appraise your sources' strengths and limits."), .init(code: "E", name: "Reflection", marks: 4, guidance: "Assessed from the 500-word reflective statement, not the essay.")])
+            ],
+            notes: ["30 marks from May 2027; the legacy 34-mark model applies to November 2026 and earlier.", "Criterion D alone is 8 of 30 marks.", "An E in the extended essay is a failing condition for the diploma regardless of total points.", "Figures taken from the Albus IB knowledge base v1.0 (compiled August 2026), which paraphrases the official IB subject guides rather than reproducing them. Verify against the current guide before quoting marks to a student."],
+            source: "https://www.ibo.org/programmes/diploma-programme/curriculum/",
+            retrievedAt: "2026-08-25"
+        ),
+        .init(
+            code: "IB_DP_GEOGRAPHY",
+            qualification: .ibDP,
+            board: nil,
+            subject: "Geography",
+            specCode: nil,
+            objectives: [
+
+            ],
+            components: [
+            .init(code: "IA_SL", name: "Fieldwork report (SL)", kind: .internalAssessment, minutes: 1200, marks: 25, weighting: 25, level: "SL", covers: nil, format: nil, criteria: []),
+            .init(code: "EXTERNAL_SL", name: "Examinations (SL)", kind: .exam, minutes: nil, marks: nil, weighting: 75, level: "SL", covers: nil, format: nil, criteria: []),
+            .init(code: "IA_HL", name: "Fieldwork report (HL)", kind: .internalAssessment, minutes: 1200, marks: 25, weighting: 20, level: "HL", covers: nil, format: nil, criteria: []),
+            .init(code: "EXTERNAL_HL", name: "Examinations (HL)", kind: .exam, minutes: nil, marks: nil, weighting: 80, level: "HL", covers: nil, format: nil, criteria: [])
+            ],
+            notes: ["Maximum 2,500 words; markers are advised to stop reading past the limit, which hits the later criteria hardest.", "Six criteria A to F; the per-criterion marks are not confirmed in the source used.", "Primary data collected at a local scale.", "Figures taken from the Albus IB knowledge base v1.0 (compiled August 2026), which paraphrases the official IB subject guides rather than reproducing them. Verify against the current guide before quoting marks to a student."],
+            source: "https://www.ibo.org/programmes/diploma-programme/curriculum/",
+            retrievedAt: "2026-08-25"
+        ),
+        .init(
+            code: "IB_DP_HISTORY",
+            qualification: .ibDP,
+            board: nil,
+            subject: "History",
+            specCode: nil,
+            objectives: [
+
+            ],
+            components: [
+            .init(code: "IA_SL", name: "Historical investigation (SL)", kind: .internalAssessment, minutes: 1200, marks: 25, weighting: 25, level: "SL", covers: nil, format: nil, criteria: [.init(code: "A", name: "Identification and evaluation of sources", marks: 6, guidance: "Explain how each source's origin and purpose create its value and its limits, for this question."), .init(code: "B", name: "Investigation", marks: 15, guidance: "Critical analysis with evidence and differing perspectives, ending in a reasoned judgment."), .init(code: "C", name: "Reflection", marks: 4, guidance: "What your own investigation revealed about how historians work.")]),
+            .init(code: "EXTERNAL_SL", name: "Examinations (SL)", kind: .exam, minutes: nil, marks: nil, weighting: 75, level: "SL", covers: nil, format: nil, criteria: []),
+            .init(code: "IA_HL", name: "Historical investigation (HL)", kind: .internalAssessment, minutes: 1200, marks: 25, weighting: 20, level: "HL", covers: nil, format: nil, criteria: [.init(code: "A", name: "Identification and evaluation of sources", marks: 6, guidance: "Explain how each source's origin and purpose create its value and its limits, for this question."), .init(code: "B", name: "Investigation", marks: 15, guidance: "Critical analysis with evidence and differing perspectives, ending in a reasoned judgment."), .init(code: "C", name: "Reflection", marks: 4, guidance: "What your own investigation revealed about how historians work.")]),
+            .init(code: "EXTERNAL_HL", name: "Examinations (HL)", kind: .exam, minutes: nil, marks: nil, weighting: 80, level: "HL", covers: nil, format: nil, criteria: [])
+            ],
+            notes: ["Maximum 2,200 words; bibliography and referencing sit outside the count.", "Section 2 carries 15 of the 25 marks.", "Same requirements at SL and HL; only the weighting differs.", "Figures taken from the Albus IB knowledge base v1.0 (compiled August 2026), which paraphrases the official IB subject guides rather than reproducing them. Verify against the current guide before quoting marks to a student."],
+            source: "https://www.ibo.org/programmes/diploma-programme/curriculum/",
+            retrievedAt: "2026-08-25"
+        ),
+        .init(
+            code: "IB_DP_LANG_A_LANGLIT",
+            qualification: .ibDP,
+            board: nil,
+            subject: "Language A: language and literature",
+            specCode: nil,
+            objectives: [
+
+            ],
+            components: [
+            .init(code: "IA_SL", name: "Individual oral (SL)", kind: .internalAssessment, minutes: 15, marks: 40, weighting: 30, level: "SL", covers: nil, format: nil, criteria: []),
+            .init(code: "EXTERNAL_SL", name: "Examinations (SL)", kind: .exam, minutes: nil, marks: nil, weighting: 70, level: "SL", covers: nil, format: nil, criteria: []),
+            .init(code: "IA_HL", name: "Individual oral (HL)", kind: .internalAssessment, minutes: 15, marks: 40, weighting: 20, level: "HL", covers: nil, format: nil, criteria: []),
+            .init(code: "EXTERNAL_HL", name: "Examinations (HL)", kind: .exam, minutes: nil, marks: nil, weighting: 80, level: "HL", covers: nil, format: nil, criteria: [])
+            ],
+            notes: ["Two extracts, one literary and one non-literary, connected by a global issue.", "A global issue must be significant at scale, transnational, and felt locally.", "Works used for the oral may not be reused for the HL essay or paper 2.", "Figures taken from the Albus IB knowledge base v1.0 (compiled August 2026), which paraphrases the official IB subject guides rather than reproducing them. Verify against the current guide before quoting marks to a student."],
+            source: "https://www.ibo.org/programmes/diploma-programme/curriculum/",
+            retrievedAt: "2026-08-25"
+        ),
+        .init(
+            code: "IB_DP_LANG_A_LIT",
+            qualification: .ibDP,
+            board: nil,
+            subject: "Language A: literature",
+            specCode: nil,
+            objectives: [
+
+            ],
+            components: [
+            .init(code: "IA_SL", name: "Individual oral (SL)", kind: .internalAssessment, minutes: 15, marks: 40, weighting: 30, level: "SL", covers: nil, format: nil, criteria: []),
+            .init(code: "EXTERNAL_SL", name: "Examinations (SL)", kind: .exam, minutes: nil, marks: nil, weighting: 70, level: "SL", covers: nil, format: nil, criteria: []),
+            .init(code: "IA_HL", name: "Individual oral (HL)", kind: .internalAssessment, minutes: 15, marks: 40, weighting: 20, level: "HL", covers: nil, format: nil, criteria: []),
+            .init(code: "EXTERNAL_HL", name: "Examinations (HL)", kind: .exam, minutes: nil, marks: nil, weighting: 80, level: "HL", covers: nil, format: nil, criteria: [])
+            ],
+            notes: ["15 minutes: 10-minute presentation, then 5 minutes of teacher questions.", "Two literary works connected by a global issue of the student's choosing.", "Works used for the oral may not be reused for the HL essay or paper 2.", "Four criteria A to D; the per-criterion marks are not confirmed in the source used.", "Figures taken from the Albus IB knowledge base v1.0 (compiled August 2026), which paraphrases the official IB subject guides rather than reproducing them. Verify against the current guide before quoting marks to a student."],
+            source: "https://www.ibo.org/programmes/diploma-programme/curriculum/",
+            retrievedAt: "2026-08-25"
+        ),
+        .init(
+            code: "IB_DP_LANG_B",
+            qualification: .ibDP,
+            board: nil,
+            subject: "Language B",
+            specCode: nil,
+            objectives: [
+
+            ],
+            components: [
+            .init(code: "IA_SL", name: "Individual oral (SL)", kind: .internalAssessment, minutes: 15, marks: 30, weighting: 25, level: "SL", covers: nil, format: nil, criteria: []),
+            .init(code: "EXTERNAL_SL", name: "Examinations (SL)", kind: .exam, minutes: nil, marks: nil, weighting: 75, level: "SL", covers: nil, format: nil, criteria: []),
+            .init(code: "IA_HL", name: "Individual oral (HL)", kind: .internalAssessment, minutes: 15, marks: 30, weighting: 20, level: "HL", covers: nil, format: nil, criteria: []),
+            .init(code: "EXTERNAL_HL", name: "Examinations (HL)", kind: .exam, minutes: nil, marks: nil, weighting: 80, level: "HL", covers: nil, format: nil, criteria: [])
+            ],
+            notes: ["SL works from a visual stimulus; HL from an extract of a studied literary work.", "Ignoring context, purpose and audience can score zero for message and conceptual understanding even with strong language.", "Language-improvement software is not permitted in language acquisition subjects.", "Figures taken from the Albus IB knowledge base v1.0 (compiled August 2026), which paraphrases the official IB subject guides rather than reproducing them. Verify against the current guide before quoting marks to a student."],
+            source: "https://www.ibo.org/programmes/diploma-programme/curriculum/",
+            retrievedAt: "2026-08-25"
+        ),
+        .init(
+            code: "IB_DP_MATHS_AA",
+            qualification: .ibDP,
+            board: nil,
+            subject: "Mathematics: analysis and approaches",
+            specCode: nil,
+            objectives: [
+
+            ],
+            components: [
+            .init(code: "IA_SL", name: "Mathematical exploration (SL)", kind: .internalAssessment, minutes: 750, marks: 20, weighting: 20, level: "SL", covers: nil, format: nil, criteria: [.init(code: "A", name: "Presentation", marks: 4, guidance: "How the exploration is organised and whether it coheres."), .init(code: "B", name: "Mathematical communication", marks: 4, guidance: "Whether the notation, terminology and representation suit the mathematics."), .init(code: "C", name: "Personal engagement", marks: 3, guidance: "Evidence of engaging with the mathematics itself, not enthusiasm for the topic."), .init(code: "D", name: "Reflection", marks: 3, guidance: "Reviewing and evaluating the exploration, not describing what was done."), .init(code: "E", name: "Use of mathematics", marks: 6, guidance: "Mathematics at the right level, correct, and visibly understood.")]),
+            .init(code: "EXTERNAL_SL", name: "Examinations (SL)", kind: .exam, minutes: nil, marks: nil, weighting: 80, level: "SL", covers: nil, format: nil, criteria: []),
+            .init(code: "IA_HL", name: "Mathematical exploration (HL)", kind: .internalAssessment, minutes: 750, marks: 20, weighting: 20, level: "HL", covers: nil, format: nil, criteria: [.init(code: "A", name: "Presentation", marks: 4, guidance: "How the exploration is organised and whether it coheres."), .init(code: "B", name: "Mathematical communication", marks: 4, guidance: "Whether the notation, terminology and representation suit the mathematics."), .init(code: "C", name: "Personal engagement", marks: 3, guidance: "Evidence of engaging with the mathematics itself, not enthusiasm for the topic."), .init(code: "D", name: "Reflection", marks: 3, guidance: "Reviewing and evaluating the exploration, not describing what was done."), .init(code: "E", name: "Use of mathematics", marks: 6, guidance: "Mathematics at the right level, correct, and visibly understood.")]),
+            .init(code: "EXTERNAL_HL", name: "Examinations (HL)", kind: .exam, minutes: nil, marks: nil, weighting: 80, level: "HL", covers: nil, format: nil, criteria: [])
+            ],
+            notes: ["No word limit; 12 to 20 pages recommended.", "HL expects greater sophistication and rigour in Use of mathematics.", "Cite at the point of use; a bibliography alone can become a misconduct finding.", "Figures taken from the Albus IB knowledge base v1.0 (compiled August 2026), which paraphrases the official IB subject guides rather than reproducing them. Verify against the current guide before quoting marks to a student."],
+            source: "https://www.ibo.org/programmes/diploma-programme/curriculum/",
+            retrievedAt: "2026-08-25"
+        ),
+        .init(
+            code: "IB_DP_MATHS_AI",
+            qualification: .ibDP,
+            board: nil,
+            subject: "Mathematics: applications and interpretation",
+            specCode: nil,
+            objectives: [
+
+            ],
+            components: [
+            .init(code: "IA_SL", name: "Mathematical exploration (SL)", kind: .internalAssessment, minutes: 750, marks: 20, weighting: 20, level: "SL", covers: nil, format: nil, criteria: [.init(code: "A", name: "Presentation", marks: 4, guidance: "How the exploration is organised and whether it coheres."), .init(code: "B", name: "Mathematical communication", marks: 4, guidance: "Whether the notation, terminology and representation suit the mathematics."), .init(code: "C", name: "Personal engagement", marks: 3, guidance: "Evidence of engaging with the mathematics itself, not enthusiasm for the topic."), .init(code: "D", name: "Reflection", marks: 3, guidance: "Reviewing and evaluating the exploration, not describing what was done."), .init(code: "E", name: "Use of mathematics", marks: 6, guidance: "Mathematics at the right level, correct, and visibly understood.")]),
+            .init(code: "EXTERNAL_SL", name: "Examinations (SL)", kind: .exam, minutes: nil, marks: nil, weighting: 80, level: "SL", covers: nil, format: nil, criteria: []),
+            .init(code: "IA_HL", name: "Mathematical exploration (HL)", kind: .internalAssessment, minutes: 750, marks: 20, weighting: 20, level: "HL", covers: nil, format: nil, criteria: [.init(code: "A", name: "Presentation", marks: 4, guidance: "How the exploration is organised and whether it coheres."), .init(code: "B", name: "Mathematical communication", marks: 4, guidance: "Whether the notation, terminology and representation suit the mathematics."), .init(code: "C", name: "Personal engagement", marks: 3, guidance: "Evidence of engaging with the mathematics itself, not enthusiasm for the topic."), .init(code: "D", name: "Reflection", marks: 3, guidance: "Reviewing and evaluating the exploration, not describing what was done."), .init(code: "E", name: "Use of mathematics", marks: 6, guidance: "Mathematics at the right level, correct, and visibly understood.")]),
+            .init(code: "EXTERNAL_HL", name: "Examinations (HL)", kind: .exam, minutes: nil, marks: nil, weighting: 80, level: "HL", covers: nil, format: nil, criteria: [])
+            ],
+            notes: ["No word limit; 12 to 20 pages recommended.", "HL expects greater sophistication and rigour in Use of mathematics.", "Figures taken from the Albus IB knowledge base v1.0 (compiled August 2026), which paraphrases the official IB subject guides rather than reproducing them. Verify against the current guide before quoting marks to a student."],
+            source: "https://www.ibo.org/programmes/diploma-programme/curriculum/",
+            retrievedAt: "2026-08-25"
+        ),
+        .init(
+            code: "IB_DP_PHYSICS",
+            qualification: .ibDP,
+            board: nil,
+            subject: "Physics",
+            specCode: nil,
+            objectives: [
+
+            ],
+            components: [
+            .init(code: "IA_SL", name: "Scientific investigation (SL)", kind: .internalAssessment, minutes: 600, marks: 24, weighting: 20, level: "SL", covers: nil, format: nil, criteria: [.init(code: "A", name: "Research design", marks: 6, guidance: "State the question with its variables and enough method to repeat."), .init(code: "B", name: "Data analysis", marks: 6, guidance: "Record, process and present data so a conclusion can be drawn, uncertainties included."), .init(code: "C", name: "Conclusion", marks: 6, guidance: "Answer your own question against the analysis and published science, uncertainties included."), .init(code: "D", name: "Evaluation", marks: 6, guidance: "Name the specific weaknesses that mattered most and improvements that address them.")]),
+            .init(code: "EXTERNAL_SL", name: "Examinations (SL)", kind: .exam, minutes: nil, marks: nil, weighting: 80, level: "SL", covers: nil, format: nil, criteria: []),
+            .init(code: "IA_HL", name: "Scientific investigation (HL)", kind: .internalAssessment, minutes: 600, marks: 24, weighting: 20, level: "HL", covers: nil, format: nil, criteria: [.init(code: "A", name: "Research design", marks: 6, guidance: "State the question with its variables and enough method to repeat."), .init(code: "B", name: "Data analysis", marks: 6, guidance: "Record, process and present data so a conclusion can be drawn, uncertainties included."), .init(code: "C", name: "Conclusion", marks: 6, guidance: "Answer your own question against the analysis and published science, uncertainties included."), .init(code: "D", name: "Evaluation", marks: 6, guidance: "Name the specific weaknesses that mattered most and improvements that address them.")]),
+            .init(code: "EXTERNAL_HL", name: "Examinations (HL)", kind: .exam, minutes: nil, marks: nil, weighting: 80, level: "HL", covers: nil, format: nil, criteria: [])
+            ],
+            notes: ["Identical IA across Biology, Chemistry and Physics under the first-assessment-2025 guides.", "Report maximum 3,000 words; tables, calculations, citations, graphs and appendices are excluded.", "Conclusion and Evaluation are together half the marks.", "Figures taken from the Albus IB knowledge base v1.0 (compiled August 2026), which paraphrases the official IB subject guides rather than reproducing them. Verify against the current guide before quoting marks to a student."],
+            source: "https://www.ibo.org/programmes/diploma-programme/curriculum/",
+            retrievedAt: "2026-08-25"
+        ),
+        .init(
+            code: "IB_DP_TOK",
+            qualification: .ibDP,
+            board: nil,
+            subject: "Theory of knowledge",
+            specCode: nil,
+            objectives: [
+
+            ],
+            components: [
+            .init(code: "ESSAY", name: "TOK essay", kind: .coursework, minutes: 1200, marks: 10, weighting: 66.67, level: nil, covers: nil, format: "1,600 words on a prescribed title, externally assessed; counted twice in the aggregate", criteria: []),
+            .init(code: "EXHIBITION", name: "TOK exhibition", kind: .internalAssessment, minutes: 900, marks: 10, weighting: 33.33, level: nil, covers: nil, format: "950 words on three objects, internally assessed and externally moderated", criteria: [])
+            ],
+            notes: ["The essay is worth exactly twice the exhibition.", "The exhibition draws on the core and optional themes; the essay emphasises areas of knowledge.", "An E in TOK is a failing condition for the diploma regardless of total points.", "Figures taken from the Albus IB knowledge base v1.0 (compiled August 2026), which paraphrases the official IB subject guides rather than reproducing them. Verify against the current guide before quoting marks to a student."],
+            source: "https://www.ibo.org/programmes/diploma-programme/curriculum/",
+            retrievedAt: "2026-08-25"
+        ),
     ]
 
     /// Subjects for one qualification, and — for A-level — one board, since the

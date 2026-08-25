@@ -145,8 +145,13 @@ struct CurriculumTests {
                 if let minutes = component.minutes, minutes % 60 == 0 {
                     #expect(component.durationText == "\(minutes / 60)h")
                 }
-                #expect(!component.weightingText.contains("."),
-                        "\(subject.code)/\(component.code) shows a fractional weighting")
+                // A whole-number weighting must not render as "35.0%". A genuinely
+                // fractional one may: the TOK essay really is two thirds of the
+                // grade, and rounding it to 67% would be us inventing a figure.
+                if component.weighting == component.weighting.rounded() {
+                    #expect(!component.weightingText.contains("."),
+                            "\(subject.code)/\(component.code) renders a whole number as a decimal")
+                }
             }
         }
     }

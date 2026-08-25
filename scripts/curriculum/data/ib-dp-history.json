@@ -1,0 +1,90 @@
+{
+  "code": "IB_DP_HISTORY",
+  "qualification": "IB_DP",
+  "subject": "History",
+  "specVersion": "First assessment 2017 (new guide first assessed 2028)",
+  "source": "https://www.ibo.org/programmes/diploma-programme/curriculum/",
+  "retrievedAt": "2026-08-25",
+  "verifiedPages": "knowledge base 7.2, 7.5",
+  "objectives": [],
+  "components": [
+    {
+      "code": "IA_SL",
+      "name": "Historical investigation (SL)",
+      "kind": "internal_assessment",
+      "minutes": 1200,
+      "marks": 25,
+      "weighting": 25,
+      "level": "SL",
+      "criteria": [
+        {
+          "code": "A",
+          "name": "Identification and evaluation of sources",
+          "marks": 6,
+          "guidance": "Explain how each source's origin and purpose create its value and its limits, for this question."
+        },
+        {
+          "code": "B",
+          "name": "Investigation",
+          "marks": 15,
+          "guidance": "Critical analysis with evidence and differing perspectives, ending in a reasoned judgment."
+        },
+        {
+          "code": "C",
+          "name": "Reflection",
+          "marks": 4,
+          "guidance": "What your own investigation revealed about how historians work."
+        }
+      ]
+    },
+    {
+      "code": "EXTERNAL_SL",
+      "name": "Examinations (SL)",
+      "kind": "exam",
+      "weighting": 75,
+      "level": "SL"
+    },
+    {
+      "code": "IA_HL",
+      "name": "Historical investigation (HL)",
+      "kind": "internal_assessment",
+      "minutes": 1200,
+      "marks": 25,
+      "weighting": 20,
+      "level": "HL",
+      "criteria": [
+        {
+          "code": "A",
+          "name": "Identification and evaluation of sources",
+          "marks": 6,
+          "guidance": "Explain how each source's origin and purpose create its value and its limits, for this question."
+        },
+        {
+          "code": "B",
+          "name": "Investigation",
+          "marks": 15,
+          "guidance": "Critical analysis with evidence and differing perspectives, ending in a reasoned judgment."
+        },
+        {
+          "code": "C",
+          "name": "Reflection",
+          "marks": 4,
+          "guidance": "What your own investigation revealed about how historians work."
+        }
+      ]
+    },
+    {
+      "code": "EXTERNAL_HL",
+      "name": "Examinations (HL)",
+      "kind": "exam",
+      "weighting": 80,
+      "level": "HL"
+    }
+  ],
+  "notes": [
+    "Maximum 2,200 words; bibliography and referencing sit outside the count.",
+    "Section 2 carries 15 of the 25 marks.",
+    "Same requirements at SL and HL; only the weighting differs.",
+    "Figures taken from the Albus IB knowledge base v1.0 (compiled August 2026), which paraphrases the official IB subject guides rather than reproducing them. Verify against the current guide before quoting marks to a student."
+  ]
+}

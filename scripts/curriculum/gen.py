@@ -44,6 +44,14 @@ SWIFT_OUT = ROOT / "ios" / "App" / "Albus" / "Models" / "Curriculum.swift"
 SQL_OUT = HERE / "seed.sql"
 
 QUALIFICATIONS = {"A_LEVEL", "IB_DP", "AP", "OTHER"}
+
+# What a curriculum is called on screen and in a prompt. A-level is absent
+# because its name carries the board and is built per record.
+QUALIFICATION_NAMES = {
+    "IB_DP": "International Baccalaureate Diploma Programme",
+    "AP": "Advanced Placement",
+    "OTHER": "Other",
+}
 COMPONENT_KINDS = {"exam", "coursework", "internal_assessment", "practical", "oral"}
 
 
@@ -65,12 +73,19 @@ def validate(name, s):
     """Fail loudly on the mistakes that are invisible once shipped."""
     errs = []
 
-    for field in ("code", "qualification", "board", "subject", "source", "retrievedAt"):
+    for field in ("code", "qualification", "subject", "source", "retrievedAt"):
         if not s.get(field):
             errs.append(f"missing '{field}'")
 
     if s.get("qualification") not in QUALIFICATIONS:
         errs.append(f"qualification must be one of {sorted(QUALIFICATIONS)}")
+
+    # A board is part of a subject's identity only where boards differ. A-level
+    # is assessed differently by each of them, so a missing board there is a
+    # record that cannot be trusted; the IB is a single authority, so demanding
+    # one would mean inventing it.
+    if s.get("qualification") == "A_LEVEL" and not s.get("board"):
+        errs.append("missing 'board' — A-level assessment differs by board")
 
     # Provenance is not optional. A record with no source cannot be re-checked
     # when a specification is revised, and every one of these will be revised.
@@ -367,7 +382,15 @@ def emit_sql(subjects):
             code = f"A_LEVEL_{s['board'].upper().replace(' ', '_')}"
             name = f"A-Level ({s['board']})"
         else:
-            code, name = s["qualification"], s["subject"]
+            code = s["qualification"]
+            # Named explicitly, never derived from the subject. This line used to
+            # read `name = s["subject"]`, so the last subject in the corpus won
+            # the dictionary and the IB Diploma Programme was renamed "Theory of
+            # knowledge" in the live database — the name that goes into every IB
+            # student's prompt as "Curriculum: ...".
+            name = QUALIFICATION_NAMES.get(code)
+            if not name:
+                raise DataError(f"no display name for qualification '{code}' — add one")
         curricula[code] = name
 
     lines.append("-- Curricula. A-level is split by board because the boards genuinely\n"

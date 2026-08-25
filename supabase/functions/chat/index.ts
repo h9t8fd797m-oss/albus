@@ -15,11 +15,14 @@ import { chatReply } from "../_shared/anthropic.ts";
 import { recordTokensInBackground } from "../_shared/quota.ts";
 import {
   buildChatSystemPrompt,
+  buildChatUserPrompt,
   type ChatContext,
   MAX_MESSAGE_CHARS,
   sanitiseHistory,
   type StudentContext,
+  type StudentSubject,
 } from "../_shared/chat_prompt.ts";
+import { loadKnowledge } from "../_shared/knowledge.ts";
 
 const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -28,15 +31,30 @@ const MODEL_CHAT_RUBRIC = "claude-sonnet-5";
 const MODEL_CHAT_PLAIN = "claude-haiku-4-5";
 
 /**
- * Who is asking: curriculum and subjects.
+ * Who is asking: curriculum, subjects, and how those subjects are assessed.
  *
- * One round trip, and it fails soft — a chat that works without knowing the
- * student is better than one that refuses because a profile row is missing.
+ * Every row here is read through the caller's own client, so RLS answers the
+ * "whose data is this" question rather than this code doing it. A student's
+ * curriculum and subjects are their own rows; there is no request-body input to
+ * this function at all, which is what makes borrowing another student's
+ * curriculum impossible rather than merely unlikely.
+ *
+ * Fails soft — a chat that works without knowing the student is better than one
+ * that refuses because a profile row is missing.
  */
 async function loadStudent(db: SupabaseClient): Promise<StudentContext | null> {
   const [profile, courses] = await Promise.all([
     db.from("profiles").select("curriculum_code").maybeSingle(),
-    db.from("courses").select("display_name").order("display_name").limit(20),
+    // The subject's link to a specification is `course_template_id`, set when
+    // the student picked the subject. That link is what turns "Biology" into
+    // "Biology, whose IA is worth 20%".
+    db.from("courses")
+      .select(`
+        display_name,
+        course_templates ( name, assessment_types ( code, name, typical_minutes ) )
+      `)
+      .order("display_name")
+      .limit(20),
   ]);
 
   const code = profile.data?.curriculum_code as string | null | undefined;
@@ -52,12 +70,30 @@ async function loadStudent(db: SupabaseClient): Promise<StudentContext | null> {
     curriculumName = typeof data?.name === "string" ? data.name : null;
   }
 
-  const names = (courses.data ?? [])
-    .map((c) => (c as { display_name: string }).display_name)
-    .filter(Boolean);
+  const one = <T>(v: unknown): T | null =>
+    Array.isArray(v) ? ((v[0] as T) ?? null) : ((v as T) ?? null);
 
-  if (!curriculumName && names.length === 0) return null;
-  return { curriculumName, courses: names };
+  const subjects: StudentSubject[] = (courses.data ?? [])
+    .map((row) => {
+      const r = row as {
+        display_name: string;
+        course_templates: unknown;
+      };
+      const template = one<{
+        name: string;
+        assessment_types?: Array<{ code: string; name: string; typical_minutes: number | null }>;
+      }>(r.course_templates);
+
+      const components = (template?.assessment_types ?? [])
+        .map((a) => a.name)
+        .filter(Boolean);
+
+      return { name: r.display_name, components };
+    })
+    .filter((s) => Boolean(s.name));
+
+  if (!curriculumName && subjects.length === 0) return null;
+  return { curriculumName, curriculumCode: code ?? null, subjects };
 }
 
 async function loadContext(
@@ -187,7 +223,17 @@ Deno.serve(async (req) => {
       loadStudent(caller.db),
     ]) as [ChatContext | null, StudentContext | null];
 
-    const model = context?.rubricSummary ? MODEL_CHAT_RUBRIC : MODEL_CHAT_PLAIN;
+    // Which corpus, if any, comes from the caller's own profile row — never
+    // from the request. A student cannot ask for another qualification's
+    // reference material by claiming to study it.
+    const knowledge = await loadKnowledge(caller.db, student?.curriculumCode ?? null, message);
+
+    // Curriculum questions deserve the stronger model even with no assignment
+    // open: "does an E in TOK fail my diploma" is not a question to answer
+    // approximately.
+    const model = context?.rubricSummary || knowledge.length > 0
+      ? MODEL_CHAT_RUBRIC
+      : MODEL_CHAT_PLAIN;
 
     // Reserve a slot before spending anything. Atomic in Postgres, so two
     // concurrent requests cannot both pass the last remaining unit of quota.
@@ -201,7 +247,7 @@ Deno.serve(async (req) => {
       model,
       buildChatSystemPrompt(context, student),
       sanitiseHistory(body.history),
-      message,
+      buildChatUserPrompt(knowledge, message),
     );
 
     if (usageId) {
@@ -217,6 +263,9 @@ Deno.serve(async (req) => {
       reply: result.text,
       model,
       grounded: context !== null,
+      // Which sections shaped the answer. Cheap to return, and the difference
+      // between trusting the retrieval and hoping it worked.
+      knowledge: knowledge.map((k) => k.section),
     });
   } catch (e) {
     return errorResponse(e);
