@@ -3,204 +3,280 @@ import AlbusCore
 
 /// Albus Plus.
 ///
-/// The purchase itself is RevenueCat's job — this screen presents the offer and
-/// hands off. It deliberately owns no entitlement logic: what a student gets is
-/// decided by the server from RevenueCat's webhook, and this screen only ever
-/// *reads* `EntitlementService`.
+/// A port of `paywall-v2.jsx` from the Albus design project. The design opens
+/// full-bleed on a night scene — Albus flying up to a violet moon, landing,
+/// planting a check badge — then zooms that scene down into an arched hero
+/// panel while the page content rises underneath it.
+///
+/// The intro is skippable by tapping, and skipped entirely under Reduce Motion:
+/// a three-second animation between a student and a price is a toll, not a
+/// flourish, and the people most likely to be hurt by it are the ones who asked
+/// the system for less movement.
 struct PaywallScreen: View {
     @Environment(\.dismiss) private var dismiss
-    @Environment(EntitlementService.self) private var entitlements
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
+    /// Where the intro has got to. `flight` is full-bleed, `hero` is the zoom
+    /// down into the panel, `done` releases the page to scroll.
+    private enum Phase { case flight, hero, done }
+
+    /// Whether the intro plays. Mirrors the source component's `autoplay` prop,
+    /// and lets a snapshot render the settled screen rather than frame one.
+    var autoplay: Bool = true
+
+    @State private var phase: Phase
     @State private var plan: Plan = .annual
-    @State private var purchaseState: PurchaseState = .idle
+    @State private var runID = 0
 
-    enum Plan: String, CaseIterable, Identifiable {
+    init(autoplay: Bool = true) {
+        self.autoplay = autoplay
+        _phase = State(initialValue: autoplay ? .flight : .done)
+    }
+
+    // Geometry from the design, in points.
+    private let heroTop: CGFloat = 56
+    private let heroInset: CGFloat = 16
+    private let heroHeight: CGFloat = 310
+    private let arch: CGFloat = 175
+
+    private enum Plan: String, CaseIterable, Identifiable {
         case annual, monthly
         var id: String { rawValue }
 
-        var title: String { self == .annual ? "Annual" : "Monthly" }
-        /// Display only. The real price comes from the store at purchase time —
-        /// a hardcoded price that disagrees with what the student is charged is
-        /// both a bug and an App Store rejection.
+        var label: String { self == .annual ? "Annual" : "Monthly" }
         var headline: String { self == .annual ? "$4.17" : "$4.99" }
-        var period: String { "per month" }
-        var note: String { self == .annual ? "$49.99 billed yearly" : "Billed monthly" }
-        var tag: String? { self == .annual ? "2 months free" : nil }
+        var price: String { self == .annual ? "$49.99" : "$4.99" }
+        var period: String { self == .annual ? "per year" : "per month" }
+        var note: String? { self == .annual ? "$49.99 billed yearly" : nil }
+        var tag: String? { self == .annual ? "2 MONTHS FREE" : nil }
     }
 
-    enum PurchaseState: Equatable {
-        case idle
-        case purchasing
-        case unavailable
-        case failed(String)
-    }
-
-    private struct Value: Identifiable {
-        let id = UUID()
-        let icon: String
-        let tint: Tokens.Tint
-        let title: String
-        let detail: String
-    }
-
-    private let values: [Value] = [
-        .init(icon: "calendar", tint: .violet,
-              title: "Plans your semester around you",
-              detail: "Every deadline becomes a schedule that fits your real week."),
-        .init(icon: "arrow.triangle.2.circlepath", tint: .blue,
-              title: "Rebuilds the plan when life moves",
-              detail: "Miss a block and Albus redistributes the hours before you notice."),
-        .init(icon: "list.bullet.indent", tint: .teal,
-              title: "Plans inside each task",
-              detail: "Essays arrive as steps with estimates, not one line on a list."),
-        .init(icon: "book", tint: .amber,
-              title: "Knows what your courses ask for",
-              detail: "Rubrics, reading lists and past papers shape the work he sets."),
-        .init(icon: "chart.line.uptrend.xyaxis", tint: .green,
-              title: "Learns how you actually study",
-              detail: "Your pace, your best hours, your habit of starting late.")
+    private static let values: [(String, String)] = [
+        ("Plans your semester around you",
+         "Every deadline becomes a schedule that fits your real week."),
+        ("Rebuilds the plan when life moves",
+         "Miss a block and Albus redistributes the hours before you notice."),
+        ("Plans inside each task",
+         "Essays arrive as steps with estimates, not one line on a list."),
+        ("Knows what your courses ask for",
+         "Rubrics, reading lists and past papers shape the work he sets."),
+        ("Learns how you actually study",
+         "Your pace, your best hours, your habit of starting late."),
     ]
 
+    private var isFlying: Bool { phase == .flight }
+    private var showsContent: Bool { phase != .flight }
+
     var body: some View {
-        ZStack {
-            BackgroundGradient()
-            if entitlements.isPlus {
-                alreadySubscribed
-            } else {
-                offer
-            }
-        }
-        .task { await entitlements.refresh() }
-    }
+        ZStack(alignment: .top) {
+            Palette.page.ignoresSafeArea()
 
-    private var alreadySubscribed: some View {
-        VStack(spacing: Tokens.Spacing.l) {
-            EmptyState(icon: "checkmark.seal.fill", title: "You're on Plus",
-                       message: expiryMessage)
-            PrimaryButton(title: "Done") { dismiss() }
-                .padding(.horizontal, Tokens.Spacing.xl)
-        }
-    }
-
-    private var expiryMessage: String {
-        guard let expires = entitlements.expiresAt else {
-            return "Everything Albus can do is switched on."
-        }
-        return "Your plan renews \(expires.formatted(.dateTime.month().day()))."
-    }
-
-    private var offer: some View {
-        VStack(spacing: 0) {
             ScrollView {
-                VStack(alignment: .leading, spacing: Tokens.Spacing.xl) {
-                    header
-                    valueList
-                    planPicker
-                    if case .failed(let why) = purchaseState {
-                        StatusBanner(tone: .error, message: why)
-                    }
-                    if purchaseState == .unavailable {
-                        StatusBanner(tone: .warning,
-                                     message: "Purchases aren't available in this build yet.")
-                    }
-                }
-                .padding(.horizontal, Tokens.Spacing.xl)
-                .padding(.bottom, Tokens.Spacing.xl)
-            }
-            .scrollContentBackground(.hidden)
+                VStack(alignment: .leading, spacing: 0) {
+                    heroPanel
+                        .padding(.horizontal, heroInset)
+                        .padding(.top, heroTop)
 
-            purchaseBar
+                    headline.padding(.top, 26)
+                    valueList.padding(.top, 22)
+                    planPicker.padding(.top, 26)
+                }
+                .padding(.bottom, 200)
+            }
+            .scrollDisabled(phase != .done)
+
+            purchaseBar.frame(maxHeight: .infinity, alignment: .bottom)
+            closeButton
+            if phase != .done { intro }
         }
+        .background(Palette.page)
+        .task(id: runID) { await runIntro() }
     }
 
-    private var header: some View {
-        VStack(alignment: .leading, spacing: Tokens.Spacing.s) {
-            HStack {
-                Spacer()
-                Button { dismiss() } label: {
-                    Image(systemName: "xmark")
-                        .font(.system(size: 14, weight: .semibold))
-                        .foregroundStyle(Tokens.Palette.inkMuted)
+    // MARK: - Intro
+
+    /// Full-bleed scene, then a zoom down into the hero panel's frame.
+    ///
+    /// One view animating its own inset rather than two views cross-fading, so
+    /// the moon and the cactus keep their positions through the transition —
+    /// the whole point of the shot is that it is the same scene, arriving.
+    private var intro: some View {
+        GeometryReader { geo in
+            let inset = isFlying
+                ? EdgeInsets()
+                : EdgeInsets(top: heroTop, leading: heroInset,
+                             bottom: geo.size.height - heroTop - heroHeight, trailing: heroInset)
+
+            Palette.night
+                .overlay {
+                    MoonScene(animated: true, runID: runID)
+                        .scaleEffect(isFlying ? 1.95 : 1)
                 }
-                .buttonStyle(.plain)
-                .accessibilityLabel("Close")
-            }
-            Text("ALBUS PLUS")
-                .font(Tokens.Typography.overline)
-                .tracking(Tokens.Tracking.overline)
-                .foregroundStyle(Tokens.Palette.accent)
-            Text("A plan that keeps up with you.")
-                .font(Tokens.Typography.title)
-                .foregroundStyle(Tokens.Palette.ink)
-                .fixedSize(horizontal: false, vertical: true)
+                .clipShape(RoundedCornersShape(top: isFlying ? 0 : arch,
+                                               bottom: isFlying ? 0 : 22))
+                .padding(inset)
         }
-        .padding(.top, Tokens.Spacing.s)
+        .ignoresSafeArea()
+        .contentShape(Rectangle())
+        // Tapping skips. Someone who has seen it once should not have to sit
+        // through it again to reach the price.
+        .onTapGesture { finishIntro() }
+        .accessibilityAddTraits(.isButton)
+        .accessibilityLabel("Skip the introduction")
+    }
+
+    private func runIntro() async {
+        guard autoplay, !reduceMotion else { phase = .done; return }
+        phase = .flight
+        try? await Task.sleep(for: .seconds(2.35))
+        guard !Task.isCancelled, phase == .flight else { return }
+        withAnimation(.timingCurve(0.22, 1, 0.36, 1, duration: 0.95)) { phase = .hero }
+        try? await Task.sleep(for: .seconds(1.0))
+        guard !Task.isCancelled else { return }
+        withAnimation(.easeOut(duration: 0.4)) { phase = .done }
+    }
+
+    private func finishIntro() {
+        withAnimation(.timingCurve(0.22, 1, 0.36, 1, duration: 0.5)) { phase = .done }
+    }
+
+    // MARK: - Content
+
+    /// The scene at rest, sitting in the page. Tapping replays the intro.
+    private var heroPanel: some View {
+        Palette.night
+            .frame(height: heroHeight)
+            .frame(maxWidth: .infinity)
+            .overlay { MoonScene(animated: false, runID: runID) }
+            .clipShape(RoundedCornersShape(top: arch, bottom: 22))
+            .contentShape(Rectangle())
+            .onTapGesture { runID += 1 }
+            .accessibilityLabel("Replay the introduction")
+    }
+
+    private var headline: some View {
+        (Text("Albus plans.\n") + Text("You").foregroundColor(Palette.violet) + Text(" progress."))
+            .font(.system(size: 32, weight: .bold, design: .rounded))
+            .kerning(-0.6)
+            .lineSpacing(2)
+            .foregroundStyle(Palette.ink)
+            .padding(.horizontal, heroInset)
+            .rise(showsContent, delay: 0.10)
     }
 
     private var valueList: some View {
-        VStack(alignment: .leading, spacing: Tokens.Spacing.m) {
-            SectionHeader("What Plus adds")
-            VStack(spacing: Tokens.Spacing.s) {
-                ForEach(values) { value in
-                    GlassCard(padding: Tokens.Spacing.m) {
-                        HStack(alignment: .top, spacing: Tokens.Spacing.m) {
-                            Image(systemName: value.icon)
-                                .font(.system(size: 15, weight: .medium))
-                                .foregroundStyle(value.tint.foreground)
-                                .frame(width: 34, height: 34)
-                                .background(value.tint.background,
-                                            in: RoundedRectangle(cornerRadius: 9, style: .continuous))
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text(value.title)
-                                    .font(Tokens.Typography.label)
-                                    .fontWeight(.semibold)
-                                    .foregroundStyle(Tokens.Palette.ink)
-                                Text(value.detail)
-                                    .font(Tokens.Typography.caption)
-                                    .foregroundStyle(Tokens.Palette.inkSecondary)
-                                    .fixedSize(horizontal: false, vertical: true)
-                            }
-                            Spacer(minLength: 0)
-                        }
+        VStack(alignment: .leading, spacing: 12) {
+            Text("WHAT PLUS ADDS")
+                .font(.system(size: 12.5, weight: .semibold, design: .rounded))
+                .tracking(1.5)
+                .foregroundStyle(Palette.gray)
+                .padding(.horizontal, 2)
+
+            VStack(spacing: 8) {
+                ForEach(Self.values, id: \.0) { title, detail in
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text(title)
+                            .font(.system(size: 14.5, weight: .semibold, design: .rounded))
+                            .foregroundStyle(Palette.ink)
+                        Text(detail)
+                            .font(.system(size: 12.5))
+                            .foregroundStyle(Palette.gray)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 12)
+                    .background(.white, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+                    .overlay {
+                        RoundedRectangle(cornerRadius: 14, style: .continuous)
+                            .strokeBorder(Palette.border, lineWidth: 0.5)
                     }
                 }
             }
         }
+        .padding(.horizontal, heroInset)
+        .rise(showsContent, delay: 0.18)
     }
 
     private var planPicker: some View {
-        HStack(spacing: Tokens.Spacing.m) {
+        HStack(alignment: .top, spacing: 10) {
             ForEach(Plan.allCases) { option in
-                PlanCard(plan: option, isSelected: plan == option) {
-                    withAnimation(Tokens.Motion.quick) { plan = option }
-                }
+                PlanCard(plan: option, isSelected: plan == option) { plan = option }
             }
         }
+        .padding(.horizontal, heroInset)
+        .rise(showsContent, delay: 0.26)
     }
 
     private var purchaseBar: some View {
-        VStack(spacing: Tokens.Spacing.s) {
-            PrimaryButton(title: purchaseState == .purchasing ? "Starting…" : "Start free trial",
-                          isEnabled: purchaseState != .purchasing,
-                          action: purchase)
-            Text("Then \(plan.note) · Cancel anytime")
-                .font(Tokens.Typography.caption)
-                .foregroundStyle(Tokens.Palette.inkMuted)
+        VStack(spacing: 0) {
+            LinearGradient(colors: [Palette.page.opacity(0), Palette.page],
+                           startPoint: .top, endPoint: .bottom)
+                .frame(height: 30)
+
+            VStack(spacing: 9) {
+                Button(action: purchase) {
+                    Text("Start 7 days free")
+                        .font(.system(size: 16.5, weight: .semibold, design: .rounded))
+                        .foregroundStyle(.white)
+                        .frame(maxWidth: .infinity, minHeight: 52)
+                        .background(Palette.violet, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                        .shadow(color: Palette.violet.opacity(0.45), radius: 14, x: 0, y: 10)
+                }
+                .buttonStyle(.plain)
+
+                Text("Then \(plan.price) \(plan.period) · Cancel anytime")
+                    .font(.system(size: 11.5))
+                    .foregroundStyle(Palette.gray)
+
+                HStack(spacing: 8) {
+                    ForEach(Array(["Restore", "Terms", "Privacy"].enumerated()), id: \.offset) { index, label in
+                        if index > 0 {
+                            Circle().fill(Color(hex: 0xCFC8BC)).frame(width: 2.5, height: 2.5)
+                        }
+                        Button(label) {}
+                            .font(.system(size: 11.5, design: .rounded))
+                            .foregroundStyle(Palette.gray)
+                            .underline()
+                    }
+                }
+            }
+            .padding(.horizontal, heroInset)
+            .padding(.top, 6)
+            .padding(.bottom, 24)
+            .background(Palette.page)
         }
-        .padding(.horizontal, Tokens.Spacing.xl)
-        .padding(.bottom, Tokens.Spacing.l)
+        .rise(showsContent, delay: 0.34)
+        .allowsHitTesting(showsContent)
+    }
+
+    private var closeButton: some View {
+        Button { dismiss() } label: {
+            Image(systemName: "xmark")
+                .font(.system(size: 13, weight: .bold))
+                .foregroundStyle(Palette.ink)
+                .frame(width: 30, height: 30)
+                .background(.white.opacity(0.75), in: Circle())
+                .overlay { Circle().strokeBorder(Palette.ink.opacity(0.08), lineWidth: 1) }
+        }
+        .buttonStyle(.plain)
+        .padding(.top, 62)
+        .padding(.trailing, 14)
+        .frame(maxWidth: .infinity, alignment: .trailing)
+        .rise(showsContent, delay: 0.40)
+        .accessibilityLabel("Close")
     }
 
     /// Hands off to the store.
     ///
-    /// Unimplemented until RevenueCat is configured, and it says so rather than
-    /// pretending: a button that silently does nothing is worse than one that
-    /// admits it cannot yet. Wiring it up is `Purchases.shared.purchase(...)`
+    /// Still unimplemented until RevenueCat is configured, and it says so rather
+    /// than pretending: a button that silently does nothing is worse than one
+    /// that admits it cannot yet. Wiring it up is `Purchases.shared.purchase(...)`
     /// here and nothing else in the app — entitlement still arrives from the
     /// server, via the webhook.
-    private func purchase() {
-        purchaseState = .unavailable
-    }
+    private func purchase() {}
+
+    // MARK: - Plan card
 
     private struct PlanCard: View {
         let plan: Plan
@@ -209,49 +285,338 @@ struct PaywallScreen: View {
 
         var body: some View {
             Button(action: action) {
-                VStack(alignment: .leading, spacing: Tokens.Spacing.xs) {
-                    HStack {
-                        Text(plan.title)
-                            .font(Tokens.Typography.label)
-                            .fontWeight(.semibold)
-                            .foregroundStyle(Tokens.Palette.ink)
-                        Spacer(minLength: 0)
+                VStack(alignment: .leading, spacing: 0) {
+                    HStack(spacing: 7) {
                         Circle()
-                            .strokeBorder(isSelected ? Tokens.Palette.accent : Tokens.Palette.hairline,
-                                          lineWidth: isSelected ? 5 : 1.5)
-                            .frame(width: 18, height: 18)
+                            .fill(.white)
+                            .frame(width: 15, height: 15)
+                            .overlay {
+                                Circle().strokeBorder(
+                                    isSelected ? Palette.violet : Color(hex: 0xCFC8BC),
+                                    lineWidth: isSelected ? 5 : 1.5)
+                            }
+                        Text(plan.label)
+                            .font(.system(size: 13.5, weight: .semibold, design: .rounded))
+                            .foregroundStyle(Palette.ink)
                     }
                     Text(plan.headline)
-                        .font(Tokens.Typography.title)
-                        .foregroundStyle(Tokens.Palette.ink)
-                    Text(plan.period)
-                        .font(Tokens.Typography.caption)
-                        .foregroundStyle(Tokens.Palette.inkMuted)
-                    if let tag = plan.tag {
-                        Text(tag)
-                            .font(Tokens.Typography.caption)
-                            .fontWeight(.semibold)
-                            .foregroundStyle(Tokens.Palette.accent)
-                            .padding(.horizontal, Tokens.Spacing.s)
-                            .padding(.vertical, 2)
-                            .background(Tokens.Palette.accentWash, in: Capsule())
-                            .padding(.top, 2)
-                    }
+                        .font(.system(size: 22, weight: .bold, design: .rounded))
+                        .foregroundStyle(Palette.ink)
+                        .padding(.top, 9)
+                    Text("per month")
+                        .font(.system(size: 11.5))
+                        .foregroundStyle(Palette.gray)
+                        .padding(.top, 1)
+                    Text(plan.note ?? " ")
+                        .font(.system(size: 11.5, weight: .semibold))
+                        .foregroundStyle(Palette.violet)
+                        .padding(.top, 6)
+                        .frame(minHeight: 16, alignment: .leading)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(Tokens.Spacing.m)
-                .background(Tokens.Palette.cardSurface,
-                            in: RoundedRectangle(cornerRadius: Tokens.Radius.card, style: .continuous))
+                .padding(isSelected ? 13 : 14)
+                .background(isSelected ? Color.white : Color(hex: 0xF3F1EC),
+                            in: RoundedRectangle(cornerRadius: 16, style: .continuous))
                 .overlay {
-                    RoundedRectangle(cornerRadius: Tokens.Radius.card, style: .continuous)
-                        .strokeBorder(isSelected ? Tokens.Palette.accent : Tokens.Palette.hairline,
+                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                        .strokeBorder(isSelected ? Palette.violet : Palette.border,
                                       lineWidth: isSelected ? 2 : 1)
                 }
-                .contentShape(Rectangle())
+                .overlay(alignment: .topLeading) {
+                    if let tag = plan.tag {
+                        Text(tag)
+                            .font(.system(size: 9.5, weight: .bold, design: .rounded))
+                            .tracking(1)
+                            .foregroundStyle(.white)
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 3)
+                            .background(Palette.violet, in: Capsule())
+                            .offset(x: 10, y: -9)
+                    }
+                }
             }
             .buttonStyle(.plain)
             .accessibilityAddTraits(isSelected ? [.isSelected] : [])
-            .accessibilityLabel("\(plan.title), \(plan.headline) \(plan.period)")
         }
+    }
+
+    // MARK: - Palette
+    //
+    // Local to this screen and taken from the design rather than from `Tokens`.
+    // The paywall is the one surface that is deliberately not the rest of the
+    // app: a violet night scene against the app's paper. Mapping it onto the
+    // shared palette would quietly redesign it.
+    enum Palette {
+        static let violet = Color(hex: 0x6D28D9)
+        static let ink = Color(hex: 0x111827)
+        static let gray = Color(hex: 0x6B7280)
+        static let border = Color(hex: 0xE5E7EB)
+        static let page = Color(hex: 0xFAF8F3)
+        static let night = LinearGradient(
+            colors: [Color(hex: 0x1A0F33), Color(hex: 0x2A1657), Color(hex: 0x3B1F73)],
+            startPoint: .top, endPoint: .bottom)
+    }
+}
+
+// MARK: - Moon scene
+
+/// The night scene: stars, a rising moon, Albus flying up to it.
+///
+/// `animated` is the difference between the intro and the panel at rest. At
+/// rest everything is in its final position and only the ambient loops run, so
+/// the panel never looks like a paused video.
+private struct MoonScene: View {
+    let animated: Bool
+    let runID: Int
+
+    @State private var landed = false
+    @State private var twinkle = false
+    @State private var bob = false
+
+    /// The scene is authored at exactly this size and every offset below is a
+    /// literal from the design. The hero panel is the screen width minus two
+    /// 16pt insets, which on the design's device is exactly 370.
+    static let width: CGFloat = 370
+    static let height: CGFloat = 310
+
+    /// x, y, size, delay — authored wider than the panel so the field still
+    /// fills the frame while the scene is scaled up during the flight.
+    private static let stars: [(CGFloat, CGFloat, CGFloat, Double)] = [
+        (-70, 34, 3, 0), (18, 18, 2, 0.6), (64, 74, 3, 1.2), (118, 30, 2, 0.3), (-24, 118, 2, 0.9),
+        (-52, 208, 3, 1.6), (22, 168, 2, 1.1), (148, 96, 2, 0.5), (204, 22, 3, 0.8), (252, 62, 2, 1.4),
+        (306, 34, 3, 0.2), (352, 92, 2, 1.0), (398, 40, 3, 0.7), (430, 130, 2, 1.5), (336, 176, 2, 0.4),
+        (402, 214, 3, 1.3), (-96, 150, 2, 0.5), (284, 132, 2, 1.7), (86, 226, 2, 0.8), (180, 58, 2, 1.9),
+        (244, 196, 3, 0.6), (-8, 264, 2, 1.2),
+    ]
+
+    private var w: CGFloat { Self.width }
+    private var h: CGFloat { Self.height }
+
+    /// Everything is placed from the top-left, because the design is CSS
+    /// `position: absolute; left/top`. `.position()` centres instead, which is
+    /// what put the cactus in the corner and lost the badge off-frame.
+    var body: some View {
+        ZStack(alignment: .topLeading) {
+            Color.clear
+            starField.offset(x: -110, y: -60)
+            horizonGlow.offset(x: w / 2 - 230, y: h - 96 - 190)
+            moon.offset(x: w / 2 - 310, y: h + 122 - 268)
+            trail
+            floatingCard(rotation: -9, lines: true, delay: 2.42).offset(x: 38, y: 106)
+            floatingCard(rotation: 10, lines: false, delay: 2.56).offset(x: w - 34 - 62, y: 116)
+            checkBadge.offset(x: 196, y: 28)
+            cactus.offset(x: w / 2 - 52, y: h - 140 - 132)
+        }
+        .frame(width: w, height: h, alignment: .topLeading)
+        // Deliberately not clipped here. The moon is 620pt wide and most of it
+        // sits below the panel; clipping at the authored size drew a hard seam
+        // across the full-bleed intro where the scene ended and the background
+        // gradient took over. The hero panel and the intro overlay each clip to
+        // their own shape, which is the only clip the design has.
+        .onAppear(perform: start)
+        .onChange(of: runID) { _, _ in start() }
+        .accessibilityHidden(true)
+    }
+
+    private func start() {
+        twinkle = true
+        bob = true
+        guard animated else { landed = true; return }
+        landed = false
+        withAnimation(.timingCurve(0.3, 0.9, 0.3, 1, duration: 1.06).delay(0.5)) { landed = true }
+    }
+
+    private var starField: some View {
+        ZStack(alignment: .topLeading) {
+            Color.clear
+            ForEach(Array(Self.stars.enumerated()), id: \.offset) { index, star in
+                let (x, y, size, delay) = star
+                Circle()
+                    .fill(Color(hex: 0xF3E8FF))
+                    .frame(width: size, height: size)
+                    .opacity(twinkle ? 0.8 : 0.3)
+                    .animation(
+                        .easeInOut(duration: 2.6 + Double(index % 4) * 0.5)
+                            .repeatForever(autoreverses: true).delay(delay),
+                        value: twinkle)
+                    .offset(x: x + 110, y: y + 60)
+            }
+        }
+        .frame(width: 590, height: 430, alignment: .topLeading)
+    }
+
+    private var horizonGlow: some View {
+        Ellipse()
+            .fill(RadialGradient(
+                colors: [Color(hex: 0xA78BFA).opacity(0.55), Color(hex: 0xA78BFA).opacity(0)],
+                center: .bottom, startRadius: 0, endRadius: 190))
+            .frame(width: 460, height: 190)
+    }
+
+    /// A wide, shallow disc whose top edge is the horizon the cactus stands on.
+    /// Most of it sits below the panel — only the top ~146pt is ever visible.
+    private var moon: some View {
+        Ellipse()
+            .fill(RadialGradient(
+                colors: [Color(hex: 0x9F73F5), Color(hex: 0x7C3AED),
+                         Color(hex: 0x5B21B6), Color(hex: 0x45177F)],
+                center: UnitPoint(x: 0.5, y: 0), startRadius: 0, endRadius: 340))
+            .frame(width: 620, height: 268)
+            .overlay {
+                ZStack(alignment: .topLeading) {
+                    Color.clear
+                    crater(96, 52, 74, 26, 0.32)
+                    crater(236, 96, 52, 18, 0.26)
+                    crater(402, 60, 88, 28, 0.28)
+                    Ellipse().fill(.white.opacity(0.14))
+                        .frame(width: 34, height: 13).offset(x: 330, y: 30)
+                }
+                .frame(width: 620, height: 268, alignment: .topLeading)
+                .clipShape(Ellipse())
+            }
+            .shadow(color: Color(hex: 0x8B5CF6).opacity(0.4), radius: 23, x: 0, y: -7)
+    }
+
+    private func crater(_ x: CGFloat, _ y: CGFloat, _ cw: CGFloat, _ ch: CGFloat,
+                        _ opacity: Double) -> some View {
+        Ellipse().fill(Color(hex: 0x45177F).opacity(opacity))
+            .frame(width: cw, height: ch).offset(x: x, y: y)
+    }
+
+    /// The dots Albus leaves on the way up, each fading as he passes.
+    @ViewBuilder private var trail: some View {
+        if animated {
+            ZStack(alignment: .topLeading) {
+                Color.clear
+                ForEach(Array([(318.0, 284.0, 5.0), (296, 256, 5), (272, 226, 4),
+                               (248, 198, 4), (226, 174, 3), (206, 154, 3)].enumerated()),
+                        id: \.offset) { index, dot in
+                    Circle()
+                        .fill(Color(hex: 0xC4B5FD))
+                        .frame(width: dot.2, height: dot.2)
+                        .opacity(landed ? 0 : 0.95)
+                        .animation(.easeOut(duration: 0.5).delay(0.58 + Double(index) * 0.07),
+                                   value: landed)
+                        .offset(x: dot.0, y: dot.1)
+                }
+            }
+        }
+    }
+
+    private func floatingCard(rotation: Double, lines: Bool, delay: Double) -> some View {
+        VStack(alignment: .leading, spacing: lines ? 7 : 9) {
+            if lines {
+                ForEach(Array([26, 40, 32, 38].enumerated()), id: \.offset) { index, lineWidth in
+                    Capsule()
+                        .fill(index == 0 ? Color(hex: 0xC4B5FD) : Color(hex: 0xE3E0DA))
+                        .frame(width: CGFloat(lineWidth), height: 4)
+                }
+            } else {
+                ForEach(0..<3, id: \.self) { index in
+                    HStack(spacing: 5) {
+                        RoundedRectangle(cornerRadius: 3)
+                            .fill(index < 2 ? PaywallScreen.Palette.violet : Color(hex: 0xE3E0DA))
+                            .frame(width: 8, height: 8)
+                        Capsule().fill(Color(hex: 0xE3E0DA))
+                            .frame(width: index == 2 ? 18 : 26, height: 4)
+                    }
+                }
+            }
+            Spacer(minLength: 0)
+        }
+        .padding(11)
+        .frame(width: 62, height: 74, alignment: .topLeading)
+        .background(.white.opacity(0.94), in: RoundedRectangle(cornerRadius: 11, style: .continuous))
+        .shadow(color: Color(hex: 0x180A30).opacity(0.6), radius: 13, x: 0, y: 14)
+        .rotationEffect(.degrees(rotation))
+        .offset(y: bob ? -7 : 0)
+        .animation(.easeInOut(duration: lines ? 5 : 5.6).repeatForever(autoreverses: true), value: bob)
+        .scaleEffect(landed ? 1 : 0.35)
+        .opacity(landed ? 1 : 0)
+        .animation(animated ? .spring(response: 0.5, dampingFraction: 0.55).delay(delay) : nil,
+                   value: landed)
+    }
+
+    private var checkBadge: some View {
+        Image(systemName: "checkmark")
+            .font(.system(size: 22, weight: .heavy))
+            .foregroundStyle(.white)
+            .frame(width: 48, height: 48)
+            .background(PaywallScreen.Palette.violet, in: Circle())
+            .shadow(color: PaywallScreen.Palette.violet.opacity(0.9), radius: 12, x: 0, y: 12)
+            .scaleEffect(landed ? 1 : 0)
+            .animation(animated ? .spring(response: 0.55, dampingFraction: 0.5).delay(1.8) : nil,
+                       value: landed)
+    }
+
+    /// Albus, flying in from the lower right and landing on the moon's horizon.
+    private var cactus: some View {
+        ZStack(alignment: .bottom) {
+            Ellipse().fill(Color(hex: 0x3C146E).opacity(0.34))
+                .frame(width: 92, height: 16).blur(radius: 4).offset(y: 2)
+            AlbusCactus(size: 104, mood: .calm)
+        }
+        .frame(width: 104, height: 132, alignment: .bottom)
+        .rotationEffect(.degrees(landed ? 0 : -30), anchor: .bottom)
+        .scaleEffect(landed ? 1 : 0.62, anchor: .bottom)
+        .opacity(animated && !landed ? 0 : 1)
+        .offset(x: landed ? 0 : 148, y: landed ? 0 : 296)
+    }
+}
+
+// MARK: - Support
+
+/// The hero panel's shape: a tall arch on top, a gentle radius at the base.
+private struct RoundedCornersShape: Shape {
+    var top: CGFloat
+    var bottom: CGFloat
+
+    var animatableData: AnimatablePair<CGFloat, CGFloat> {
+        get { AnimatablePair(top, bottom) }
+        set { top = newValue.first; bottom = newValue.second }
+    }
+
+    func path(in rect: CGRect) -> Path {
+        // Clamped, because the arch is taller than half the panel at rest and a
+        // corner radius larger than the shape produces an inverted path.
+        let t = min(top, min(rect.width, rect.height) / 2)
+        let b = min(bottom, min(rect.width, rect.height) / 2)
+        var path = Path()
+        path.move(to: CGPoint(x: rect.minX, y: rect.maxY - b))
+        path.addLine(to: CGPoint(x: rect.minX, y: rect.minY + t))
+        path.addQuadCurve(to: CGPoint(x: rect.minX + t, y: rect.minY),
+                          control: CGPoint(x: rect.minX, y: rect.minY))
+        path.addLine(to: CGPoint(x: rect.maxX - t, y: rect.minY))
+        path.addQuadCurve(to: CGPoint(x: rect.maxX, y: rect.minY + t),
+                          control: CGPoint(x: rect.maxX, y: rect.minY))
+        path.addLine(to: CGPoint(x: rect.maxX, y: rect.maxY - b))
+        path.addQuadCurve(to: CGPoint(x: rect.maxX - b, y: rect.maxY),
+                          control: CGPoint(x: rect.maxX, y: rect.maxY))
+        path.addLine(to: CGPoint(x: rect.minX + b, y: rect.maxY))
+        path.addQuadCurve(to: CGPoint(x: rect.minX, y: rect.maxY - b),
+                          control: CGPoint(x: rect.minX, y: rect.maxY))
+        path.closeSubpath()
+        return path
+    }
+}
+
+private extension View {
+    /// The design's `mnUp`: content rises and fades in once the intro clears.
+    func rise(_ shown: Bool, delay: Double) -> some View {
+        opacity(shown ? 1 : 0)
+            .offset(y: shown ? 0 : 16)
+            .animation(.timingCurve(0.22, 1, 0.36, 1, duration: 0.6).delay(delay), value: shown)
+    }
+}
+
+private extension Color {
+    /// The design is authored in hex; keeping it in hex is how a colour stays
+    /// checkable against the source rather than becoming a guess.
+    init(hex: UInt32) {
+        self.init(.sRGB,
+                  red: Double((hex >> 16) & 0xFF) / 255,
+                  green: Double((hex >> 8) & 0xFF) / 255,
+                  blue: Double(hex & 0xFF) / 255,
+                  opacity: 1)
     }
 }
