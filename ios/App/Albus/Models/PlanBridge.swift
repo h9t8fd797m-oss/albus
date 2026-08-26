@@ -11,8 +11,56 @@ import AlbusCore
 enum PlanBridge {
 
     /// Steps still needing time. Completed work is excluded — it is history.
-    static func scheduleItems(from assignments: [Assignment]) -> [ScheduleItem] {
-        assignments
+    ///
+    /// **Where the estimator is applied.** The adjusted duration is used for
+    /// *placing* the step, and the step's own `estimatedMinutes` is left alone.
+    /// That split is deliberate and load-bearing: `CompletionRecord` logs the
+    /// ratio of measured time against the **stored** estimate, so if the stored
+    /// value were itself adjusted, every completion would feed a ratio computed
+    /// against a previously-adjusted number and the correction would compound —
+    /// a student 1.5x slower would drift to 2.25x, then 3.4x, until the clamp
+    /// caught it. Adjusting only at the boundary keeps the learning signal
+    /// measured against a fixed origin.
+    ///
+    /// Passing no estimator gives exactly the previous behaviour, which is what
+    /// keeps the scheduler's own tests meaningful.
+    static func scheduleItems(from assignments: [Assignment],
+                              estimator: Estimator? = nil,
+                              logs: [CompletionLog] = [],
+                              now: Date = .now) -> [ScheduleItem] {
+        // Every step of one assignment shares a subject and task type, so the
+        // estimator's three filter passes over the whole log set would otherwise
+        // be repeated once per step. Memoised on the only three inputs that can
+        // change the answer.
+        var cache: [Cell: Int] = [:]
+
+        func minutes(for subtask: Subtask, in assignment: Assignment) -> Int {
+            let base = subtask.estimatedMinutes
+            guard let estimator, !logs.isEmpty else { return base }
+
+            let cell = Cell(subjectCode: assignment.course?.displayName,
+                            taskType: assignment.taskType, baseMinutes: base)
+            if let hit = cache[cell] { return hit }
+
+            let adjusted = estimator.estimate(
+                baseMinutes: base,
+                // Must match what `PlanCoordinator.completionRecord` writes, or
+                // the estimate is looked up under a key nothing was logged to.
+                subjectCode: assignment.course?.displayName,
+                taskType: assignment.taskType,
+                logs: logs, now: now
+            ).minutes
+
+            // Same bounds the plan editor enforces. The estimator can triple a
+            // duration, and a step that grows past what any day can hold becomes
+            // permanently unplaceable — which is a true statement about the work,
+            // but 600 is where the rest of the app stops believing a single step.
+            let clamped = max(5, min(600, adjusted))
+            cache[cell] = clamped
+            return clamped
+        }
+
+        return assignments
             .filter { $0.statusValue == .active }
             .flatMap { assignment in
                 assignment.subtasks
@@ -22,12 +70,19 @@ enum PlanBridge {
                             id: subtask.id,
                             assignmentID: assignment.id,
                             ordinal: subtask.ordinal,
-                            minutes: subtask.estimatedMinutes,
+                            minutes: minutes(for: subtask, in: assignment),
                             deadline: assignment.deadline,
                             priority: assignment.priorityValue.weight
                         )
                     }
             }
+    }
+
+    /// The three inputs that decide an adjusted duration.
+    private struct Cell: Hashable {
+        let subjectCode: String?
+        let taskType: String
+        let baseMinutes: Int
     }
 
     static func plannedSessions(from records: [PlanSessionRecord]) -> [PlannedSession] {

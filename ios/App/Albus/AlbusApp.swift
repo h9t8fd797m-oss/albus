@@ -76,6 +76,8 @@ struct AlbusApp: App {
     @State private var entitlements = EntitlementService()
     @State private var focusSession = FocusSession()
 
+    @Environment(\.scenePhase) private var scenePhase
+
     var body: some Scene {
         WindowGroup {
             RootView()
@@ -88,6 +90,9 @@ struct AlbusApp: App {
                 .environment(entitlements)
                 .environment(focusSession)
                 .task {
+                    // Before anything async, so the plan is already correct by
+                    // the time the first screen draws.
+                    catchUp()
                     // Restores a stored session. It no longer *creates* one:
                     // account creation moved into onboarding, which is the only
                     // place a CAPTCHA challenge can be presented.
@@ -100,7 +105,27 @@ struct AlbusApp: App {
                     // against the student's active-plan limit.
                     await PendingDeletions.flush()
                 }
+                .onChange(of: scenePhase) { _, phase in
+                    guard phase == .active else { return }
+                    catchUp()
+                }
         }
         .modelContainer(container)
+    }
+
+    /// Re-home anything whose window passed while the app was away.
+    ///
+    /// This used to live in a `.task` on Home, which runs on *view appearance*
+    /// — so it fired on a cold launch and on returning to the Home tab, but not
+    /// on the case it exists for: coming back to the app days later with Home
+    /// already on screen. Nothing was swept, and the student saw a plan still
+    /// pointing at time that had already gone.
+    ///
+    /// Cheap and idempotent by design: it writes only when something actually
+    /// changed, so running it on every foreground costs one fetch.
+    @MainActor
+    private func catchUp() {
+        coordinator.sweepMissedSessions(context: container.mainContext,
+                                        availability: preferences.availability)
     }
 }

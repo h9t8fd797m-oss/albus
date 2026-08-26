@@ -29,13 +29,29 @@ struct NotificationScheduler: Sendable {
     /// Never throws upward: a refused prompt must not stop a session starting.
     /// The session still runs and still shows its countdown; the student just
     /// has to be looking.
+    ///
+    /// **`.badge` is requested even though nothing sets one yet, and that is a
+    /// one-way door.** iOS shows the permission sheet once; a later call asking
+    /// for options the student was never asked about does not re-prompt and
+    /// does not grant them. Adding it after the first release would mean every
+    /// existing student is permanently unable to receive a badge. It costs
+    /// nothing now — the sheet looks identical to the student either way.
     @discardableResult
     func requestPermission() async -> Bool {
         do {
-            return try await center.requestAuthorization(options: [.alert, .sound])
+            return try await center.requestAuthorization(options: [.alert, .sound, .badge])
         } catch {
             return false
         }
+    }
+
+    /// What the student has actually granted.
+    ///
+    /// Everything that schedules has to be able to ask this: `add` succeeds
+    /// while unauthorised and the request simply never presents, so without
+    /// checking, a denied app looks identical to a working one from the inside.
+    func authorizationStatus() async -> UNAuthorizationStatus {
+        await center.notificationSettings().authorizationStatus
     }
 
     /// Fires once, when the session's remaining time runs out.

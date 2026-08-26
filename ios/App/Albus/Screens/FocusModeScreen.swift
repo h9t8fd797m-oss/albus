@@ -120,9 +120,13 @@ struct FocusModeScreen: View {
             // A slow breath, so the screen feels alive without asking for
             // attention. Stops when the timer does.
             BreathingHalo(tint: subject.color, isActive: session.phase == .running)
+            // The same week the rest of the app is showing. Mood is a fact
+            // about the student's workload, not about the length of whichever
+            // block happens to be open — reading it off this session's minutes
+            // meant the cactus changed character between screens.
             AlbusCactus(
                 size: 150,
-                mood: .forMinutes(record.plannedSeconds / 60),
+                mood: .init(coordinator.workload),
                 isResting: session.phase == .running
             )
         }

@@ -93,12 +93,6 @@ struct HomeScreen: View {
         .fullScreenCover(item: $focusing) { record in
             FocusModeScreen(record: record)
         }
-        // Catch up on anything missed since the app was last open. This is where
-        // "it finds a new spot for what you skipped" actually happens.
-        .task {
-            coordinator.sweepMissedSessions(context: context,
-                                            availability: preferences.availability)
-        }
         .navigationDestination(isPresented: $showingMonth) {
             Screen { MonthCalendarScreen() }
         }
@@ -223,20 +217,12 @@ struct HomeScreen: View {
             Spacer(minLength: 0)
 
             VStack(spacing: Tokens.Spacing.s) {
-                AlbusCactus(size: 36, mood: moodForToday())
+                AlbusCactus(size: 36, mood: .init(coordinator.workload))
                 IconButton(systemImage: "plus", isFilled: true,
                            accessibilityLabel: "Add assignment") { addingTask = true }
             }
         }
         .padding(.top, Tokens.Spacing.s)
-    }
-
-    /// The cactus bristles as the day fills up.
-    private func moodForToday() -> AlbusCactus.Mood {
-        let minutes = sessions
-            .filter { Calendar.current.isDateInToday($0.startsAt) && $0.subtask?.completedAt == nil }
-            .reduce(0) { $0 + $1.plannedSeconds / 60 }
-        return .forMinutes(minutes)
     }
 
     private func greeting(at now: Date) -> String {

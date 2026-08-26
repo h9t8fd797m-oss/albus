@@ -30,8 +30,27 @@ final class PlanCoordinator {
     /// tomorrow produced a full plan and a nearly empty calendar, silently.
     private(set) var unplacedStepIDs: Set<UUID> = []
 
+    /// How heavy the week actually is, straight from the scheduler.
+    ///
+    /// The scheduler has always computed this — its own doc comment calls it
+    /// "the signal the mascot's mood is derived from" — and nothing ever read
+    /// it. The mascot instead used absolute minute thresholds that no study
+    /// load could reach, so the cactus could never look cooked. This is that
+    /// signal, finally connected to the thing named after it.
+    private(set) var workload: WorkloadState = .calm
+
+    /// How many already-placed blocks the last run moved. Low is the goal; a
+    /// high number is what a student experiences as the plan being unreliable.
+    private(set) var movedCount: Int = 0
+
+    /// False when the last re-flow threw. Everything derived from a schedule —
+    /// the mood, the unplaced set — is stale in that case, and anything that
+    /// would tell the student about it has to hold its tongue.
+    private(set) var lastRunSucceeded = true
+
     private let plans: PlanService
     private let scheduler = Scheduler()
+    private let estimator = Estimator()
 
     init(plans: PlanService = PlanService()) {
         self.plans = plans
@@ -372,7 +391,10 @@ final class PlanCoordinator {
             let subtasks = try context.fetch(FetchDescriptor<Subtask>())
 
             let result = scheduler.schedule(
-                items: PlanBridge.scheduleItems(from: assignments),
+                items: PlanBridge.scheduleItems(from: assignments,
+                                                estimator: estimator,
+                                                logs: completionLogs(context, now: now),
+                                                now: now),
                 existing: PlanBridge.plannedSessions(from: existing),
                 commitments: PlanBridge.commitments(from: existing),
                 availability: availability,
@@ -386,10 +408,33 @@ final class PlanCoordinator {
                 existing: existing
             )
             unplacedStepIDs = Set(result.unplaceable.map(\.id))
+            workload = result.workload
+            movedCount = result.movedCount
+            lastRunSucceeded = true
             save(context, "apply schedule")
         } catch {
+            // Everything derived above keeps its previous value, which is now
+            // describing a plan that was not rebuilt. Anything acting on it —
+            // the mascot's mood, a "your plan stopped fitting" alert — has to
+            // know that, or it reports a state the student cannot see or fix.
+            lastRunSucceeded = false
             status = .failed("Couldn't rebuild your plan.")
         }
+    }
+
+    /// What the estimator learns from, bounded to what can still matter.
+    ///
+    /// Weight half-lives every 30 days, so a log from six months ago carries
+    /// about 1.5% of a fresh one — indistinguishable from zero once shrunk
+    /// toward the prior. Fetching the full history on every re-flow would grow
+    /// without limit for a signal that stopped moving the answer long ago.
+    private func completionLogs(_ context: ModelContext, now: Date) -> [CompletionLog] {
+        let cutoff = now.addingTimeInterval(-180 * 86_400)
+        let descriptor = FetchDescriptor<CompletionRecord>(
+            predicate: #Predicate { $0.createdAt > cutoff }
+        )
+        guard let records = try? context.fetch(descriptor) else { return [] }
+        return PlanBridge.completionLogs(from: records)
     }
 
     private func save(_ context: ModelContext, _ what: String) {
