@@ -34,16 +34,6 @@ export function mapPostgresError(message: string): HttpError {
       "Free plans cover three active assignments at a time.",
     );
   }
-  // The grading paywall. 402 rather than 403: the student is not forbidden,
-  // they have not paid — and that is a difference the app renders as a paywall
-  // rather than as an error.
-  if (message.includes("PLUS_REQUIRED")) {
-    return new HttpError(
-      402,
-      "PLUS_REQUIRED",
-      "Marking your work against a rubric is part of Albus Plus.",
-    );
-  }
   if (message.includes("RUBRIC_NOT_YOURS")) {
     return new HttpError(403, "RUBRIC_NOT_YOURS", "That rubric isn't yours.");
   }
@@ -62,6 +52,16 @@ export function mapPostgresError(message: string): HttpError {
   }
   if (message.includes("NOT_AUTHENTICATED")) {
     return new HttpError(401, "NOT_AUTHENTICATED");
+  }
+  // 402 rather than 429: a student who has used the week's markings is not
+  // being rate-limited for misbehaving, they have reached the end of the free
+  // allowance — which the app renders as a paywall, not as an error.
+  if (message.includes("RATE_LIMIT_WEEKLY")) {
+    return new HttpError(
+      402,
+      "RATE_LIMIT_WEEKLY",
+      "That's this week's markings used. Albus Plus raises the limit.",
+    );
   }
   if (message.includes("RATE_LIMIT_HOURLY")) {
     return new HttpError(

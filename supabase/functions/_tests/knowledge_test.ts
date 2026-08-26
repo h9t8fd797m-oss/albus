@@ -6,11 +6,10 @@ function fakeDb(result: { data?: unknown; error?: { message: string } }) {
   const calls: Array<Record<string, unknown>> = [];
   return {
     calls,
-    // deno-lint-ignore no-explicit-any
     db: { rpc: (_fn: string, params: Record<string, unknown>) => {
       calls.push(params);
       return Promise.resolve(result);
-    } } as any,
+    } } as unknown as Parameters<typeof loadKnowledge>[0],
   };
 }
 

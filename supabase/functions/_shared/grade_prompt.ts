@@ -6,26 +6,36 @@
 
 import { fence, type RubricContext } from "./prompt.ts";
 
+/** What the marks were actually based on. Never inferred by the client. */
+export type GradeBasis = "personal" | "curriculum" | "blind";
+
+
 /** Longest submission accepted. Roughly 6,000-8,000 words — a long IB IA. */
 export const MAX_WORK_CHARS = 40_000;
 /** Shortest thing worth marking. Below this there is nothing to say. */
 export const MIN_WORK_CHARS = 200;
 
 /**
- * Opus, deliberately, and only here.
+ * Which model marks, decided by what it is marking against.
  *
- * Marking is the one call where being wrong is worse than being slow: a student
- * who is told their work is a 6 and hands in a 4 has been actively misled, and
- * they cannot tell which half of the answer was the mistake. Breakdown and chat
- * stay on cheaper models because a mediocre plan is still a plan.
+ * **Opus when there is a rubric.** Marking is the one call where being wrong is
+ * worse than being slow: a student told their work is a 6 who hands in a 4 has
+ * been actively misled, and cannot tell which half was the mistake. A real mark
+ * against real criteria is worth the most capable model available.
  *
- * The cost of this choice is bounded by the quota in `check_and_record_ai_usage`
- * rather than by anything in this file.
+ * **Sonnet when there is not.** A blind reading awards no marks by construction
+ * — `normaliseGrade` strips them — so the output is prose advice rather than a
+ * number anyone will act on as a grade. It is also the path free students land
+ * on most, which makes it the one that has to stay affordable. Paying Opus
+ * rates to produce something the app then refuses to call a grade is spending
+ * the difference on nothing.
+ *
+ * Recorded per call in `ai_usage.model`, so the two are separable in the bill
+ * rather than averaged into one number.
  */
-export const GRADE_MODEL = "claude-opus-5";
-
-/** What the marks were actually based on. Never inferred by the client. */
-export type GradeBasis = "personal" | "curriculum" | "blind";
+export function gradeModelFor(basis: GradeBasis): string {
+  return basis === "blind" ? "claude-sonnet-5" : "claude-opus-5";
+}
 
 export interface GradeInput {
   taskTitle: string;

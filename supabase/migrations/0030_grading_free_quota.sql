@@ -1,5 +1,9 @@
 -- 0030 — grading stops being Plus-only, and gains a weekly ceiling.
 --
+-- Applied by hand and verified against pg_proc on 26 Aug 2026: the CI deploy
+-- workflow has no secrets and never runs, so the repo is not the source of
+-- truth for this database. See docs/plan-2026-08-25.md.
+--
 -- Why this changes at all: grading was gated `PLUS_REQUIRED` in the same
 -- transaction that reserves the usage slot, which is the correct place for a
 -- paywall. But there are zero Plus users and no way to become one until

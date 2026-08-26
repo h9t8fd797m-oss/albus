@@ -39,8 +39,13 @@ struct GradingService {
     }
 
     enum Failure: LocalizedError, Equatable {
-        /// Not an error the student did anything wrong to cause. The UI shows a
-        /// paywall for this, never an alert.
+        /// The free week's markings are used up. Not an error the student did
+        /// anything wrong to cause, so the UI shows a paywall, never an alert.
+        ///
+        /// This used to mean "grading is Plus-only", which gated the feature so
+        /// completely that it was never once reached. It now means the far
+        /// narrower thing it should always have meant: you have had your free
+        /// ones this week.
         case needsPlus
         case rateLimited
         case tooLong(Int)
@@ -53,7 +58,7 @@ struct GradingService {
         var errorDescription: String? {
             switch self {
             case .needsPlus:
-                "Marking your work against a rubric is part of Albus Plus."
+                "That's this week's markings used. Albus Plus raises the limit."
             case .rateLimited:
                 "That's a lot of marking at once. Try again shortly."
             case .tooLong(let max):
@@ -123,11 +128,16 @@ struct GradingService {
 
         let body = try? JSONDecoder().decode(ErrorBody.self, from: data)
         switch body?.error {
-        case "PLUS_REQUIRED":                           return .needsPlus
+        // `PLUS_REQUIRED` and `RUBRIC_REQUIRED` were removed rather than kept
+        // "just in case": no database function can raise the first any more
+        // (checked against pg_proc, not assumed), and the endpoint no longer
+        // rejects a missing rubric — it grades blind instead. A branch that
+        // cannot be reached is a branch nobody will maintain correctly.
+        case "RATE_LIMIT_WEEKLY":                       return .needsPlus
         case "RATE_LIMIT_HOURLY", "RATE_LIMIT_DAILY":   return .rateLimited
         case "WORK_TOO_LONG":                           return .tooLong(maxWorkCharacters)
         case "WORK_TOO_SHORT":                          return .tooShort
-        case "RUBRIC_REQUIRED", "RUBRIC_NOT_FOUND":     return .noRubric
+        case "RUBRIC_NOT_FOUND":                        return .noRubric
         case "GLOBAL_CAPACITY_REACHED":                 return .unavailable
         default: break
         }

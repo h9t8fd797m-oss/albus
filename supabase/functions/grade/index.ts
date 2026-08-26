@@ -24,7 +24,7 @@ import {
   buildGradeSystemPrompt,
   buildGradeUserPrompt,
   type GradeBasis,
-  GRADE_MODEL,
+  gradeModelFor,
   InvalidGradeError,
   MAX_WORK_CHARS,
   MIN_WORK_CHARS,
@@ -112,11 +112,15 @@ Deno.serve(async (req) => {
       basis = resolved.basis;
     }
 
+    // Which model marks is decided by what we found above, so the usage row
+    // records the model actually billed rather than a constant.
+    const model = gradeModelFor(basis);
+
     // Entitlement, rate limit and the usage slot, atomically. Everything below
     // this line costs money, and nothing above it does.
     const { data: usageId, error: quotaError } = await caller.db.rpc(
       "check_and_record_ai_usage",
-      { p_kind: "grade", p_model: GRADE_MODEL },
+      { p_kind: "grade", p_model: model },
     );
     if (quotaError) throw mapPostgresError(quotaError.message);
 
@@ -137,6 +141,7 @@ Deno.serve(async (req) => {
     const generated = await gradeWork(
       buildGradeSystemPrompt(basis),
       buildGradeUserPrompt({ taskTitle: title, taskType, rubric, work: input.work }),
+      model,
     );
 
     let grade;

@@ -2,7 +2,7 @@
 
 import Anthropic from "npm:@anthropic-ai/sdk@0.120.0";
 import { BREAKDOWN_JSON_SCHEMA } from "./breakdown_schema.ts";
-import { GRADE_JSON_SCHEMA, GRADE_MODEL } from "./grade_prompt.ts";
+import { GRADE_JSON_SCHEMA } from "./grade_prompt.ts";
 import type { ChatTurn } from "./chat_prompt.ts";
 import { HttpError } from "./http.ts";
 
@@ -163,10 +163,12 @@ export async function chatReply(
 export async function gradeWork(
   systemPrompt: string,
   userPrompt: string,
+  /** Chosen by the caller from the grading basis — see `gradeModelFor`. */
+  model: string,
 ): Promise<GenerationResult> {
   try {
     const response = await getClient().messages.create({
-      model: GRADE_MODEL,
+      model,
       max_tokens: 4000,
       system: [{ type: "text", text: systemPrompt, cache_control: { type: "ephemeral" } }],
       messages: [{ role: "user", content: userPrompt }],
@@ -194,7 +196,7 @@ export async function gradeWork(
     const u = response.usage;
     return {
       raw,
-      model: GRADE_MODEL,
+      model,
       inputTokens: u.input_tokens ?? 0,
       outputTokens: u.output_tokens ?? 0,
       cacheReadTokens: u.cache_read_input_tokens ?? 0,
