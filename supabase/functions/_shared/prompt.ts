@@ -107,7 +107,15 @@ export function selectModel(input: BreakdownInput): string {
  * the student cannot forge a closing tag to escape the fence.
  */
 export function fence(tag: string, text: string): string {
-  const cleaned = text.replace(/<\/?(student_notes|student_rubric|student_work)>/gi, "");
+  // Any `student_*` tag, not a list of the three we happened to have.
+  //
+  // This was an allowlist — `student_notes|student_rubric|student_work` — which
+  // meant the fourth fence added to this codebase was unprotected the moment it
+  // was written, with nothing to say so. A student's text could carry
+  // `</student_preferences>` straight through and close the fence early.
+  // Caught by a test written for the new tag; the shape of the bug guaranteed
+  // it would come back for the fifth.
+  const cleaned = text.replace(/<\/?student_[a-z_]*>/gi, "");
   return `<${tag}>\n${cleaned.trim()}\n</${tag}>`;
 }
 

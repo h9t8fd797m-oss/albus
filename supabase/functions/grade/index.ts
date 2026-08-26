@@ -26,6 +26,7 @@ import {
   type GradeBasis,
   gradeModelFor,
   InvalidGradeError,
+  MAX_PRESENTATION_CHARS,
   MAX_WORK_CHARS,
   MIN_WORK_CHARS,
   normaliseGrade,
@@ -38,6 +39,7 @@ interface RequestBody {
   assignment_id?: unknown;
   rubric_id?: unknown;
   work?: unknown;
+  presentation?: unknown;
 }
 
 function parseBody(body: RequestBody) {
@@ -69,7 +71,15 @@ function parseBody(body: RequestBody) {
       "There isn't enough here to mark yet.");
   }
 
-  return { assignmentId, rubricId, work };
+  // Truncated rather than rejected, unlike the work. A preference that runs
+  // long is someone typing a paragraph about how they like their feedback, not
+  // a submission that would be silently half-marked — there is nothing lost by
+  // taking the first 400 characters of it.
+  const presentation = typeof body.presentation === "string"
+    ? body.presentation.trim().slice(0, MAX_PRESENTATION_CHARS)
+    : null;
+
+  return { assignmentId, rubricId, work, presentation };
 }
 
 Deno.serve(async (req) => {
@@ -140,7 +150,10 @@ Deno.serve(async (req) => {
 
     const generated = await gradeWork(
       buildGradeSystemPrompt(basis),
-      buildGradeUserPrompt({ taskTitle: title, taskType, rubric, work: input.work }),
+      buildGradeUserPrompt({
+        taskTitle: title, taskType, rubric,
+        work: input.work, presentation: input.presentation,
+      }),
       model,
     );
 
