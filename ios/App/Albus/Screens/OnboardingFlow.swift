@@ -336,7 +336,21 @@ struct OnboardingFlow: View {
             AlbusCactus(size: 72, mood: .calm)
 
             Spacer()
-            PrimaryButton(title: "Show me") { preferences.markOnboarded() }
+            PrimaryButton(title: "Show me") {
+                // The permission ask, at the only moment it is obviously
+                // reasonable: a plan now exists, so there is something to be
+                // notified *about*.
+                //
+                // It used to be asked only when a focus session started, which
+                // meant a student who never ran one could never grant it and
+                // Albus could never speak. Asked here it follows a screen that
+                // has just explained what Albus does, and a refusal costs
+                // nothing — the settings screen can ask again later.
+                Task {
+                    await NotificationScheduler().requestPermission()
+                    preferences.markOnboarded()
+                }
+            }
                 .padding(.horizontal, Tokens.Spacing.xl)
                 .padding(.bottom, Tokens.Spacing.xxl)
         }

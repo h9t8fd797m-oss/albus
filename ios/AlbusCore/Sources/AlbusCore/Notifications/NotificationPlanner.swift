@@ -97,10 +97,15 @@ public struct NotificationPlanner: Sendable {
                 // 0 steps", and "here is your empty day" is not worth a
                 // notification — dormancy and the deadline ladder cover the
                 // student who has work but nothing planned today.
-                out.append(Candidate(kind: .morningBrief, fireDate: brief,
-                                     assignment: open.min(by: { $0.deadline < $1.deadline }),
-                                     notAfter: nil,
-                                     identifier: "albus.plan.brief.\(key)"))
+                out.append(Candidate(
+                    kind: .morningBrief, fireDate: brief,
+                    // Still ahead of *this* brief, not merely ahead of now: a
+                    // brief three days out would otherwise cheerfully describe
+                    // a deadline that has passed by the time it arrives.
+                    assignment: open.filter { $0.deadline >= brief }
+                        .min(by: { $0.deadline < $1.deadline }),
+                    notAfter: nil,
+                    identifier: "albus.plan.brief.\(key)"))
             }
 
             // The nudge anchors on the first real block, not on the window
@@ -420,7 +425,7 @@ public struct NotificationPlanner: Sendable {
         if let assignment = candidate.assignment {
             facts[.assignment] = assignment.title
             facts[.steps] = plural(assignment.remainingSteps, "step")
-            facts[.minutes] = plural(assignment.remainingMinutes, "minute")
+            facts[.minutes] = durationPhrase(assignment.remainingMinutes)
             facts[.days] = dayPhrase(from: when, to: assignment.deadline)
             facts[.hours] = plural(max(0, hours(from: when, to: assignment.deadline)), "hour")
             if let step = assignment.nextStepTitle { facts[.step] = step }
@@ -434,7 +439,7 @@ public struct NotificationPlanner: Sendable {
             // The brief describes the *day*, so its numbers come from that
             // day's blocks rather than from any one assignment.
             let today = context.blocks.filter { calendar.isDate($0.start, inSameDayAs: when) }
-            facts[.minutes] = plural(today.reduce(0) { $0 + $1.minutes }, "minute")
+            facts[.minutes] = durationPhrase(today.reduce(0) { $0 + $1.minutes })
             facts[.steps] = plural(today.count, "step")
             facts[.step] = today.min(by: { $0.start < $1.start })?.stepTitle
 
@@ -443,14 +448,14 @@ public struct NotificationPlanner: Sendable {
                 .filter({ calendar.isDate($0.start, inSameDayAs: when) })
                 .min(by: { $0.start < $1.start }) else { break }
             facts[.step] = first.stepTitle
-            facts[.minutes] = plural(first.minutes, "minute")
+            facts[.minutes] = durationPhrase(first.minutes)
             facts[.assignment] = first.assignmentTitle
 
         case .planStoppedFitting:
             facts[.count] = String(context.unplaceableCount)
 
         case .momentum:
-            facts[.weekMinutes] = plural(context.weeklyFocusedMinutes, "minute")
+            facts[.weekMinutes] = durationPhrase(context.weeklyFocusedMinutes)
 
         case .dormantSoft, .dormantFinal:
             if let nearest = open.min(by: { $0.deadline < $1.deadline }) {
@@ -470,10 +475,28 @@ public struct NotificationPlanner: Sendable {
         "\(count) \(noun)\(count == 1 ? "" : "s")"
     }
 
+    /// Minutes below an hour and a half, hours and minutes above it.
+    ///
+    /// A whole assignment's remaining work is routinely hundreds of minutes,
+    /// and "1220 minutes of work, one evening" was a real line — technically
+    /// correct, unreadable, and it makes the app look like it cannot count.
+    private func durationPhrase(_ minutes: Int) -> String {
+        guard minutes >= 90 else { return plural(minutes, "minute") }
+        let hours = minutes / 60
+        let rest = minutes % 60
+        return rest == 0 ? plural(hours, "hour") : "\(hours)h \(rest)m"
+    }
+
+    /// Never "the past".
+    ///
+    /// Every template using this reads "{assignment} in {days}", so a negative
+    /// value produced "Sci is the past out and today owes it 162 minutes".
+    /// Callers now only pass deadlines ahead of the fire date; clamping here as
+    /// well means no sentence can come out ungrammatical even if one slips
+    /// through — an overdue assignment has its own kind, with its own corpus.
     private func dayPhrase(from: Date, to: Date) -> String {
         switch days(from: from, to: to) {
-        case ..<0: return "the past"
-        case 0: return "today"
+        case ..<1: return "today"
         case 1: return "1 day"
         case let n: return "\(n) days"
         }

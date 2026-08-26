@@ -295,3 +295,76 @@ struct NotificationBackOffTests {
         #expect(state.pausedUntil == nil)
     }
 }
+
+/// Trying to break it, rather than confirming it works.
+@MainActor
+@Suite("Notifications — hostile input")
+struct NotificationHostileInputTests {
+
+    private func defaults() -> UserDefaults { UserDefaults(suiteName: UUID().uuidString)! }
+
+    /// `UserDefaults` is writable by anything with access to the container, and
+    /// a set naming all seven days off leaves the scheduler nowhere to place
+    /// anything — every step unplaceable, forever, with no obvious way back.
+    @Test("a week with every day off cannot reach the scheduler")
+    func everyDayOffIsRejected() {
+        let preferences = Preferences(defaults: defaults())
+        preferences.daysOff = [1, 2, 3, 4, 5, 6, 7]
+        #expect(preferences.availability.excludedWeekdays.isEmpty)
+    }
+
+    @Test("weekday numbers outside the week are dropped")
+    func nonsenseWeekdaysDropped() {
+        #expect(Preferences.sanitisedDaysOff([0, 8, -3, 99, 2]) == [2])
+    }
+
+    @Test("an inverted study window is ordered rather than obeyed")
+    func invertedWindow() {
+        let preferences = Preferences(defaults: defaults())
+        preferences.windowStartHour = 22
+        preferences.windowEndHour = 4
+        #expect(preferences.availability.windowEndHour > preferences.availability.windowStartHour)
+    }
+
+    @Test("absurd notification settings are clamped, not obeyed")
+    func settingsAreClamped() {
+        let preferences = Preferences(defaults: defaults())
+        preferences.maxPerDay = 9_999
+        preferences.briefHour = 99
+        preferences.quietStartHour = -5
+        let settings = preferences.notificationSettings
+        #expect(settings.maxPerDay <= 8)
+        #expect((0...23).contains(settings.briefHour))
+        #expect((0...23).contains(settings.quietStartHour))
+    }
+
+    /// An unset integer key reads back as zero, which is a legitimate hour —
+    /// so a naive `integer(forKey:)` would silently move every existing
+    /// student's study window to midnight on upgrade.
+    @Test("an upgrading student keeps the window they already had")
+    func unsetKeysFallBackToDefaults() {
+        let preferences = Preferences(defaults: defaults())
+        #expect(preferences.windowStartHour == Availability.default.windowStartHour)
+        #expect(preferences.windowEndHour == Availability.default.windowEndHour)
+        #expect(preferences.notificationsEnabled)
+    }
+
+    @Test("a title longer than a lock screen is cut, not wrapped forever")
+    func longTitlesAreCut() {
+        let long = String(repeating: "Mitochondrial ", count: 40)
+        let short = PlanBridge.short(long)
+        #expect(short.count <= 42)
+        #expect(short.hasSuffix("\u{2026}"))
+    }
+
+    @Test("a pasted multi-line title becomes one line")
+    func newlinesCollapse() {
+        let messy = "  Biology\n\tIA   draft \n "
+        #expect(PlanBridge.short(messy) == "Biology IA draft")
+    }
+
+    @Test("an empty title does not become an empty notification")
+    func emptyTitle() {
+        #expect(PlanBridge.short("   \n  ").isEmpty)
+    }
+}

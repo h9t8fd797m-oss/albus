@@ -27,11 +27,30 @@ struct HomeScreen: View {
 
     @State private var filter: Filter = .all
     @State private var addingTask = false
-    @State private var showingMonth = false
-    @State private var showingSettings = false
+    /// Where Home can push to, as one value.
+    ///
+    /// **Not three `navigationDestination(isPresented:)` modifiers.** Stacking
+    /// them in a single scope does not give you three destinations — SwiftUI
+    /// keeps one and silently routes every push through it. Adding the settings
+    /// and notification-tap destinations beside the existing month one made
+    /// "Month view" open the notification settings, with no warning and no
+    /// crash. One modifier, one enum, no ambiguity.
+    enum Destination: Hashable, Identifiable {
+        case month
+        case notificationSettings
+        case assignment(Assignment)
+
+        var id: String {
+            switch self {
+            case .month: "month"
+            case .notificationSettings: "settings"
+            case .assignment(let assignment): assignment.id.uuidString
+            }
+        }
+    }
+
+    @State private var destination: Destination?
     @State private var showingPaywall = false
-    /// The assignment a notification tap asked for.
-    @State private var routed: Assignment?
     /// The assignment awaiting a yes. Held rather than a bool so the dialog can
     /// name the thing it is about to destroy.
     @State private var confirmingDelete: Assignment?
@@ -97,22 +116,21 @@ struct HomeScreen: View {
         .fullScreenCover(item: $focusing) { record in
             FocusModeScreen(record: record)
         }
-        .navigationDestination(isPresented: $showingMonth) {
-            Screen { MonthCalendarScreen() }
-        }
-        .navigationDestination(isPresented: $showingSettings) {
-            Screen { NotificationSettingsScreen() }
-        }
-        // Reuses the `isPresented` pattern above rather than converting Home to
-        // a bound `NavigationStack(path:)`. Same result, much smaller change.
-        .navigationDestination(item: $routed) { assignment in
-            Screen { TaskDetailScreen(assignment: assignment) }
+        .navigationDestination(item: $destination) { destination in
+            switch destination {
+            case .month:
+                Screen { MonthCalendarScreen() }
+            case .notificationSettings:
+                Screen { NotificationSettingsScreen() }
+            case .assignment(let assignment):
+                Screen { TaskDetailScreen(assignment: assignment) }
+            }
         }
         .onChange(of: router.requestedAssignment) { _, requested in
             guard let requested,
                   let match = assignments.first(where: { $0.id == requested })
             else { return }
-            routed = match
+            destination = .assignment(match)
             // Cleared immediately so tapping the same notification twice, or
             // returning to Home and tapping another, both route again.
             router.clearRoute()
@@ -133,7 +151,7 @@ struct HomeScreen: View {
                     UpNextCard(record: next, now: now) { focusing = next }
                 }
 
-                WeekStrip(sessions: sessions, now: now) { showingMonth = true }
+                WeekStrip(sessions: sessions, now: now) { destination = .month }
 
                 FilterChipRow(filters: Filter.allCases, selection: $filter) { $0.title }
                     .padding(.horizontal, -Tokens.Spacing.xl)
@@ -241,7 +259,7 @@ struct HomeScreen: View {
                 // Not a fifth tab: `AppShell` documents why a tab was removed
                 // for redundancy, and adding one back for settings would argue
                 // against reasoning that is already written down.
-                Button { showingSettings = true } label: {
+                Button { destination = .notificationSettings } label: {
                     AlbusCactus(size: 36, mood: .init(coordinator.workload))
                 }
                 .buttonStyle(.plain)

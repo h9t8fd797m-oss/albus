@@ -168,7 +168,17 @@ struct AlbusApp: App {
     /// changed, so running it on every foreground costs one fetch.
     @MainActor
     private func catchUp() {
-        coordinator.sweepMissedSessions(context: container.mainContext,
-                                        availability: preferences.availability)
+        let missed = coordinator.sweepMissedSessions(context: container.mainContext,
+                                                     availability: preferences.availability)
+        // The sweep only re-flows when it actually found something, so on a
+        // normal launch nothing recomputes — and `workload` is derived state
+        // that starts at `.calm`. Without this the cactus was smooth on every
+        // launch regardless of the real week, which is the same "one mood
+        // forever" bug in a different disguise. The scheduler converges and
+        // moves as little as possible, so one run here is cheap.
+        if missed == 0 {
+            coordinator.reschedule(context: container.mainContext,
+                                   availability: preferences.availability)
+        }
     }
 }

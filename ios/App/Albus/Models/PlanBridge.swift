@@ -78,6 +78,16 @@ enum PlanBridge {
             }
     }
 
+    /// What fits on a lock screen without eating the sentence around it.
+    ///
+    /// Whitespace is collapsed too: a title pasted out of a document can carry
+    /// newlines, and a notification body containing one renders as a blank gap.
+    static func short(_ text: String, limit: Int = 42) -> String {
+        let flat = text.split(whereSeparator: \.isWhitespace).joined(separator: " ")
+        guard flat.count > limit else { return flat }
+        return flat.prefix(limit - 1).trimmingCharacters(in: .whitespaces) + "\u{2026}"
+    }
+
     /// The three inputs that decide an adjusted duration.
     private struct Cell: Hashable {
         let subjectCode: String?
@@ -144,12 +154,16 @@ enum PlanBridge {
                     .sorted { $0.ordinal < $1.ordinal }
                 return NotificationAssignment(
                     id: assignment.id,
-                    title: assignment.title,
+                    // Titles are not length-capped anywhere on the way in, and
+                    // a lock screen has room for a few words. Truncating here
+                    // rather than trusting the display to cope keeps the body
+                    // inside the length the corpus was written against.
+                    title: Self.short(assignment.title),
                     deadline: assignment.deadline,
                     isComplete: assignment.isComplete,
                     remainingSteps: open.count,
                     remainingMinutes: open.reduce(0) { $0 + $1.estimatedMinutes },
-                    nextStepTitle: open.first?.title,
+                    nextStepTitle: open.first.map { Self.short($0.title) },
                     hasUnplaceable: open.contains { unplacedStepIDs.contains($0.id) }
                 )
             }
@@ -169,8 +183,8 @@ enum PlanBridge {
             else { return nil }
             return NotificationBlock(
                 assignmentID: assignment.id,
-                assignmentTitle: assignment.title,
-                stepTitle: subtask.title,
+                assignmentTitle: Self.short(assignment.title),
+                stepTitle: Self.short(subtask.title),
                 start: record.startsAt,
                 minutes: record.plannedSeconds / 60
             )

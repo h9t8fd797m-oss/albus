@@ -370,8 +370,22 @@ struct NotificationRegressionTests {
             Issue.record("no T-3h warning"); return
         }
         let text = warning.title + " " + warning.body
-        #expect(text.contains("3 hours"), "said: \(text)")
-        #expect(!text.contains("80"), "still counting from planning time: \(text)")
+
+        // Asserting on *any* number of hours the line quotes, rather than on
+        // one expected phrasing. The first version of this test demanded the
+        // literal "3 hours" and broke the moment the picker chose a line that
+        // spells the number out — testing the corpus rather than the bug.
+        for quoted in numbers(before: "hour", in: text) {
+            #expect(quoted <= 3, "counted \(quoted) hours from planning time: \(text)")
+        }
+    }
+
+    /// Every integer immediately preceding a given word.
+    private func numbers(before word: String, in text: String) -> [Int] {
+        let parts = text.split(whereSeparator: { $0 == " " || $0 == "\n" }).map(String.init)
+        return zip(parts, parts.dropFirst()).compactMap { current, next in
+            next.hasPrefix(word) ? Int(current) : nil
+        }
     }
 
     @Test("days are counted from the moment it fires too")
@@ -434,5 +448,55 @@ struct NotificationRegressionTests {
             #expect(!text.contains("1 minutes"), "said: \(text)")
             #expect(!text.contains("1 hours"), "said: \(text)")
         }
+    }
+}
+
+/// Two more, found the same way as the four above — by reading what the app had
+/// actually queued with the system, this time out of the simulator's own
+/// notification store rather than out of a print.
+@Suite("Regressions — found in the real pending queue")
+struct NotificationQueueRegressionTests {
+
+    /// Shipped the line "Sci is the past out and today owes it 162 minutes".
+    /// A brief three days ahead named the nearest open assignment, which by the
+    /// day that brief arrived was already overdue, so `{days}` rendered as a
+    /// phrase that only reads correctly in the future tense.
+    @Test("a brief never describes a deadline that has passed by the time it arrives")
+    func briefDoesNotNameAPastDeadline() {
+        let result = planner.plan(context(
+            assignments: [assignment("Sci", dueDay: 21, dueHour: 17, steps: 4),
+                          assignment("Art", dueDay: 27, dueHour: 17, steps: 4)],
+            blocks: [block(20, 17), block(21, 17), block(22, 17), block(23, 17)]
+        ))
+        for notification in result where notification.kind == .morningBrief {
+            let text = notification.title + " " + notification.body
+            #expect(!text.contains("the past"), "said: \(text)")
+        }
+    }
+
+    /// Shipped "English essay, 1220 minutes of work, one evening. Tight but
+    /// real." Twenty hours is not one evening, and nobody reads 1220 minutes.
+    @Test("long durations are said in hours, not in hundreds of minutes")
+    func longDurationsReadAsHours() {
+        let result = planner.plan(context(
+            assignments: [assignment("English essay", dueDay: 21, dueHour: 17,
+                                     steps: 8, minutes: 1_220)],
+            blocks: [block(20, 17)]
+        ))
+        #expect(!result.isEmpty)
+        for notification in result {
+            let text = notification.title + " " + notification.body
+            #expect(!text.contains("1220 minutes"), "said: \(text)")
+        }
+    }
+
+    @Test("short durations are still said in minutes")
+    func shortDurationsStayMinutes() {
+        let result = planner.plan(context(
+            assignments: [assignment("Bio IA", dueDay: 22, steps: 1, minutes: 45)],
+            blocks: [block(20, 17, minutes: 45)]
+        ))
+        let nudges = result.filter { $0.kind == .windowNudge }
+        #expect(nudges.contains { ($0.title + $0.body).contains("45 minutes") })
     }
 }

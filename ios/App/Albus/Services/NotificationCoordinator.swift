@@ -113,7 +113,22 @@ final class NotificationCoordinator {
         state.unfitSignature = StableHash.signature(coordinator.unplacedStepIDs)
         state.recordScheduled(planned.map(\.fireDate), now: now)
         scheduledCount = planned.count
+
+        // Notifications are the one feature whose output the developer cannot
+        // see: it arrives on a lock screen, hours later, on someone else's
+        // phone. One line per rebuild is what makes "why did it say that"
+        // answerable at all, on device as much as here.
+        print("[Albus] scheduled \(planned.count): "
+              + planned.sorted { $0.fireDate < $1.fireDate }
+                  .map { "\($0.kind.rawValue)@\(Self.log.string(from: $0.fireDate))" }
+                  .joined(separator: ", "))
     }
+
+    private static let log: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "EEE HH:mm"
+        return formatter
+    }()
 
     /// Removes everything the plan owns, leaving the focus session alone.
     func clearAll() async {

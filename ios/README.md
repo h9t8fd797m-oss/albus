@@ -70,8 +70,11 @@ without waiting on the account.
 | **Estimator** | Learns how long *this* student actually takes. 10 tests. |
 | **Tokens** | Colours, type, spacing sampled from the design exports. |
 | **App shell** | Full-screen gradient + floating tab bar, four tabs. |
+| **Notifications** | Twelve kinds, planned purely in `AlbusCore`. 58 tests. |
 
-Screens are not built yet — the tabs show placeholders.
+Every tab is a real screen: Home is the assignment list, Rubrics owns saved
+rubrics, Albus is the chat, Tools is the catalogue. Focus Mode, the plan editor,
+grading, the month calendar and notification settings all exist.
 
 ## Two things that are load-bearing
 
@@ -130,3 +133,60 @@ xcodebuild test -scheme Albus -only-testing:AlbusUITests
 (`app_config.global_ai_calls_per_hour`, currently 2000/hour) plus the per-IP
 sign-up limit of 10/hour. The residual risk is cost, not data — see
 `docs/security-model.md` § 6.
+
+
+---
+
+## Notifications — what only works on a signed build
+
+Albus speaks first: a morning brief, a nudge when a block starts, a deadline
+ladder, and the one no other planner can send — **your plan stopped fitting**,
+straight off `ScheduleResult.unplaceable`.
+
+All of the policy lives in `AlbusCore/Notifications/` and imports no
+`UserNotifications`, so quiet hours, the daily cap, the 64-slot budget and DST
+are all answered by `swift test` with no simulator. The app half is a
+namespace-scoped diff against what iOS actually holds.
+
+**Two things worth knowing before changing any of it.**
+
+*`albus.session.*` is not ours.* The focus timer owns that namespace, and a
+rebuild that called `removeAllPendingNotificationRequests` would delete a
+running timer's only alert — `reschedule` can fire mid-session. The rebuild only
+ever touches `albus.plan.*`, checked in both the client and the coordinator.
+
+*The 64-slot ceiling is real for paying users only.* iOS keeps the 64
+soonest-firing pending notifications and silently discards the rest. Free tier
+caps at three assignments and never approaches it; Plus is uncapped. The planner
+allocates to 48 explicitly and logs anything it drops.
+
+### Blocked on a Team ID
+
+`ALBUS_SIGNED_BUILD` in `App/Config.xcconfig` gates Time Sensitive delivery on
+overdue and plan-broken warnings, the same way `TURNSTILE_SITE_KEY` gates the
+CAPTCHA. Set it to `YES` in the same change that sets `DEVELOPMENT_TEAM`.
+
+Being honest about what that flag buys: setting `.timeSensitive` **without** the
+entitlement is *ignored* by iOS rather than rejected, so leaving it `NO` costs
+nothing today. It is there so the capability is legible and so switching it on is
+one line rather than an investigation.
+
+**Live Activities** (a Dynamic Island countdown for a focus session) and
+**Communication Notifications** (Albus rendered as a correspondent rather than an
+app) both need a Team ID *plus* a new extension target. They are the natural v2.
+
+### What no test can cover here
+
+Actual delivery, lock-screen truncation and the attachment at true scale need a
+device. **DST cannot be meaningfully verified by hand at all** — `simctl` cannot
+move the clock usefully — so `NotificationPlannerTests` is the real coverage for
+it, not a manual pass.
+
+To see what is actually queued in the simulator:
+
+```bash
+D=~/Library/Developer/CoreSimulator/Devices/<udid>/data/Library/UserNotifications
+strings "$(ls -t $(find "$D" -name PendingNotifications.plist) | head -1)" | grep -o "albus\.plan\.[a-zA-Z0-9._-]*" | sort -u
+```
+
+That is how the last two copy bugs were found, after every unit test was green.
