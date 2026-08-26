@@ -197,22 +197,44 @@ Deno.serve(async (req) => {
       }
     }
 
-    const generated = await gradeWork(
-      buildGradeSystemPrompt(basis),
-      buildGradeUserPrompt({
-        taskTitle: title, taskType, rubric,
-        work: input.work, presentation: input.presentation,
-      }),
-      model,
-    );
+    // Everything from here can fail *after* a grading has been reserved, and a
+    // student who gets no marks must not lose one of five for the week. The
+    // slot is handed back on any failure below.
+    //
+    // Deleting the usage row rather than adding a credit: the row is the
+    // accounting, and a failed call did not happen as far as the student is
+    // concerned. Service role, because `authenticated` has no DELETE here.
+    const refund = async () => {
+      if (!usageId) return;
+      const { error } = await adminClient()
+        .from("ai_usage").delete().eq("id", usageId as string);
+      if (error) console.error("could not refund grading slot:", error.message);
+    };
+
+    let generated;
+    try {
+      generated = await gradeWork(
+        buildGradeSystemPrompt(basis),
+        buildGradeUserPrompt({
+          taskTitle: title, taskType, rubric,
+          work: input.work, presentation: input.presentation,
+        }),
+        model,
+      );
+    } catch (e) {
+      await refund();
+      throw e;
+    }
 
     let grade;
     try {
       grade = normaliseGrade(generated.raw, rubric);
     } catch (e) {
+      await refund();
       if (e instanceof InvalidGradeError) {
         console.error("model produced an unusable grade:", e.message);
-        throw new HttpError(502, "MALFORMED_RESPONSE", "Marking failed. Nothing was charged.");
+        throw new HttpError(502, "MALFORMED_RESPONSE",
+          "Marking failed, and your grading has been given back.");
       }
       throw e;
     }
@@ -260,7 +282,10 @@ Deno.serve(async (req) => {
       })
       .select("id, created_at")
       .single();
-    if (writeError) throw mapPostgresError(writeError.message);
+    if (writeError) {
+      await refund();
+      throw mapPostgresError(writeError.message);
+    }
 
     if (usageId) {
       recordTokensInBackground(

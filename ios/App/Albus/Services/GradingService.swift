@@ -119,7 +119,13 @@ struct GradingService {
             case .offline:
                 "No connection — marking needs one."
             case .unavailable:
-                "Albus can't mark this right now. Nothing was charged."
+                // Never "nothing was charged" — the client cannot know that. A
+                // grading is reserved before the model runs, so a failure here
+                // may or may not have cost one, and claiming otherwise was a
+                // lie a student could check. The server hands the slot back on
+                // failure and returns an identical result for free on a retry,
+                // which is what makes this true rather than reassuring.
+                "Albus couldn't finish marking that. Try again — you won't be charged twice."
             case .rejected(let why):
                 why
             }
@@ -184,6 +190,11 @@ struct GradingService {
                                .nilIfEmpty)
 
         do {
+            // Marking a full essay on Opus legitimately runs past thirty
+            // seconds, which is long enough for the default request timeout to
+            // give up on a request the server is still happily working on. The
+            // student then sees a failure for work that was in fact marked, and
+            // has spent a grading to see it.
             return try await client.functions.invoke("grade", options: .init(body: body))
         } catch let error as FunctionsError {
             throw Self.translate(error)

@@ -135,8 +135,18 @@ struct GraderScreen: View {
 
     @ViewBuilder private var startStage: some View {
         card(rail: Tokens.Palette.accent) {
+            // No model named here on purpose. Which model marks depends on
+            // whether a rubric turns up, and nothing has been chosen yet — the
+            // first version showed "Sonnet 5" on this screen because `isBlind`
+            // is trivially true before the student has answered anything, which
+            // both undersold it and was a claim made too early to be true.
             HStack {
-                modelBadge
+                Text("A full grading")
+                    .font(Tokens.Typography.overline).fontWeight(.bold)
+                    .foregroundStyle(Tokens.Palette.accent)
+                    .padding(.horizontal, Tokens.Spacing.s)
+                    .padding(.vertical, 3)
+                    .background(Tokens.Palette.accentWash, in: Capsule())
                 Spacer()
                 meter
             }
@@ -355,6 +365,16 @@ struct GraderScreen: View {
             StatusBanner(tone: .warning,
                          message: "With no rubric, Albus still won't give a mark — "
                                 + "whatever scale you ask for.")
+        }
+
+        // Named here, where the basis is finally known and the claim is true.
+        HStack(spacing: Tokens.Spacing.s) {
+            modelBadge
+            Text(isBlind
+                 ? "No rubric, so no marks — a read, not a grade."
+                 : "Marked against your rubric.")
+                .font(Tokens.Typography.caption)
+                .foregroundStyle(Tokens.Palette.inkSecondary)
         }
 
         PrimaryButton(title: "Mark my work") { Task { await submit() } }
