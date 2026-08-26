@@ -75,14 +75,30 @@ export const GRADE_JSON_SCHEMA = {
           marks: { type: ["number", "null"] },
           out_of: { type: ["number", "null"] },
           comment: { type: "string" },
+          /** A sentence lifted verbatim from the work, or null. */
+          quote: { type: ["string", "null"] },
+          /** Where that sentence is — "¶4, line 6". Free text, never parsed. */
+          where: { type: ["string", "null"] },
         },
-        required: ["code", "name", "marks", "out_of", "comment"],
+        required: ["code", "name", "marks", "out_of", "comment", "quote", "where"],
         additionalProperties: false,
       },
     },
     feedback: { type: "string" },
+    improvements: {
+      type: "array",
+      items: {
+        type: "object",
+        properties: {
+          change: { type: "string" },
+          why: { type: "string" },
+        },
+        required: ["change", "why"],
+        additionalProperties: false,
+      },
+    },
   },
-  required: ["overall_marks", "total_marks", "criteria", "feedback"],
+  required: ["overall_marks", "total_marks", "criteria", "feedback", "improvements"],
   additionalProperties: false,
 } as const;
 
@@ -96,6 +112,9 @@ Rules:
   and why. Where it does not, comment without inventing a number.
 - Every criticism must name the specific place in the work it applies to, and
   say what to do instead. "Weak analysis" helps nobody.
+- Quote the student's own sentence where you can, copied exactly, and say where
+  it is. Seeing their own words is what makes a mark land; paraphrasing it back
+  is what makes marking feel invented.
 - Order the feedback by how much each change would move the grade. The first
   thing you say should be the thing worth doing first.
 - Be accurate before being kind. A student who is told their work is fine and
@@ -137,6 +156,9 @@ Rules:
 - Never say what grade this "would get" or "is around". You do not know.
 - Do say, specifically, what is working and what is not, naming the place in the
   work each point applies to and what to do instead.
+- Quote the student's own sentence where you can, copied exactly, and say where
+  it is. Reading their own words back is the useful half of this when you have
+  no criteria to point at.
 - Order by how much each change would improve the piece.
 - Be accurate before being kind. Say plainly what is not working.
 - Never rewrite the work for them. Point at what to fix, not what to paste.
@@ -207,8 +229,11 @@ export interface NormalisedGrade {
     marks: number | null;
     outOf: number | null;
     comment: string;
+    quote: string | null;
+    where: string | null;
   }>;
   feedback: string;
+  improvements: Array<{ change: string; why: string }>;
 }
 
 export class InvalidGradeError extends Error {}
@@ -243,14 +268,20 @@ export function normaliseGrade(
       // A criterion scored above its own maximum is arithmetic nobody can
       // defend. Clamp rather than reject: the comment is still worth reading.
       if (marks != null && outOf != null && marks > outOf) marks = outOf;
+      const text = (v: unknown, max: number): string | null =>
+        typeof v === "string" && v.trim() ? v.trim().slice(0, max) : null;
+
       return {
-        code: typeof item.code === "string" && item.code.trim() ? item.code.trim().slice(0, 24) : null,
-        name: typeof item.name === "string" && item.name.trim()
-          ? item.name.trim().slice(0, 200)
-          : "Criterion",
+        code: text(item.code, 24),
+        name: text(item.name, 200) ?? "Criterion",
         marks,
         outOf,
         comment: typeof item.comment === "string" ? item.comment.trim().slice(0, 1200) : "",
+        // Bounded here rather than in the schema: Anthropic's restricted subset
+        // rejects `maxLength`, and a "quote" that is actually three paragraphs
+        // is a model paraphrasing at length rather than quoting.
+        quote: text(item.quote, 400),
+        where: text(item.where, 60),
       };
     });
 
@@ -258,6 +289,17 @@ export function normaliseGrade(
   if (!feedback && normalisedCriteria.length === 0) {
     throw new InvalidGradeError("no feedback and no criteria");
   }
+
+  const improvements = (Array.isArray(r.improvements) ? r.improvements : [])
+    .slice(0, 6)
+    .map((m) => {
+      const item = (typeof m === "object" && m !== null ? m : {}) as Record<string, unknown>;
+      return {
+        change: typeof item.change === "string" ? item.change.trim().slice(0, 300) : "",
+        why: typeof item.why === "string" ? item.why.trim().slice(0, 300) : "",
+      };
+    })
+    .filter((m) => m.change);
 
   // Blind: strip every number, here, after the model has spoken.
   //
@@ -275,6 +317,7 @@ export function normaliseGrade(
         outOf: null,
       })),
       feedback,
+      improvements,
     };
   }
 
@@ -300,5 +343,5 @@ export function normaliseGrade(
   }
   if (overallMarks == null) totalMarks = totalMarks ?? null;
 
-  return { overallMarks, totalMarks, criteria: normalisedCriteria, feedback };
+  return { overallMarks, totalMarks, criteria: normalisedCriteria, feedback, improvements };
 }

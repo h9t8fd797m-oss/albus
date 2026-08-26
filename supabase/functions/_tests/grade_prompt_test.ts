@@ -238,3 +238,72 @@ Deno.test("blind grading with nothing to say still fails rather than returning e
     InvalidGradeError,
   );
 });
+
+// ── Evidence and improvements ────────────────────────────────────────────────
+
+Deno.test("a quote is kept verbatim, with where it came from", () => {
+  const graded = normaliseGrade({
+    overall_marks: 15, total_marks: 20,
+    criteria: [{
+      code: "A", name: "Thesis", marks: 7, out_of: 8,
+      comment: "Clear claim.",
+      quote: "Economic distress alone did not make 1848 revolutionary.",
+      where: "¶1 · line 4",
+    }],
+    feedback: "Good.",
+    improvements: [{ change: "Add a counter-argument after ¶5", why: "The top band needs one." }],
+  }, RUBRIC);
+
+  assertEquals(graded.criteria[0].quote, "Economic distress alone did not make 1848 revolutionary.");
+  assertEquals(graded.criteria[0].where, "¶1 · line 4");
+  assertEquals(graded.improvements.length, 1);
+  assertEquals(graded.improvements[0].change, "Add a counter-argument after ¶5");
+});
+
+Deno.test("a quote long enough to be a paraphrase is cut", () => {
+  const essay = "x".repeat(2000);
+  const graded = normaliseGrade({
+    overall_marks: null, total_marks: null,
+    criteria: [{ code: null, name: "A", marks: null, out_of: null, comment: "", quote: essay, where: null }],
+    feedback: "Fine.", improvements: [],
+  }, RUBRIC);
+  assert((graded.criteria[0].quote?.length ?? 0) <= 400);
+});
+
+Deno.test("blind grading keeps the quotes but still loses the numbers", () => {
+  const graded = normaliseGrade({
+    overall_marks: 17, total_marks: 20,
+    criteria: [{
+      code: "A", name: "Thesis", marks: 7, out_of: 8, comment: "Clear.",
+      quote: "The collapse of elite confidence turned hunger into politics.",
+      where: "¶1",
+    }],
+    feedback: "Strong opening.",
+    improvements: [{ change: "Source the claim in ¶6", why: "It is specific enough to need one." }],
+  }, null);
+
+  assertEquals(graded.criteria[0].marks, null);
+  assertEquals(graded.criteria[0].outOf, null);
+  // The evidence is the useful half when there is no rubric — it survives.
+  assertStringIncludes(graded.criteria[0].quote ?? "", "elite confidence");
+  assertEquals(graded.improvements.length, 1);
+});
+
+Deno.test("an improvement with no change to make is dropped", () => {
+  const graded = normaliseGrade({
+    overall_marks: null, total_marks: null, criteria: [],
+    feedback: "Fine.",
+    improvements: [{ change: "", why: "orphaned" }, { change: "Do this", why: "" }],
+  }, RUBRIC);
+  assertEquals(graded.improvements.length, 1);
+  assertEquals(graded.improvements[0].change, "Do this");
+});
+
+Deno.test("both voices ask for the student's own sentence", () => {
+  for (const basis of ["personal", "blind"] as const) {
+    assertStringIncludes(
+      buildGradeSystemPrompt(basis).replace(/\s+/g, " "),
+      "Quote the student's own sentence",
+    );
+  }
+});

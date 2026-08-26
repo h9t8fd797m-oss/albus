@@ -173,6 +173,8 @@ Deno.serve(async (req) => {
       marks: c.marks,
       out_of: c.outOf,
       comment: c.comment,
+      quote: c.quote,
+      where: c.where,
     }));
 
     const { data: saved, error: writeError } = await adminClient()
@@ -187,6 +189,11 @@ Deno.serve(async (req) => {
         total_marks: grade.totalMarks,
         breakdown: criteriaPayload,
         feedback: grade.feedback,
+        improvements: grade.improvements,
+        // Stored, not inferred. A blind reading and a rubric grading that
+        // awarded no marks are identical on the wire — both nulls — so without
+        // this a saved blind reading could later be rendered as a grade.
+        basis,
       })
       .select("id, created_at")
       .single();
@@ -208,6 +215,7 @@ Deno.serve(async (req) => {
       total_marks: grade.totalMarks,
       criteria: criteriaPayload,
       feedback: grade.feedback,
+      improvements: grade.improvements,
       model: generated.model,
       // The client must never infer this from whether marks came back. A
       // curriculum rubric with no marks and a blind reading both return nulls,
