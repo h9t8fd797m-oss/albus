@@ -45,6 +45,47 @@ export function gradeModelFor(basis: GradeBasis): string {
   return basis === "blind" ? "claude-sonnet-5" : "claude-opus-5";
 }
 
+/**
+ * Strip everything that costs tokens and carries no meaning.
+ *
+ * Extracted PDF and OCR text is mostly whitespace: hard-wrapped lines padded to
+ * the margin, a blank line between every paragraph and the next, soft hyphens
+ * left over from justification, and a bare page number every few hundred words.
+ * None of it changes how the work reads and all of it is billed.
+ *
+ * Conservative on purpose. Repeated running headers would save more, but
+ * telling a header from a student who genuinely repeats a phrase needs a
+ * heuristic that can be wrong, and being wrong here means deleting part of
+ * somebody's essay before marking it.
+ */
+export function normaliseWork(raw: string): string {
+  return raw
+    .replace(/\r\n?/g, "\n")
+    .replace(/\u00AD/g, "")
+    // A line that is nothing but a number is a page number. A line that is a
+    // number inside a sentence is not, and is left alone.
+    .replace(/\n[ \t]*\d{1,4}[ \t]*(?=\n)/g, "\n")
+    .replace(/[ \t]+/g, " ")
+    .replace(/ *\n */g, "\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+}
+
+/**
+ * Stable content hash. Web Crypto, so no dependency and no key.
+ *
+ * Only ever compared against hashes this server produced for this same user —
+ * it is a cache key, not a security boundary, and the ownership check that
+ * makes it safe lives in the query beside it.
+ */
+export async function sha256(input: string): Promise<string> {
+  const bytes = new TextEncoder().encode(input);
+  const digest = await crypto.subtle.digest("SHA-256", bytes);
+  return Array.from(new Uint8Array(digest))
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("");
+}
+
 export interface GradeInput {
   taskTitle: string;
   taskType: string;
@@ -332,7 +373,7 @@ export function normaliseGrade(
   }
 
   const improvements = (Array.isArray(r.improvements) ? r.improvements : [])
-    .slice(0, 6)
+    .slice(0, 3)
     .map((m) => {
       const item = (typeof m === "object" && m !== null ? m : {}) as Record<string, unknown>;
       return {

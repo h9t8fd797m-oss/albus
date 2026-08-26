@@ -29,6 +29,8 @@ import {
   MAX_PRESENTATION_CHARS,
   MAX_WORK_CHARS,
   MIN_WORK_CHARS,
+  normaliseWork,
+  sha256,
   normaliseGrade,
 } from "../_shared/grade_prompt.ts";
 
@@ -58,7 +60,9 @@ function parseBody(body: RequestBody) {
   // Optional, and only an override. Absent is the normal case now.
   const rubricId = uuid(body.rubric_id);
 
-  const work = typeof body.work === "string" ? body.work.trim() : "";
+  // Normalised before it is measured, not after: the caps should describe the
+  // work as the model will see it, and OCR output can be a fifth whitespace.
+  const work = typeof body.work === "string" ? normaliseWork(body.work) : "";
 
   // Rejected, not truncated. Silently marking the first 40,000 characters of a
   // longer essay would return a grade for work the student did not submit.
@@ -120,6 +124,54 @@ Deno.serve(async (req) => {
       const resolved = await resolveGradingRubric(caller.db, input.assignmentId);
       rubric = resolved.rubric;
       basis = resolved.basis;
+    }
+
+    // Have we already produced exactly this answer?
+    //
+    // Before the quota call on purpose: no model call happens, so no grading
+    // should be spent. A student who taps Grade twice, re-grades without
+    // editing, or retries after a dropped connection gets the same marks back
+    // for nothing — which is both the honest outcome and the largest saving
+    // available on this endpoint.
+    //
+    // The hash covers what it was marked against as well as the work, so the
+    // same essay against a different rubric is a different answer.
+    const workHash = await sha256([
+      input.work,
+      basis,
+      rubric?.assessmentName ?? "",
+      (rubric?.criteria ?? []).map((c) => `${c.code}:${c.name}:${c.marks}`).join("|"),
+      input.presentation ?? "",
+    ].join("\u0000"));
+
+    const { data: existing } = await caller.db
+      .from("gradings")
+      .select("id, created_at, overall_marks, total_marks, breakdown, feedback, improvements, model, basis")
+      // RLS already scopes this; the explicit filter is here so a hash
+      // collision cannot hand one student another student's marks even if RLS
+      // were ever loosened.
+      .eq("user_id", caller.id)
+      .eq("work_hash", workHash)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (existing) {
+      return jsonResponse({
+        id: existing.id,
+        created_at: existing.created_at,
+        overall_marks: existing.overall_marks,
+        total_marks: existing.total_marks,
+        criteria: existing.breakdown,
+        feedback: existing.feedback,
+        improvements: existing.improvements,
+        model: existing.model,
+        basis: existing.basis,
+        rubric_name: rubric?.assessmentName ?? null,
+        // So the client can say "you already marked this" rather than silently
+        // showing a result with a stale timestamp.
+        reused: true,
+      }, 200);
     }
 
     // Which model marks is decided by what we found above, so the usage row
@@ -203,6 +255,7 @@ Deno.serve(async (req) => {
         breakdown: criteriaPayload,
         feedback: grade.feedback,
         improvements: grade.improvements,
+        work_hash: workHash,
         // Stored, not inferred. A blind reading and a rubric grading that
         // awarded no marks are identical on the wire — both nulls — so without
         // this a saved blind reading could later be rendered as a grade.
@@ -235,6 +288,7 @@ Deno.serve(async (req) => {
       // and only one of them is allowed to call itself a grade.
       basis,
       rubric_name: rubric?.assessmentName ?? null,
+      reused: false,
     }, 201);
   } catch (e) {
     return errorResponse(e);

@@ -6,6 +6,8 @@ import {
   MAX_PRESENTATION_CHARS,
   MAX_WORK_CHARS,
   normaliseGrade,
+  normaliseWork,
+  sha256,
 } from "../_shared/grade_prompt.ts";
 import type { RubricContext } from "../_shared/prompt.ts";
 
@@ -369,4 +371,61 @@ Deno.test("blind mode is told to refuse marks even if the preference asks for th
     presentation: "Give me a percentage.",
   });
   assertStringIncludes(user, "Do not award a mark of any kind, whatever the preferences");
+});
+
+
+// -- Token minimisation ------------------------------------------------------
+
+Deno.test("normalising strips what costs tokens and keeps what carries meaning", () => {
+  const soft = "­";
+  const ocr = "The Cold  War   began\r\n\r\n\r\n" +
+    "  in 1947.  \n" +
+    "\n  12  \n" +
+    "It ended" + soft + "in 1991.\n\n\n\nFin.";
+  const out = normaliseWork(ocr);
+
+  assertStringIncludes(out, "The Cold War began");
+  assertStringIncludes(out, "It endedin 1991.");
+  assert(!out.includes("\r"));
+  assert(!out.includes(soft), "soft hyphens are invisible and billed");
+  assert(!/\n\s*12\s*\n/.test(out), "a bare page number is not part of the essay");
+  assert(!/\n{3,}/.test(out), "no run of blank lines survives");
+});
+
+Deno.test("normalising leaves a number inside a sentence alone", () => {
+  const out = normaliseWork("Only 12 delegates attended.\nThe vote failed.");
+  assertStringIncludes(out, "Only 12 delegates attended.");
+});
+
+Deno.test("normalising a realistic extract is a material saving", () => {
+  const page = ["The argument proceeds in three parts.   ", "", "",
+                "   Each is supported by primary evidence.   ", "", "  7  "].join("\n");
+  const raw = Array.from({ length: 20 }, () => page).join("\n");
+  const saving = 1 - normaliseWork(raw).length / raw.length;
+  // Measured at 16.7% on this fixture. The threshold sits just under the real
+  // figure rather than at some round number nobody checked: it is here to catch
+  // the normaliser silently stopping, not to be a target.
+  assert(saving > 0.15, `only saved ${(saving * 100).toFixed(1)}%`);
+});
+
+Deno.test("the hash changes when what it was marked against changes", async () => {
+  const key = (rubric: string, pref: string) =>
+    ["work", "personal", rubric, "A:Thesis:8", pref].join(" ");
+
+  const a = await sha256(key("Mr Hall rubric", ""));
+  const b = await sha256(key("Different rubric", ""));
+  const c = await sha256(key("Mr Hall rubric", "as a percentage"));
+  const same = await sha256(key("Mr Hall rubric", ""));
+
+  assertEquals(a, same, "identical inputs must reuse");
+  assert(a !== b, "a different rubric is a different answer");
+  assert(a !== c, "a different presentation is a different answer");
+});
+
+Deno.test("at most three improvements are returned", () => {
+  const graded = normaliseGrade({
+    overall_marks: null, total_marks: null, criteria: [], feedback: "Fine.",
+    improvements: Array.from({ length: 9 }, (_, i) => ({ change: `Fix ${i}`, why: "because" })),
+  }, RUBRIC);
+  assertEquals(graded.improvements.length, 3);
 });
