@@ -48,6 +48,13 @@ final class PlanCoordinator {
     /// would tell the student about it has to hold its tongue.
     private(set) var lastRunSucceeded = true
 
+    /// Called after every successful re-flow.
+    ///
+    /// A closure rather than a direct reference to the notification coordinator:
+    /// this type is the core loop and has no business knowing that notifications
+    /// exist, and its tests would otherwise need one.
+    var onScheduleChanged: (@MainActor () -> Void)?
+
     private let plans: PlanService
     private let scheduler = Scheduler()
     private let estimator = Estimator()
@@ -412,6 +419,11 @@ final class PlanCoordinator {
             movedCount = result.movedCount
             lastRunSucceeded = true
             save(context, "apply schedule")
+            // Every mutation path — add, delete, complete, the missed sweep and
+            // all four plan edits — ends here, so this is the only hook the
+            // notification rebuild needs. Debounced, because reordering steps
+            // calls this several times in a row.
+            onScheduleChanged?()
         } catch {
             // Everything derived above keeps its previous value, which is now
             // describing a plan that was not rebuilt. Anything acting on it —

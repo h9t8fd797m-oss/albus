@@ -361,7 +361,15 @@ public struct NotificationPlanner: Sendable {
 
     private func render(_ candidates: [Candidate],
                         _ context: NotificationContext) -> [PlannedNotification] {
-        var recent = context.recentLines
+        // Within one plan only, never across rebuilds.
+        //
+        // This started as a persisted list of recently-used lines, which made
+        // every rebuild produce different copy for notifications that had not
+        // changed: new text, new fingerprint, and the diff re-wrote the entire
+        // pending set every time anything at all happened. The seed is already
+        // unique per (notification, day), so variety across days comes for free
+        // and stably; this only stops one plan repeating itself within itself.
+        var used: [String] = []
         var out: [PlannedNotification] = []
 
         // Stable order in, stable order out — and a stable order is what makes
@@ -376,11 +384,11 @@ public struct NotificationPlanner: Sendable {
             let seed = StableHash.value(
                 "\(candidate.identifier)|\(candidate.kind.rawValue)|\(dayKey(candidate.fireDate))"
             )
-            guard let template = NotificationCopy.pick(from: options, recent: recent, seed: seed),
+            guard let template = NotificationCopy.pick(from: options, recent: used, seed: seed),
                   let text = NotificationCopy.render(template, facts: facts)
             else { continue }
 
-            recent.insert(template.id, at: 0)
+            used.append(template.id)
             out.append(PlannedNotification(
                 id: candidate.identifier,
                 kind: candidate.kind,

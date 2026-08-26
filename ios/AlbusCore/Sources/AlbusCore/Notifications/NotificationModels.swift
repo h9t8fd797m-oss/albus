@@ -178,8 +178,6 @@ public struct NotificationContext: Sendable {
     public let previousUnplaceableSignature: String
     /// Set while backed off. Tier 1 still fires.
     public let pausedUntil: Date?
-    /// Template ids used recently, newest first, so nothing repeats.
-    public let recentLines: [String]
     public let now: Date
 
     public init(assignments: [NotificationAssignment] = [],
@@ -194,7 +192,6 @@ public struct NotificationContext: Sendable {
                 unplaceableSignature: String = "",
                 previousUnplaceableSignature: String = "",
                 pausedUntil: Date? = nil,
-                recentLines: [String] = [],
                 now: Date) {
         self.assignments = assignments
         self.blocks = blocks
@@ -208,7 +205,6 @@ public struct NotificationContext: Sendable {
         self.unplaceableSignature = unplaceableSignature
         self.previousUnplaceableSignature = previousUnplaceableSignature
         self.pausedUntil = pausedUntil
-        self.recentLines = recentLines
         self.now = now
     }
 }

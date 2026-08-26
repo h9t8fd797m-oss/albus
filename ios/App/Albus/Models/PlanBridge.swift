@@ -125,6 +125,70 @@ enum PlanBridge {
         }
     }
 
+    /// What the notification planner is allowed to know, as value types.
+    ///
+    /// The SwiftData → value boundary, and the reason the planner can be pure.
+    /// It must be crossed on the main actor: `Assignment.subtasks` is a
+    /// relationship, and reading one off the main actor is undefined behaviour
+    /// in a store this app never gave a background context.
+    @MainActor
+    static func notificationAssignments(
+        from assignments: [Assignment],
+        unplacedStepIDs: Set<UUID>
+    ) -> [NotificationAssignment] {
+        assignments
+            .filter { $0.statusValue != .archived }
+            .map { assignment in
+                let open = assignment.subtasks
+                    .filter { $0.completedAt == nil }
+                    .sorted { $0.ordinal < $1.ordinal }
+                return NotificationAssignment(
+                    id: assignment.id,
+                    title: assignment.title,
+                    deadline: assignment.deadline,
+                    isComplete: assignment.isComplete,
+                    remainingSteps: open.count,
+                    remainingMinutes: open.reduce(0) { $0 + $1.estimatedMinutes },
+                    nextStepTitle: open.first?.title,
+                    hasUnplaceable: open.contains { unplacedStepIDs.contains($0.id) }
+                )
+            }
+    }
+
+    /// Scheduled blocks the student has not done yet.
+    ///
+    /// Completed, missed and skipped states are excluded: a nudge for a block
+    /// that has already come and gone is the app not paying attention.
+    @MainActor
+    static func notificationBlocks(from records: [PlanSessionRecord]) -> [NotificationBlock] {
+        records.compactMap { record in
+            guard record.sessionState == .scheduled,
+                  let subtask = record.subtask,
+                  subtask.completedAt == nil,
+                  let assignment = subtask.assignment
+            else { return nil }
+            return NotificationBlock(
+                assignmentID: assignment.id,
+                assignmentTitle: assignment.title,
+                stepTitle: subtask.title,
+                start: record.startsAt,
+                minutes: record.plannedSeconds / 60
+            )
+        }
+    }
+
+    /// Measured focus over a window, for the momentum line.
+    ///
+    /// Reads `focusedSeconds` — real time on a real timer — rather than planned
+    /// length, so it can never claim credit for work that did not happen.
+    @MainActor
+    static func focusedMinutes(from records: [PlanSessionRecord],
+                               since: Date, until: Date) -> Int {
+        records
+            .filter { $0.startsAt >= since && $0.startsAt < until }
+            .reduce(0) { $0 + ($1.focusedSeconds ?? 0) } / 60
+    }
+
     /// Writes a schedule back to the store.
     ///
     /// Reconciles by session id rather than deleting and re-inserting: the

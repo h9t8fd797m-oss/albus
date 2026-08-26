@@ -1,5 +1,6 @@
 import SwiftUI
 import SwiftData
+import UserNotifications
 import AlbusCore
 
 @main
@@ -75,6 +76,8 @@ struct AlbusApp: App {
     @State private var preferences = Preferences()
     @State private var entitlements = EntitlementService()
     @State private var focusSession = FocusSession()
+    @State private var notifications = NotificationCoordinator()
+    @State private var router = NotificationRouter()
 
     @Environment(\.scenePhase) private var scenePhase
 
@@ -89,10 +92,13 @@ struct AlbusApp: App {
                 .environment(preferences)
                 .environment(entitlements)
                 .environment(focusSession)
+                .environment(notifications)
+                .environment(router)
                 .task {
                     // Before anything async, so the plan is already correct by
                     // the time the first screen draws.
                     catchUp()
+                    wireNotifications()
                     // Restores a stored session. It no longer *creates* one:
                     // account creation moved into onboarding, which is the only
                     // place a CAPTCHA challenge can be presented.
@@ -104,13 +110,50 @@ struct AlbusApp: App {
                     // pending, and until it lands those rows still count
                     // against the student's active-plan limit.
                     await PendingDeletions.flush()
+                    await notifications.registerCategories()
+                    await rebuildNotifications()
                 }
                 .onChange(of: scenePhase) { _, phase in
-                    guard phase == .active else { return }
-                    catchUp()
+                    switch phase {
+                    case .active:
+                        notifications.appDidBecomeActive()
+                        catchUp()
+                        Task { await rebuildNotifications() }
+                    case .background:
+                        // The single most important rebuild point: the last
+                        // chance to get the pending set right before the app is
+                        // gone for what might be days.
+                        Task { await rebuildNotifications() }
+                    default:
+                        break
+                    }
                 }
         }
         .modelContainer(container)
+    }
+
+    /// Points the system's notification delegate at the router.
+    ///
+    /// Set from `.task` rather than `init()` because the router is `@State` and
+    /// must exist first. A cold launch *from* a notification tap can in
+    /// principle deliver before this runs; iOS queues the response until a
+    /// delegate is set, so the tap is not lost.
+    @MainActor
+    private func wireNotifications() {
+        UNUserNotificationCenter.current().delegate = router
+        router.onEngagement = { [notifications] in notifications.recordEngagement() }
+        coordinator.onScheduleChanged = { [notifications, coordinator, preferences, container] in
+            notifications.scheduleRebuild(context: container.mainContext,
+                                          preferences: preferences,
+                                          coordinator: coordinator)
+        }
+    }
+
+    @MainActor
+    private func rebuildNotifications() async {
+        await notifications.rebuild(context: container.mainContext,
+                                    preferences: preferences,
+                                    coordinator: coordinator)
     }
 
     /// Re-home anything whose window passed while the app was away.

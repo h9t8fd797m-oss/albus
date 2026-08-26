@@ -20,6 +20,7 @@ struct HomeScreen: View {
     @Environment(Preferences.self) private var preferences
     @Environment(EntitlementService.self) private var entitlements
     @Environment(FocusSession.self) private var focusSession
+    @Environment(NotificationRouter.self) private var router
 
     @Query(sort: \Assignment.deadline) private var assignments: [Assignment]
     @Query(sort: \PlanSessionRecord.startsAt) private var sessions: [PlanSessionRecord]
@@ -27,7 +28,10 @@ struct HomeScreen: View {
     @State private var filter: Filter = .all
     @State private var addingTask = false
     @State private var showingMonth = false
+    @State private var showingSettings = false
     @State private var showingPaywall = false
+    /// The assignment a notification tap asked for.
+    @State private var routed: Assignment?
     /// The assignment awaiting a yes. Held rather than a bool so the dialog can
     /// name the thing it is about to destroy.
     @State private var confirmingDelete: Assignment?
@@ -95,6 +99,23 @@ struct HomeScreen: View {
         }
         .navigationDestination(isPresented: $showingMonth) {
             Screen { MonthCalendarScreen() }
+        }
+        .navigationDestination(isPresented: $showingSettings) {
+            Screen { NotificationSettingsScreen() }
+        }
+        // Reuses the `isPresented` pattern above rather than converting Home to
+        // a bound `NavigationStack(path:)`. Same result, much smaller change.
+        .navigationDestination(item: $routed) { assignment in
+            Screen { TaskDetailScreen(assignment: assignment) }
+        }
+        .onChange(of: router.requestedAssignment) { _, requested in
+            guard let requested,
+                  let match = assignments.first(where: { $0.id == requested })
+            else { return }
+            routed = match
+            // Cleared immediately so tapping the same notification twice, or
+            // returning to Home and tapping another, both route again.
+            router.clearRoute()
         }
     }
 
@@ -217,7 +238,15 @@ struct HomeScreen: View {
             Spacer(minLength: 0)
 
             VStack(spacing: Tokens.Spacing.s) {
-                AlbusCactus(size: 36, mood: .init(coordinator.workload))
+                // Not a fifth tab: `AppShell` documents why a tab was removed
+                // for redundancy, and adding one back for settings would argue
+                // against reasoning that is already written down.
+                Button { showingSettings = true } label: {
+                    AlbusCactus(size: 36, mood: .init(coordinator.workload))
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Notification settings")
+
                 IconButton(systemImage: "plus", isFilled: true,
                            accessibilityLabel: "Add assignment") { addingTask = true }
             }

@@ -22,3 +22,13 @@ SUPABASE_PUBLISHABLE_KEY = sb_publishable_xxxxxxxxxxxxxxxxxxxx
 // Enabling only one side is the failure mode to avoid — see ios/README.md.
 TURNSTILE_SITE_KEY =
 TURNSTILE_ORIGIN = https:/$()/albus.app
+
+// ── Signed build ─────────────────────────────────────────────────────────
+// YES only once DEVELOPMENT_TEAM is set in project.yml and the app is signed
+// — see ios/README.md § "Signing is deliberately unset".
+//
+// It gates the notification capabilities that need an entitlement, chiefly
+// Time Sensitive delivery on overdue and plan-broken warnings. Setting that
+// level without the entitlement is *ignored* by iOS rather than rejected, so
+// leaving this NO costs nothing and claims nothing.
+ALBUS_SIGNED_BUILD = NO
