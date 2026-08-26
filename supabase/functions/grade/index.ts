@@ -48,14 +48,11 @@ function parseBody(body: RequestBody) {
   const uuid = (v: unknown): string | null =>
     typeof v === "string" && UUID_RE.test(v) ? v : null;
 
-  // The assignment is what makes this work: it carries the subject, the
-  // component and any rubric the student attached, so Albus can find the right
-  // mark scheme instead of asking them to name it again.
+  // Optional. When present it is what lets Albus find the right mark scheme
+  // without asking — it carries the component and any attached rubric. When
+  // absent the student is grading something loose, pasted or photographed,
+  // which has no rubric to find and is marked blind unless they name one.
   const assignmentId = uuid(body.assignment_id);
-  if (!assignmentId) {
-    throw new HttpError(422, "ASSIGNMENT_REQUIRED",
-      "Albus needs to know which assignment this is.");
-  }
 
   // Optional, and only an override. Absent is the normal case now.
   const rubricId = uuid(body.rubric_id);
@@ -120,7 +117,7 @@ Deno.serve(async (req) => {
           "That rubric isn't available. Try saving it again.");
       }
       basis = "personal";
-    } else {
+    } else if (input.assignmentId) {
       const resolved = await resolveGradingRubric(caller.db, input.assignmentId);
       rubric = resolved.rubric;
       basis = resolved.basis;

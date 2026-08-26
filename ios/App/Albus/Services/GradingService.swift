@@ -16,11 +16,19 @@ struct GradingService {
         let marks: Int?
         let outOf: Int?
         let comment: String
+        let quote: String?
+        let whereFound: String?
 
         private enum CodingKeys: String, CodingKey {
-            case code, name, marks, comment
+            case code, name, marks, comment, quote
             case outOf = "out_of"
+            case whereFound = "where"
         }
+    }
+
+    struct Improvement: Decodable, Sendable {
+        let change: String
+        let why: String
     }
 
     struct Result: Decodable, Sendable {
@@ -29,13 +37,54 @@ struct GradingService {
         let totalMarks: Int?
         let criteria: [Criterion]
         let feedback: String
+        let improvements: [Improvement]
         let model: String
+        /// What the marks were based on, decided server-side.
+        ///
+        /// Never inferred from whether marks came back: a curriculum rubric
+        /// carrying no marks and a blind reading both arrive as nils, and only
+        /// one of them may be shown as a grade.
+        let basis: GradingBasis
+        /// The rubric's name, for "marking against …". Nil when blind.
+        let rubricName: String?
+        /// True when the server returned an identical earlier grading instead
+        /// of paying to produce the same one again.
+        let reused: Bool
 
         private enum CodingKeys: String, CodingKey {
-            case id, criteria, feedback, model
+            case id, criteria, feedback, improvements, model, basis, reused
             case overallMarks = "overall_marks"
             case totalMarks = "total_marks"
+            case rubricName = "rubric_name"
         }
+    }
+
+    /// How many gradings are left, for the meter.
+    ///
+    /// Advisory: the real gate runs in Postgres in the same transaction that
+    /// reserves the slot. This exists so the number can be shown without
+    /// spending a grading to discover it.
+    struct Allowance: Decodable, Sendable {
+        let usedWeek: Int
+        let limitWeek: Int
+        let usedDay: Int
+        let limitDay: Int
+        let isPlus: Bool
+
+        private enum CodingKeys: String, CodingKey {
+            case usedWeek = "used_week"
+            case limitWeek = "limit_week"
+            case usedDay = "used_day"
+            case limitDay = "limit_day"
+            case isPlus = "is_plus"
+        }
+
+        /// Plus reports a weekly limit of zero, meaning "no weekly ceiling".
+        var weeklyRemaining: Int? {
+            limitWeek > 0 ? max(0, limitWeek - usedWeek) : nil
+        }
+        var dailyRemaining: Int { max(0, limitDay - usedDay) }
+        var hasAny: Bool { dailyRemaining > 0 && (weeklyRemaining ?? 1) > 0 }
     }
 
     enum Failure: LocalizedError, Equatable {
@@ -85,8 +134,12 @@ struct GradingService {
 
     private struct Request: Encodable {
         let assignment_id: String?
-        let rubric_id: String
+        /// Optional now, and only an override — the server works the rubric out
+        /// from the assignment when this is absent.
+        let rubric_id: String?
         let work: String
+        /// How the student asked for the result to be shown, in their words.
+        let presentation: String?
     }
 
     private struct ErrorBody: Decodable { let error: String?; let message: String? }
@@ -97,7 +150,22 @@ struct GradingService {
         self.client = client
     }
 
-    func grade(work: String, rubricID: UUID, assignmentID: UUID?) async throws -> Result {
+    /// How many gradings are left. Never throws upward — a meter that cannot be
+    /// drawn is not a reason to block marking.
+    func allowance() async -> Allowance? {
+        guard let client else { return nil }
+        let rows: [Allowance]? = try? await client.rpc("grading_allowance").execute().value
+        return rows?.first
+    }
+
+    /// Marks a piece of work.
+    ///
+    /// Both ids are optional and the pair decides what happens. An assignment
+    /// lets the server find the right mark scheme by itself; an explicit rubric
+    /// overrides that; neither means a blind reading, which is a supported
+    /// outcome rather than a failure.
+    func grade(work: String, rubricID: UUID?, assignmentID: UUID?,
+               presentation: String?) async throws -> Result {
         guard let client else { throw Failure.unavailable }
 
         let trimmed = work.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -109,8 +177,11 @@ struct GradingService {
         }
 
         let body = Request(assignment_id: assignmentID?.uuidString,
-                           rubric_id: rubricID.uuidString,
-                           work: trimmed)
+                           rubric_id: rubricID?.uuidString,
+                           work: trimmed,
+                           presentation: presentation?
+                               .trimmingCharacters(in: .whitespacesAndNewlines)
+                               .nilIfEmpty)
 
         do {
             return try await client.functions.invoke("grade", options: .init(body: body))

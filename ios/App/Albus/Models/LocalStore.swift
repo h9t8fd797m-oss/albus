@@ -486,13 +486,29 @@ final class Grading {
     /// Per-criterion marks and comments, in rubric order.
     var criteria: [GradedCriterion]
     var feedback: String
+    /// What to change, in the order worth doing it. At most three.
+    var improvements: [GradedImprovement] = []
+    /// What this was marked against.
+    ///
+    /// **Stored, never inferred.** A blind reading and a rubric grading that
+    /// awarded no marks look identical — both carry nil marks — so without this
+    /// a saved blind reading could be reopened months later and read as though
+    /// it had been marked against real criteria.
+    var basisValue: String = GradingBasis.personal.rawValue
     var createdAt: Date
+
+    var basis: GradingBasis {
+        get { GradingBasis(rawValue: basisValue) ?? .personal }
+        set { basisValue = newValue.rawValue }
+    }
 
     var assignment: Assignment?
 
     init(id: UUID = UUID(), remoteID: UUID? = nil, model: String, inputChars: Int,
          overallMarks: Int? = nil, totalMarks: Int? = nil,
          criteria: [GradedCriterion] = [], feedback: String,
+         improvements: [GradedImprovement] = [],
+         basis: GradingBasis = .personal,
          assignment: Assignment? = nil, createdAt: Date = .now) {
         self.id = id
         self.remoteID = remoteID
@@ -502,6 +518,8 @@ final class Grading {
         self.totalMarks = totalMarks
         self.criteria = criteria
         self.feedback = feedback
+        self.improvements = improvements
+        self.basisValue = basis.rawValue
         self.assignment = assignment
         self.createdAt = createdAt
     }
@@ -525,6 +543,30 @@ final class Grading {
 
 /// One criterion's result. `Codable` because SwiftData stores it inline on the
 /// grading rather than as a second table — these are never queried on their own.
+/// What a grading was based on.
+///
+/// `blind` is the one that matters: no rubric was found, no marks were awarded,
+/// and the result is a reading rather than a grade. Every screen that shows a
+/// grading has to be able to tell, which is why this is persisted rather than
+/// guessed from whether marks came back.
+enum GradingBasis: String, Codable, Sendable {
+    /// The student's own saved rubric — what a teacher actually handed out.
+    case personal
+    /// Albus's verified copy of how this curriculum component is marked.
+    case curriculum
+    /// No rubric. Not a grade.
+    case blind
+
+    var isRubricBacked: Bool { self != .blind }
+}
+
+/// One thing to change, and why it is worth doing.
+struct GradedImprovement: Codable, Hashable, Sendable, Identifiable {
+    var id: String { change }
+    var change: String
+    var why: String
+}
+
 struct GradedCriterion: Codable, Hashable, Sendable, Identifiable {
     var id: String { (code ?? "") + name }
     var code: String?
@@ -532,6 +574,13 @@ struct GradedCriterion: Codable, Hashable, Sendable, Identifiable {
     var marks: Int?
     var outOf: Int?
     var comment: String
+    /// A sentence lifted from the student's own work, or nil.
+    ///
+    /// The thing that makes a mark land. A criticism next to the sentence it is
+    /// about reads as marking; the same criticism on its own reads as invented.
+    var quote: String?
+    /// Where that sentence is — "¶4 · line 6". Display only, never parsed.
+    var whereFound: String?
 
     var displayName: String {
         guard let code, !code.isEmpty else { return name }

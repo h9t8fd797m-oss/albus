@@ -144,7 +144,8 @@ struct GradeSheet: View {
 
         do {
             let marked = try await GradingService().grade(
-                work: work, rubricID: rubric.id, assignmentID: assignment.remoteID
+                work: work, rubricID: rubric.id,
+                assignmentID: assignment.remoteID, presentation: nil
             )
 
             let grading = Grading(
@@ -155,9 +156,14 @@ struct GradeSheet: View {
                 totalMarks: marked.totalMarks,
                 criteria: marked.criteria.map {
                     GradedCriterion(code: $0.code, name: $0.name, marks: $0.marks,
-                                    outOf: $0.outOf, comment: $0.comment)
+                                    outOf: $0.outOf, comment: $0.comment,
+                                    quote: $0.quote, whereFound: $0.whereFound)
                 },
                 feedback: marked.feedback,
+                improvements: marked.improvements.map {
+                    GradedImprovement(change: $0.change, why: $0.why)
+                },
+                basis: marked.basis,
                 assignment: assignment
             )
             context.insert(grading)
@@ -189,10 +195,13 @@ struct GradeResultView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: Tokens.Spacing.l) {
+                basisBanner
                 score
+                improvements
+
                 if !grading.feedback.isEmpty {
                     VStack(alignment: .leading, spacing: Tokens.Spacing.s) {
-                        SectionHeader("What to change")
+                        SectionHeader(grading.basis == .blind ? "Albus's read" : "Overall")
                         Text(grading.feedback)
                             .font(Tokens.Typography.body)
                             .foregroundStyle(Tokens.Palette.ink)
@@ -202,7 +211,8 @@ struct GradeResultView: View {
                 }
 
                 if !grading.criteria.isEmpty {
-                    SectionHeader("Against the rubric", count: grading.criteria.count)
+                    SectionHeader(grading.basis == .blind ? "What stood out" : "Against the rubric",
+                                  count: grading.criteria.count)
                     VStack(spacing: Tokens.Spacing.s) {
                         ForEach(grading.criteria) { criterion in
                             CriterionCard(criterion: criterion)
@@ -217,6 +227,79 @@ struct GradeResultView: View {
             .padding(Tokens.Spacing.xl)
         }
         .background(BackgroundGradient())
+    }
+
+    /// What this was marked against, said before anything that looks like a mark.
+    ///
+    /// **The blind case is the reason this is the first thing on the screen.** A
+    /// reading with no rubric behind it must never be mistaken for a grade, and
+    /// a disclaimer underneath a big number is a disclaimer nobody reads.
+    @ViewBuilder private var basisBanner: some View {
+        switch grading.basis {
+        case .blind:
+            HStack(alignment: .top, spacing: Tokens.Spacing.m) {
+                AlbusCactus(size: 34, mood: .cooked)
+                VStack(alignment: .leading, spacing: Tokens.Spacing.xs) {
+                    Text("Albus is grading blindly")
+                        .font(Tokens.Typography.cardTitle)
+                        .foregroundStyle(Tokens.Palette.ink)
+                    Text("There was no rubric for this, so Albus can only say what "
+                         + "it thinks is strong or weak on its own reading. It has "
+                         + "not awarded marks, and this may not reflect your real grade.")
+                        .font(Tokens.Typography.caption)
+                        .foregroundStyle(Tokens.Palette.inkSecondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+            .padding(Tokens.Spacing.l)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(Tokens.Palette.cardSurface,
+                        in: RoundedRectangle(cornerRadius: Tokens.Radius.card))
+            .overlay(alignment: .leading) {
+                Rectangle().fill(Tokens.SubjectColor.amber.color).frame(width: 4)
+                    .clipShape(RoundedRectangle(cornerRadius: Tokens.Radius.card))
+            }
+
+        case .personal, .curriculum:
+            HStack(spacing: Tokens.Spacing.s) {
+                Image(systemName: "checkmark.seal.fill")
+                    .foregroundStyle(Tokens.SubjectColor.green.color)
+                Text(grading.basis == .personal
+                     ? "Graded against your rubric"
+                     : "Graded against your course's marking criteria")
+                    .font(Tokens.Typography.caption)
+                    .foregroundStyle(Tokens.Palette.inkSecondary)
+            }
+        }
+    }
+
+    @ViewBuilder private var improvements: some View {
+        if !grading.improvements.isEmpty {
+            VStack(alignment: .leading, spacing: Tokens.Spacing.s) {
+                SectionHeader("What to change", count: grading.improvements.count)
+                ForEach(Array(grading.improvements.enumerated()), id: \.offset) { index, move in
+                    HStack(alignment: .top, spacing: Tokens.Spacing.m) {
+                        Text("\(index + 1)")
+                            .font(Tokens.Typography.caption).fontWeight(.bold)
+                            .foregroundStyle(Tokens.Palette.accent)
+                            .frame(width: 22, height: 22)
+                            .background(Tokens.Palette.accentWash, in: Circle())
+                        VStack(alignment: .leading, spacing: 3) {
+                            Text(move.change)
+                                .font(Tokens.Typography.cardTitle)
+                                .foregroundStyle(Tokens.Palette.ink)
+                                .fixedSize(horizontal: false, vertical: true)
+                            if !move.why.isEmpty {
+                                Text(move.why)
+                                    .font(Tokens.Typography.caption)
+                                    .foregroundStyle(Tokens.Palette.inkSecondary)
+                                    .fixedSize(horizontal: false, vertical: true)
+                            }
+                        }
+                    }
+                }
+            }
+        }
     }
 
     @ViewBuilder private var score: some View {
@@ -267,6 +350,34 @@ struct GradeResultView: View {
                             .font(Tokens.Typography.caption)
                             .foregroundStyle(Tokens.Palette.inkSecondary)
                             .fixedSize(horizontal: false, vertical: true)
+                    }
+
+                    // The student's own sentence, next to the mark it earned or
+                    // cost. A criticism beside the line it is about reads as
+                    // marking; the same criticism alone reads as invented.
+                    if let quote = criterion.quote, !quote.isEmpty {
+                        HStack(alignment: .top, spacing: Tokens.Spacing.s) {
+                            Rectangle()
+                                .fill(Tokens.Palette.accent.opacity(0.5))
+                                .frame(width: 2)
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text(quote)
+                                    .font(Tokens.Typography.caption)
+                                    .italic()
+                                    .foregroundStyle(Tokens.Palette.ink)
+                                    .fixedSize(horizontal: false, vertical: true)
+                                if let source = criterion.whereFound, !source.isEmpty {
+                                    Text(source)
+                                        .font(Tokens.Typography.micro)
+                                        .foregroundStyle(Tokens.Palette.inkMuted)
+                                }
+                            }
+                        }
+                        .padding(Tokens.Spacing.s)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .background(Tokens.Palette.accentWash.opacity(0.5),
+                                    in: RoundedRectangle(cornerRadius: Tokens.Radius.chip))
+                        .padding(.top, 2)
                     }
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
