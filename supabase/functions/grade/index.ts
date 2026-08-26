@@ -18,11 +18,12 @@
 import { requireUser, adminClient } from "../_shared/auth.ts";
 import { errorResponse, HttpError, jsonResponse, mapPostgresError } from "../_shared/http.ts";
 import { recordTokensInBackground } from "../_shared/quota.ts";
-import { loadPersonalRubric } from "../_shared/curriculum.ts";
+import { loadPersonalRubric, resolveGradingRubric } from "../_shared/curriculum.ts";
 import { gradeWork } from "../_shared/anthropic.ts";
 import {
   buildGradeSystemPrompt,
   buildGradeUserPrompt,
+  type GradeBasis,
   GRADE_MODEL,
   InvalidGradeError,
   MAX_WORK_CHARS,
@@ -43,11 +44,17 @@ function parseBody(body: RequestBody) {
   const uuid = (v: unknown): string | null =>
     typeof v === "string" && UUID_RE.test(v) ? v : null;
 
-  const rubricId = uuid(body.rubric_id);
-  if (!rubricId) {
-    throw new HttpError(422, "RUBRIC_REQUIRED",
-      "Pick a rubric to mark this against.");
+  // The assignment is what makes this work: it carries the subject, the
+  // component and any rubric the student attached, so Albus can find the right
+  // mark scheme instead of asking them to name it again.
+  const assignmentId = uuid(body.assignment_id);
+  if (!assignmentId) {
+    throw new HttpError(422, "ASSIGNMENT_REQUIRED",
+      "Albus needs to know which assignment this is.");
   }
+
+  // Optional, and only an override. Absent is the normal case now.
+  const rubricId = uuid(body.rubric_id);
 
   const work = typeof body.work === "string" ? body.work.trim() : "";
 
@@ -62,7 +69,7 @@ function parseBody(body: RequestBody) {
       "There isn't enough here to mark yet.");
   }
 
-  return { assignmentId: uuid(body.assignment_id), rubricId, work };
+  return { assignmentId, rubricId, work };
 }
 
 Deno.serve(async (req) => {
@@ -79,12 +86,30 @@ Deno.serve(async (req) => {
     }
     const input = parseBody(body);
 
-    // Through the caller's client: RLS is what makes a foreign rubric id
-    // resolve to nothing rather than to someone else's criteria.
-    const rubric = await loadPersonalRubric(caller.db, input.rubricId);
-    if (!rubric) {
-      throw new HttpError(404, "RUBRIC_NOT_FOUND",
-        "That rubric isn't available. Try saving it again.");
+    // What are we marking against?
+    //
+    // An explicit rubric_id is an override and still wins; otherwise Albus
+    // works it out from the assignment. Either way the read goes through the
+    // caller's own client, so RLS is what makes a foreign id resolve to
+    // nothing rather than to someone else's criteria.
+    //
+    // **No rubric is a supported outcome, not a failure.** It used to 404 here,
+    // which is why a student without a saved rubric could never grade anything
+    // at all. Now it grades blind and says so — the honesty is the feature.
+    let rubric = null;
+    let basis: GradeBasis = "blind";
+
+    if (input.rubricId) {
+      rubric = await loadPersonalRubric(caller.db, input.rubricId);
+      if (!rubric) {
+        throw new HttpError(404, "RUBRIC_NOT_FOUND",
+          "That rubric isn't available. Try saving it again.");
+      }
+      basis = "personal";
+    } else {
+      const resolved = await resolveGradingRubric(caller.db, input.assignmentId);
+      rubric = resolved.rubric;
+      basis = resolved.basis;
     }
 
     // Entitlement, rate limit and the usage slot, atomically. Everything below
@@ -110,7 +135,7 @@ Deno.serve(async (req) => {
     }
 
     const generated = await gradeWork(
-      buildGradeSystemPrompt(),
+      buildGradeSystemPrompt(basis),
       buildGradeUserPrompt({ taskTitle: title, taskType, rubric, work: input.work }),
     );
 
@@ -150,7 +175,7 @@ Deno.serve(async (req) => {
       .insert({
         user_id: caller.id,
         assignment_id: input.assignmentId,
-        rubric_id: input.rubricId,
+        rubric_id: basis === "personal" ? input.rubricId : null,
         model: generated.model,
         input_chars: input.work.length,
         overall_marks: grade.overallMarks,
@@ -179,6 +204,11 @@ Deno.serve(async (req) => {
       criteria: criteriaPayload,
       feedback: grade.feedback,
       model: generated.model,
+      // The client must never infer this from whether marks came back. A
+      // curriculum rubric with no marks and a blind reading both return nulls,
+      // and only one of them is allowed to call itself a grade.
+      basis,
+      rubric_name: rubric?.assessmentName ?? null,
     }, 201);
   } catch (e) {
     return errorResponse(e);

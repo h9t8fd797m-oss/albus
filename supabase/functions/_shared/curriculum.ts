@@ -176,3 +176,109 @@ export async function loadPersonalRubric(
     body,
   };
 }
+
+/** Which rubric the grader found, and where it came from. */
+export interface ResolvedRubric {
+  rubric: RubricContext | null;
+  basis: "personal" | "curriculum" | "blind";
+}
+
+/**
+ * Work out what a piece of work should be marked against, from the work itself.
+ *
+ * The student picks nothing. An assignment already knows its component and
+ * whether a personal rubric was attached when it was created, so asking them to
+ * name a rubric again is asking them to repeat themselves — and getting it
+ * wrong silently marks a Biology IA against a History mark scheme.
+ *
+ * Order matters:
+ *   1. **The rubric attached to this assignment.** If a teacher handed one out
+ *      and the student saved it, that is the real mark scheme, and it beats our
+ *      copy of the specification every time.
+ *   2. **The official curriculum component.** `assignments.assessment_type_id`
+ *      is a direct foreign key, so this is one join to our verified copy of how
+ *      that component is actually marked — no code matching, nothing to forge.
+ *   3. **Nothing.** Blind. Said out loud rather than papered over.
+ *
+ * **Everything is read through the caller's own client, so RLS decides what an
+ * id resolves to.** An assignment belonging to another student returns no row —
+ * not a rubric, and not an error that leaks its existence — so a forged id
+ * degrades to blind rather than to somebody else's mark scheme.
+ */
+export async function resolveGradingRubric(
+  db: SupabaseClient,
+  assignmentId: string,
+): Promise<ResolvedRubric> {
+  const { data, error } = await db
+    .from("assignments")
+    .select(`
+      rubric_id,
+      assessment_types (
+        name,
+        course_templates ( name, curricula ( name ) ),
+        rubric_criteria ( id, code, name, marks, guidance, ordinal )
+      )
+    `)
+    .eq("id", assignmentId)
+    .maybeSingle();
+
+  // No row means RLS refused it or it does not exist. Both are "we have no
+  // rubric", and neither is worth distinguishing to the caller.
+  if (error || !data) {
+    if (error) console.warn("assignment lookup failed, grading blind:", error.message);
+    return { rubric: null, basis: "blind" };
+  }
+
+  const personal = await loadPersonalRubric(
+    db,
+    typeof data.rubric_id === "string" ? data.rubric_id : null,
+  );
+  if (personal) return { rubric: personal, basis: "personal" };
+
+  // PostgREST embeds a to-one relation as an object or a single-element array
+  // depending on how it infers the relationship. Handle both, as above.
+  type Row = Record<string, unknown>;
+  const one = (v: unknown): Row | null => {
+    const picked = Array.isArray(v) ? v[0] : v;
+    return picked && typeof picked === "object" ? picked as Row : null;
+  };
+
+  const component = one(data.assessment_types);
+  if (!component) return { rubric: null, basis: "blind" };
+
+  const criteria = ((component.rubric_criteria ?? []) as Array<{
+    id: string;
+    code: string | null;
+    name: string;
+    marks: number | null;
+    guidance: string | null;
+    ordinal: number;
+  }>)
+    .sort((a, b) => a.ordinal - b.ordinal)
+    .map(({ id, code, name, marks, guidance }) => ({
+      id,
+      code: code ?? "",
+      name,
+      marks,
+      guidance,
+    }));
+
+  // We hold the component but nothing about how it is marked. That is blind,
+  // not a rubric with no criteria — the distinction is the whole warning.
+  if (criteria.length === 0) return { rubric: null, basis: "blind" };
+
+  const template = one(component.course_templates);
+  const curriculum = template ? one(template.curricula) : null;
+
+  return {
+    basis: "curriculum",
+    rubric: {
+      kind: "curriculum",
+      curriculumName: (curriculum?.name as string) ?? "",
+      courseName: (template?.name as string) ?? "",
+      assessmentName: (component.name as string) ?? "",
+      criteria,
+      body: null,
+    },
+  };
+}
