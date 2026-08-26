@@ -20,13 +20,36 @@ struct HomeScreen: View {
     @Environment(Preferences.self) private var preferences
     @Environment(EntitlementService.self) private var entitlements
     @Environment(FocusSession.self) private var focusSession
+    @Environment(NotificationRouter.self) private var router
 
     @Query(sort: \Assignment.deadline) private var assignments: [Assignment]
     @Query(sort: \PlanSessionRecord.startsAt) private var sessions: [PlanSessionRecord]
 
     @State private var filter: Filter = .all
     @State private var addingTask = false
-    @State private var showingMonth = false
+    /// Where Home can push to, as one value.
+    ///
+    /// **Not three `navigationDestination(isPresented:)` modifiers.** Stacking
+    /// them in a single scope does not give you three destinations — SwiftUI
+    /// keeps one and silently routes every push through it. Adding the settings
+    /// and notification-tap destinations beside the existing month one made
+    /// "Month view" open the notification settings, with no warning and no
+    /// crash. One modifier, one enum, no ambiguity.
+    enum Destination: Hashable, Identifiable {
+        case month
+        case notificationSettings
+        case assignment(Assignment)
+
+        var id: String {
+            switch self {
+            case .month: "month"
+            case .notificationSettings: "settings"
+            case .assignment(let assignment): assignment.id.uuidString
+            }
+        }
+    }
+
+    @State private var destination: Destination?
     @State private var showingPaywall = false
     /// The assignment awaiting a yes. Held rather than a bool so the dialog can
     /// name the thing it is about to destroy.
@@ -93,14 +116,24 @@ struct HomeScreen: View {
         .fullScreenCover(item: $focusing) { record in
             FocusModeScreen(record: record)
         }
-        // Catch up on anything missed since the app was last open. This is where
-        // "it finds a new spot for what you skipped" actually happens.
-        .task {
-            coordinator.sweepMissedSessions(context: context,
-                                            availability: preferences.availability)
+        .navigationDestination(item: $destination) { destination in
+            switch destination {
+            case .month:
+                Screen { MonthCalendarScreen() }
+            case .notificationSettings:
+                Screen { NotificationSettingsScreen() }
+            case .assignment(let assignment):
+                Screen { TaskDetailScreen(assignment: assignment) }
+            }
         }
-        .navigationDestination(isPresented: $showingMonth) {
-            Screen { MonthCalendarScreen() }
+        .onChange(of: router.requestedAssignment) { _, requested in
+            guard let requested,
+                  let match = assignments.first(where: { $0.id == requested })
+            else { return }
+            destination = .assignment(match)
+            // Cleared immediately so tapping the same notification twice, or
+            // returning to Home and tapping another, both route again.
+            router.clearRoute()
         }
     }
 
@@ -118,7 +151,7 @@ struct HomeScreen: View {
                     UpNextCard(record: next, now: now) { focusing = next }
                 }
 
-                WeekStrip(sessions: sessions, now: now) { showingMonth = true }
+                WeekStrip(sessions: sessions, now: now) { destination = .month }
 
                 FilterChipRow(filters: Filter.allCases, selection: $filter) { $0.title }
                     .padding(.horizontal, -Tokens.Spacing.xl)
@@ -223,20 +256,20 @@ struct HomeScreen: View {
             Spacer(minLength: 0)
 
             VStack(spacing: Tokens.Spacing.s) {
-                AlbusCactus(size: 36, mood: moodForToday())
+                // Not a fifth tab: `AppShell` documents why a tab was removed
+                // for redundancy, and adding one back for settings would argue
+                // against reasoning that is already written down.
+                Button { destination = .notificationSettings } label: {
+                    AlbusCactus(size: 36, mood: .init(coordinator.workload))
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Notification settings")
+
                 IconButton(systemImage: "plus", isFilled: true,
                            accessibilityLabel: "Add assignment") { addingTask = true }
             }
         }
         .padding(.top, Tokens.Spacing.s)
-    }
-
-    /// The cactus bristles as the day fills up.
-    private func moodForToday() -> AlbusCactus.Mood {
-        let minutes = sessions
-            .filter { Calendar.current.isDateInToday($0.startsAt) && $0.subtask?.completedAt == nil }
-            .reduce(0) { $0 + $1.plannedSeconds / 60 }
-        return .forMinutes(minutes)
     }
 
     private func greeting(at now: Date) -> String {

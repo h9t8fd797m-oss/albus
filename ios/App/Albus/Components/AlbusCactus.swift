@@ -37,12 +37,23 @@ struct AlbusCactus: View {
             }
         }
 
-        /// Derives the mood from how much is scheduled in a day.
-        static func forMinutes(_ minutes: Int) -> Mood {
-            switch minutes {
-            case ..<120: .calm
-            case ..<300: .busy
-            default: .cooked
+        /// The scheduler's verdict, which is the only thing that decides a mood.
+        ///
+        /// This replaced a `forMinutes(_:)` that compared a day's scheduled
+        /// minutes against absolute thresholds — calm under 120, cooked over
+        /// 300. Those numbers could not be reached: study loads cap a day at
+        /// 90, 180 or 270 minutes and the scheduler never exceeds capacity, so
+        /// `cooked` was unreachable on every setting and most weeks pinned to
+        /// `busy`. The cactus was effectively a still image.
+        ///
+        /// `Scheduler.workload` measures the same thing correctly, as a
+        /// fraction of the capacity the student actually declared, and treats
+        /// anything it could not place at all as cooked by definition.
+        init(_ workload: WorkloadState) {
+            switch workload {
+            case .calm: self = .calm
+            case .busy: self = .busy
+            case .cooked: self = .cooked
             }
         }
     }

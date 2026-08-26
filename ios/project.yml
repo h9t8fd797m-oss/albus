@@ -68,6 +68,7 @@ targets:
         # Empty until a Turnstile widget exists; empty means no challenge.
         TURNSTILE_SITE_KEY: $(TURNSTILE_SITE_KEY)
         TURNSTILE_ORIGIN: $(TURNSTILE_ORIGIN)
+        ALBUS_SIGNED_BUILD: $(ALBUS_SIGNED_BUILD)
         UISupportedInterfaceOrientations:
           - UIInterfaceOrientationPortrait
         # The app talks only to Supabase over HTTPS; no cleartext exceptions.

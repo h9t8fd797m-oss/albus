@@ -116,9 +116,10 @@ struct StatusBanner: View {
 
 /// Albus's own line about the plan — the mascot slot plus a sentence.
 ///
-/// The mascot is a placeholder glyph until the real cactus asset is added; the
-/// layout reserves the exact space the design gives it so dropping the artwork
-/// in later moves nothing.
+/// The slot held a placeholder SF Symbol leaf, with a note here saying it would
+/// stand in "until the real cactus asset is added". The cactus arrived as pure
+/// geometry that needs no asset, and this was never updated — so every line
+/// Albus spoke in the app was signed by a generic leaf.
 struct AlbusNote: View {
     let text: AttributedString
     var isBusy: Bool = false
@@ -130,9 +131,10 @@ struct AlbusNote: View {
 
     var body: some View {
         HStack(alignment: .top, spacing: Tokens.Spacing.m) {
-            Image(systemName: isBusy ? "leaf.fill" : "leaf")
-                .font(.system(size: 16, weight: .medium))
-                .foregroundStyle(Tokens.SubjectColor.green.color)
+            // `isBusy` is the caller saying "this line is about work in
+            // progress", which is the same distinction the mascot draws
+            // between a calm week and a full one.
+            AlbusCactus(size: 30, mood: isBusy ? .busy : .calm)
                 .frame(width: 30, height: 30)
                 .accessibilityHidden(true)
 

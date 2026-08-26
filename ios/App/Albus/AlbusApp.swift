@@ -1,5 +1,6 @@
 import SwiftUI
 import SwiftData
+import UserNotifications
 import AlbusCore
 
 @main
@@ -75,6 +76,10 @@ struct AlbusApp: App {
     @State private var preferences = Preferences()
     @State private var entitlements = EntitlementService()
     @State private var focusSession = FocusSession()
+    @State private var notifications = NotificationCoordinator()
+    @State private var router = NotificationRouter()
+
+    @Environment(\.scenePhase) private var scenePhase
 
     var body: some Scene {
         WindowGroup {
@@ -87,7 +92,13 @@ struct AlbusApp: App {
                 .environment(preferences)
                 .environment(entitlements)
                 .environment(focusSession)
+                .environment(notifications)
+                .environment(router)
                 .task {
+                    // Before anything async, so the plan is already correct by
+                    // the time the first screen draws.
+                    catchUp()
+                    wireNotifications()
                     // Restores a stored session. It no longer *creates* one:
                     // account creation moved into onboarding, which is the only
                     // place a CAPTCHA challenge can be presented.
@@ -99,8 +110,75 @@ struct AlbusApp: App {
                     // pending, and until it lands those rows still count
                     // against the student's active-plan limit.
                     await PendingDeletions.flush()
+                    await notifications.registerCategories()
+                    await rebuildNotifications()
+                }
+                .onChange(of: scenePhase) { _, phase in
+                    switch phase {
+                    case .active:
+                        notifications.appDidBecomeActive()
+                        catchUp()
+                        Task { await rebuildNotifications() }
+                    case .background:
+                        // The single most important rebuild point: the last
+                        // chance to get the pending set right before the app is
+                        // gone for what might be days.
+                        Task { await rebuildNotifications() }
+                    default:
+                        break
+                    }
                 }
         }
         .modelContainer(container)
+    }
+
+    /// Points the system's notification delegate at the router.
+    ///
+    /// Set from `.task` rather than `init()` because the router is `@State` and
+    /// must exist first. A cold launch *from* a notification tap can in
+    /// principle deliver before this runs; iOS queues the response until a
+    /// delegate is set, so the tap is not lost.
+    @MainActor
+    private func wireNotifications() {
+        UNUserNotificationCenter.current().delegate = router
+        router.onEngagement = { [notifications] in notifications.recordEngagement() }
+        coordinator.onScheduleChanged = { [notifications, coordinator, preferences, container] in
+            notifications.scheduleRebuild(context: container.mainContext,
+                                          preferences: preferences,
+                                          coordinator: coordinator)
+        }
+    }
+
+    @MainActor
+    private func rebuildNotifications() async {
+        await notifications.rebuild(context: container.mainContext,
+                                    preferences: preferences,
+                                    coordinator: coordinator)
+    }
+
+    /// Re-home anything whose window passed while the app was away.
+    ///
+    /// This used to live in a `.task` on Home, which runs on *view appearance*
+    /// — so it fired on a cold launch and on returning to the Home tab, but not
+    /// on the case it exists for: coming back to the app days later with Home
+    /// already on screen. Nothing was swept, and the student saw a plan still
+    /// pointing at time that had already gone.
+    ///
+    /// Cheap and idempotent by design: it writes only when something actually
+    /// changed, so running it on every foreground costs one fetch.
+    @MainActor
+    private func catchUp() {
+        let missed = coordinator.sweepMissedSessions(context: container.mainContext,
+                                                     availability: preferences.availability)
+        // The sweep only re-flows when it actually found something, so on a
+        // normal launch nothing recomputes — and `workload` is derived state
+        // that starts at `.calm`. Without this the cactus was smooth on every
+        // launch regardless of the real week, which is the same "one mood
+        // forever" bug in a different disguise. The scheduler converges and
+        // moves as little as possible, so one run here is cheap.
+        if missed == 0 {
+            coordinator.reschedule(context: container.mainContext,
+                                   availability: preferences.availability)
+        }
     }
 }
