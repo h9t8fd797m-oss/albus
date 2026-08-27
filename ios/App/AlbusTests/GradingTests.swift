@@ -1,5 +1,6 @@
 import Testing
 import Foundation
+import SwiftData
 @testable import Albus
 import AlbusCore
 
@@ -203,5 +204,69 @@ struct FinalGradeTests {
 
         let loose = Grading(model: "m", inputChars: 900, feedback: "…", basis: .blind)
         #expect(loose.displayTitle.isEmpty == false)
+    }
+}
+
+
+/// History is only worth having if a grading survives being written.
+@MainActor
+@Suite("Grading history")
+struct GradingHistoryTests {
+
+    private func makeContext() throws -> ModelContext {
+        let schema = AlbusSchema.schema
+        let container = try ModelContainer(
+            for: schema,
+            configurations: ModelConfiguration(schema: schema, isStoredInMemoryOnly: true)
+        )
+        return ModelContext(container)
+    }
+
+    /// The grade has to come back out, not just go in. Every field added for
+    /// the result screen is a field a reopened grading has to still have —
+    /// SwiftData will happily accept a property the schema never persisted.
+    @Test("a grading round-trips with its grade attached")
+    func gradingRoundTrips() throws {
+        let context = try makeContext()
+
+        context.insert(Grading(
+            model: "claude-opus-5", inputChars: 2_275,
+            overallMarks: 11, totalMarks: 15,
+            gradeLabel: "6",
+            gradeNote: "A secure 6; a 7 needs the historiography adjudicated.",
+            workTitle: "Cold War origins essay",
+            criteria: [GradedCriterion(code: "A", name: "Knowledge", marks: 4, outOf: 6,
+                                       comment: "Thin on dates.", quote: "The Cold War did not begin at a single moment.",
+                                       whereFound: "Opening line")],
+            feedback: "The argument is the best part of this.",
+            improvements: [GradedImprovement(change: "Date the evidence.", why: "Two marks in A.")],
+            basis: .personal
+        ))
+        try context.save()
+
+        let saved = try context.fetch(FetchDescriptor<Grading>())
+        #expect(saved.count == 1)
+
+        let one = try #require(saved.first)
+        #expect(one.gradeLabel == "6")
+        #expect(one.headline == "6")
+        #expect(one.headlineIsGrade)
+        #expect(one.displayTitle == "Cold War origins essay")
+        #expect(one.criteria.first?.quote?.isEmpty == false)
+        #expect(one.improvements.count == 1)
+    }
+
+    /// A blind reading reopened months later must still read as a reading. The
+    /// basis is stored rather than inferred precisely so this cannot drift.
+    @Test("a reopened blind reading is still not a grade")
+    func blindSurvivesTheRoundTrip() throws {
+        let context = try makeContext()
+        context.insert(Grading(model: "claude-sonnet-5", inputChars: 900,
+                               feedback: "No rubric here.", basis: .blind))
+        try context.save()
+
+        let one = try #require(try context.fetch(FetchDescriptor<Grading>()).first)
+        #expect(one.basis == .blind)
+        #expect(one.headline == nil)
     }
 }

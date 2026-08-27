@@ -271,18 +271,23 @@ struct TaskDetailScreen: View {
 
     // MARK: - Marking
 
-    /// Offered when the work is finished, which is when it is worth marking.
+    /// Marking, offered whenever there is an assignment to mark.
     ///
-    /// Kept available afterwards too — a student who fixed the first three
-    /// things and wants to know if it moved is exactly the person this is for.
+    /// It used to appear only once the assignment was finished, or had been
+    /// marked before. That is the wrong way round: the moment a student most
+    /// wants a grade is on the draft, while there is still time to act on it —
+    /// and a finished piece is the one case where feedback arrives too late to
+    /// change anything. The gate also meant the second entry point could not
+    /// be reached at all in a fresh account, which is why it went so long
+    /// without anyone noticing it opened a different grader.
     @ViewBuilder private var gradeEntry: some View {
         let previous = assignment.gradings.sorted { $0.createdAt > $1.createdAt }
 
-        if assignment.isComplete || !previous.isEmpty {
-            GlassCard {
-                VStack(alignment: .leading, spacing: Tokens.Spacing.m) {
+        GlassCard {
+            VStack(alignment: .leading, spacing: Tokens.Spacing.m) {
                     VStack(alignment: .leading, spacing: Tokens.Spacing.xs) {
-                        Text(assignment.isComplete ? "FINISHED" : "MARKED BEFORE")
+                        Text(gradeEyebrow(finished: assignment.isComplete,
+                                          marked: !previous.isEmpty))
                             .font(Tokens.Typography.overline)
                             .tracking(Tokens.Tracking.overline)
                             .foregroundStyle(Tokens.Palette.inkMuted)
@@ -300,6 +305,7 @@ struct TaskDetailScreen: View {
                     PrimaryButton(title: previous.isEmpty ? "Mark my work" : "Mark it again") {
                         grading = true
                     }
+                    .accessibilityIdentifier("markMyWork")
 
                     if !previous.isEmpty {
                         VStack(spacing: Tokens.Spacing.xs) {
@@ -331,8 +337,13 @@ struct TaskDetailScreen: View {
                     }
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
-            }
         }
+    }
+
+    /// What the card calls itself, which depends on where the work has got to.
+    private func gradeEyebrow(finished: Bool, marked: Bool) -> String {
+        if marked { return "MARKED BEFORE" }
+        return finished ? "FINISHED" : "WHEN YOU HAVE A DRAFT"
     }
 
     // MARK: - Plan

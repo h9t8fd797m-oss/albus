@@ -40,7 +40,7 @@ final class CoreLoopUITests: XCTestCase {
     func testAddAssignmentProducesAPlacedPlan() throws {
         app.launch()
 
-        reachApp(app)
+        OnboardingPath.reachApp(app)
         XCTAssertFalse(app.staticTexts.containing(
             NSPredicate(format: "label BEGINSWITH 'Not signed in'")).element.exists,
             "sign-in failed")
@@ -64,7 +64,7 @@ final class CoreLoopUITests: XCTestCase {
     /// the screens a student actually works from.
     func testPlanIsVisibleOnHomeAndInDetail() throws {
         app.launch()
-        reachApp(app)
+        OnboardingPath.reachApp(app)
 
         addAssignment(app, titled: assignmentTitle)
 
@@ -113,7 +113,7 @@ final class CoreLoopUITests: XCTestCase {
     /// external links, and a crash here would only ever be found by tapping.
     func testToolsLibraryRenders() throws {
         app.launch()
-        reachApp(app)
+        OnboardingPath.reachApp(app)
 
         app.buttons["Tools"].tap()
 
@@ -138,40 +138,6 @@ final class CoreLoopUITests: XCTestCase {
     /// which is also where the account is created. A later launch restores the
     /// session and goes straight through. Tests must tolerate both, because
     /// which one they get depends on what ran before them.
-    private func reachApp(_ app: XCUIApplication) {
-        let onboarding = app.staticTexts["A few things first."]
-        let home = app.buttons["Home"]   // tab bar: present in the app, absent in onboarding
-
-        // Whichever appears first decides the path.
-        let start = Date()
-        while Date().timeIntervalSince(start) < 25 {
-            if home.exists { return }
-            if onboarding.exists { break }
-            usleep(200_000)
-        }
-        guard onboarding.exists else {
-            XCTAssertTrue(home.waitForExistence(timeout: 20),
-                          "neither onboarding nor the app appeared")
-            return
-        }
-
-        app.buttons["Next"].tap()
-
-        type("Onboarding first assignment",
-             into: app.textFields["e.g. History term paper"])
-
-        app.buttons["Build my plan"].tap()
-
-        // Account creation plus a real Claude call.
-        let done = app.buttons["Show me"]
-        XCTAssertTrue(done.waitForExistence(timeout: 120),
-                      "onboarding never finished — account creation or the first plan failed")
-        done.tap()
-
-        XCTAssertTrue(home.waitForExistence(timeout: 20),
-                      "onboarding completed but the app never appeared")
-    }
-
     /// Taps a field and types, waiting for focus first.
     ///
     /// `tap()` then `typeText()` races the keyboard: the tap registers but
@@ -213,7 +179,7 @@ final class CoreLoopUITests: XCTestCase {
     /// situation this feature exists to get a student out of.
     func testDeleteRemovesTheAssignmentFromHome() throws {
         app.launch()
-        reachApp(app)
+        OnboardingPath.reachApp(app)
         app.buttons["Home"].tap()
 
         let cards = app.descendants(matching: .any).matching(identifier: "assignmentCard")

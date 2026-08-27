@@ -71,6 +71,7 @@ without waiting on the account.
 | **Tokens** | Colours, type, spacing sampled from the design exports. |
 | **App shell** | Full-screen gradient + floating tab bar, four tabs. |
 | **Notifications** | Twelve kinds, planned purely in `AlbusCore`. 58 tests. |
+| **Grader** | Marks work against the student's own rubric and gives a real grade. |
 
 Every tab is a real screen: Home is the assignment list, Rubrics owns saved
 rubrics, Albus is the chat, Tools is the catalogue. Focus Mode, the plan editor,
@@ -190,3 +191,51 @@ strings "$(ls -t $(find "$D" -name PendingNotifications.plist) | head -1)" | gre
 ```
 
 That is how the last two copy bugs were found, after every unit test was green.
+
+
+---
+
+## Albus Grader — the one number, and the one that was wrong
+
+Marking is the most expensive call the app makes, so three things about it are
+worth knowing before changing any of it.
+
+**A grade is not a mark total.** `overall_marks / total_marks` is the rubric's
+arithmetic — an MYP rubric totals 32, and "0/32" is not what a course writes at
+the top of the page. `grade_label` is the grade, in the scale the student names
+before anything is marked, and it is the reason the flow asks *how does your
+course mark this?* at all. A blind reading is structurally incapable of carrying
+one: the normaliser strips it after the model has spoken, and the client refuses
+it a second time.
+
+**A reservation is not a spend.** The usage slot is taken before the model runs,
+because that is what stops ten parallel requests each seeing zero used. The
+refund on failure is a fast path, not the guarantee — it needs the function to
+survive long enough to run. So `grading_spend_count` asks whether anything was
+actually bought (tokens billed, or a grading pointing at the row) and lets
+anything younger than fifteen minutes count as in flight. A reservation the
+runtime killed ages out by itself.
+
+**The meter and the gate must count the same way.** They did not, and the screen
+showed "3 left this week" directly above "that's this week's markings used",
+because the limit that refuses a free student is a daily cap of two.
+`grading_allowance()` returns every window and the client names whichever binds,
+breaking ties toward the *longer* one — at zero on both the hour and the day,
+promising one back in an hour is a promise the daily cap will not keep.
+
+### What no unit test caught
+
+Every defect in this feature so far has been green in the suite and obvious in
+the output. Read real responses:
+
+```bash
+deno test supabase/functions/_tests/          # the prompt and the normaliser
+xcodebuild test -scheme Albus -only-testing:AlbusUITests/GraderUITests
+```
+
+The UI tests drive the real backend. `testGraderMeterNamesTheWindowThatActuallyBinds`
+is the regression test for the meter — it asserts the shape `grading_allowance()`
+returns, which the client decodes by hand and which has changed twice.
+
+Marking is deliberately *not* exercised end to end there: a grading is a real
+Opus call and free students get two a day.
