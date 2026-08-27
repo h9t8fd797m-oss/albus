@@ -173,10 +173,12 @@ final class CoreLoopUITests: XCTestCase {
     /// app does immediately afterwards — a detail screen laying out work that no
     /// longer exists, or a card that stays on Home.
     ///
-    /// Deletes whatever is already on Home rather than adding first. The free
-    /// plan caps active assignments at three, so a suite that always adds one
-    /// eventually meets the paywall instead of the add sheet — which is the
-    /// situation this feature exists to get a student out of.
+    /// Deletes whatever is already on Home rather than adding first. Free caps
+    /// active assignments at five, so a suite that always adds one eventually
+    /// meets the paywall instead of the add sheet — which is the situation this
+    /// feature exists to get a student out of. The number is read from
+    /// `public.plans` by everything that enforces it; this comment is the only
+    /// place it is written down, and only to explain the shape of the test.
     func testDeleteRemovesTheAssignmentFromHome() throws {
         app.launch()
         OnboardingPath.reachApp(app)

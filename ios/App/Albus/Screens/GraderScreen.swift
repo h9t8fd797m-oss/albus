@@ -39,7 +39,11 @@ struct GraderScreen: View {
     }
 
     @State private var stage: Stage = .start
-    @State private var allowance: GradingService.Allowance?
+    /// The grader's allowance comes from the one call that answers for the
+    /// whole app, not from a grader-specific meter. `grading_allowance()` used
+    /// to be that meter and it reported only this feature — which is how it
+    /// ended up counting differently from the gate that refuses.
+    @Environment(EntitlementService.self) private var entitlements
 
     // What is being marked.
     @State private var chosenAssignment: Assignment?
@@ -118,7 +122,7 @@ struct GraderScreen: View {
                 choose(assignment)
                 if stage == .start { stage = .work }
             }
-            allowance = await GradingService().allowance()
+            await entitlements.refresh()
         }
         .animation(.spring(response: 0.38, dampingFraction: 0.86), value: stage)
         .sheet(isPresented: $showingPaywall) { PaywallScreen() }
@@ -230,10 +234,10 @@ struct GraderScreen: View {
             }
         }
 
-        if allowance?.hasAny == false {
-            outOfGradings
-        } else {
+        if grader.hasAny {
             PrimaryButton(title: "Grade a piece of work") { stage = .work }
+        } else {
+            blockedCard
         }
 
         historyLink
@@ -585,8 +589,8 @@ struct GraderScreen: View {
             // offer one. Everything else is worth another go — and costs
             // nothing, because an identical request comes back from the server
             // without a second model call.
-            if case .usedUp = failure {
-                outOfGradings
+            if failure.isAnswerableByUpgrading {
+                blockedCard
             } else {
                 PrimaryButton(title: "Try again") { stage = .presentation }
             }
@@ -608,58 +612,69 @@ struct GraderScreen: View {
         .background(Tokens.Palette.accentWash, in: Capsule())
     }
 
-    /// How many gradings are left — of the limit that will actually stop them.
+    /// The grader's allowance, in the plan's own terms.
     ///
-    /// This drew five dots and said "3 left this week" while a free student was
-    /// being stopped by a daily cap of two. Both numbers were true; together
-    /// they meant a student could read three remaining and be refused on the
-    /// next tap. The server now reports every window and which one binds.
+    /// Three states, and they are genuinely three. This drew five dots and said
+    /// "3 left this week" while a free student was being stopped by a daily cap
+    /// of two — both numbers true, and together a lie. It now reads one number
+    /// from one window, and that window is the one the server enforces.
+    private var grader: EntitlementService.Allowance { entitlements.plan.grader }
+
     @ViewBuilder private var meter: some View {
-        if let allowance {
-            if let left = allowance.remaining {
-                let binding = allowance.binding
-                HStack(spacing: 6) {
-                    HStack(spacing: 3) {
-                        ForEach(0..<binding.limit, id: \.self) { index in
-                            Capsule()
-                                .fill(index < left ? Tokens.Palette.accent
-                                                   : Tokens.Palette.hairline)
-                                .frame(width: 14, height: 4)
-                        }
+        // `isIncluded` before `remaining`, always. A limit of zero has a
+        // remaining of zero, and rendering "0 left this week" to somebody who
+        // never had any promises a Monday that is never coming.
+        if !grader.isIncluded {
+            Text("Not on the \(entitlements.plan.displayName) plan")
+                .font(Tokens.Typography.overline)
+                .foregroundStyle(Tokens.Palette.inkSecondary)
+        } else if let left = grader.remaining, let limit = grader.limit {
+            HStack(spacing: 6) {
+                HStack(spacing: 3) {
+                    ForEach(0..<limit, id: \.self) { index in
+                        Capsule()
+                            .fill(index < left ? Tokens.Palette.accent
+                                               : Tokens.Palette.hairline)
+                            .frame(width: 14, height: 4)
                     }
-                    Text("\(left) left \(binding.window.phrase)")
-                        .font(Tokens.Typography.overline)
-                        .foregroundStyle(left > 0 ? Tokens.Palette.inkSecondary
-                                                  : Tokens.Palette.danger)
                 }
-                .animation(.spring(response: 0.4, dampingFraction: 0.8), value: left)
-            } else {
-                Text("Unlimited")
+                Text("\(left) left this week")
                     .font(Tokens.Typography.overline)
-                    .foregroundStyle(Tokens.Palette.inkSecondary)
+                    .foregroundStyle(left > 0 ? Tokens.Palette.inkSecondary
+                                              : Tokens.Palette.danger)
             }
+            .animation(.spring(response: 0.4, dampingFraction: 0.8), value: left)
+        } else {
+            Text("Unlimited")
+                .font(Tokens.Typography.overline)
+                .foregroundStyle(Tokens.Palette.inkSecondary)
         }
     }
 
-    /// The exhausted state.
+    /// Why marking is unavailable, and what to do about it.
     ///
-    /// It used to say "that's this week's markings used" no matter which limit
-    /// had been reached — printed directly beneath a meter reading "3 left this
-    /// week". A student who had marked one draft that morning was told their
-    /// week was gone. It now names the window it means and, more usefully, when
-    /// the next one comes back.
-    private var outOfGradings: some View {
-        let binding = allowance?.binding
+    /// Two cards, because there are two situations and they want opposite
+    /// sentences. Somebody who has never had a grading needs a price; somebody
+    /// who has used this week's needs a date. Showing the second to the first
+    /// promises a Monday that never arrives; showing the first to the second
+    /// sells a Plus subscriber Plus.
+    private var blockedCard: some View {
+        let notOnPlan = !grader.isIncluded
         return VStack(alignment: .leading, spacing: Tokens.Spacing.m) {
-            AlbusCactus(size: 56, mood: .cooked)
-            Text("That's \(binding.map { windowPhrase($0.window) } ?? "this week")'s markings used.")
+            AlbusCactus(size: 56, mood: notOnPlan ? .calm : .cooked)
+            Text(notOnPlan
+                 ? "Marking is part of Plus and Pro."
+                 : "That's this week's markings used.")
                 .font(Tokens.Typography.cardTitle)
                 .foregroundStyle(Tokens.Palette.ink)
-            Text(returnsLine(binding))
+                .fixedSize(horizontal: false, vertical: true)
+            Text(notOnPlan ? offerLine : returnsLine)
                 .font(Tokens.Typography.caption)
                 .foregroundStyle(Tokens.Palette.inkSecondary)
                 .fixedSize(horizontal: false, vertical: true)
-            PrimaryButton(title: "See Plus") { showingPaywall = true }
+            PrimaryButton(title: notOnPlan ? "See the plans" : "Get more") {
+                showingPaywall = true
+            }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(Tokens.Spacing.l)
@@ -667,30 +682,27 @@ struct GraderScreen: View {
                     in: RoundedRectangle(cornerRadius: Tokens.Radius.card))
     }
 
-    /// The possessive form — "today's", "this hour's" — which the phrase used
-    /// for the meter ("left today") cannot supply.
-    private func windowPhrase(_ window: GradingService.Allowance.Window) -> String {
-        switch window {
-        case .hour: "this hour"
-        case .day:  "today"
-        case .week: "this week"
-        }
+    /// What the next plan up actually buys, in gradings rather than adjectives.
+    private var offerLine: String {
+        "Plus marks two pieces of work a week against your own rubric. "
+        + "Pro marks five."
     }
 
     /// When the next one is back, said as a time rather than a duration.
     ///
-    /// "In 4 hours" is a number a student has to do arithmetic on; "back at
-    /// 19:25" is a thing they can plan around. Falls back to the vaguer line
+    /// "In 4 hours" is a number a student has to do arithmetic on; "back on
+    /// Tuesday" is a thing they can plan around. Falls back to the vaguer line
     /// only when the server could not say — never invents a time.
-    private func returnsLine(_ binding: GradingService.Allowance.Binding?) -> String {
-        let plus = "Albus Plus raises the limit."
-        guard let resets = binding?.resetsAt, resets > .now else {
-            return "They come back as the window rolls on. \(plus)"
+    private var returnsLine: String {
+        let upgrade = entitlements.plan.tier == .pro
+            ? "" : " Pro marks five a week."
+        guard let resets = grader.resetsAt, resets > .now else {
+            return "They come back as the week rolls on.\(upgrade)"
         }
         let when = Calendar.current.isDateInToday(resets)
             ? resets.formatted(date: .omitted, time: .shortened)
             : resets.formatted(date: .abbreviated, time: .shortened)
-        return "The next one is back at \(when). \(plus)"
+        return "The next one is back \(when).\(upgrade)"
     }
 
     private func stageTitle(_ title: String, _ detail: String) -> some View {
@@ -866,33 +878,25 @@ struct GraderScreen: View {
             // essay in memory behind a visible result serves nobody.
             work = ""
             result = grading
-            allowance = await GradingService().allowance()
+            await entitlements.refresh()
             stage = .result
 
         } catch let error as GradingService.Failure {
             failure = error
 
             // Running out is not something the student did wrong, so it opens
-            // the paywall rather than an error — but only after the allowance
-            // has been re-read, so the screen behind it stops claiming a
-            // grading is available.
-            if case .usedUp = error {
-                let fresh = await GradingService().allowance()
-                allowance = fresh
-
-                // The server names the *first* window it hit, and it checks the
-                // hour before the day. A free student who has used two is at
-                // zero on both — and answering "that's this hour's" promises a
-                // grading back in sixty minutes that the daily cap will refuse
-                // to hand over. Verified against the live endpoint: two
-                // gradings produced RATE_LIMIT_HOURLY while the day was equally
-                // gone and did not lift until the next morning.
-                //
-                // So the allowance decides which window gets named, here and in
-                // the card below, rather than two sources disagreeing on the
-                // same screen.
-                if let binding = fresh?.binding {
-                    failure = .usedUp(binding.window)
+            // the plans rather than an error — but only after the plan has been
+            // re-read, so the screen behind it stops claiming a grading is
+            // available.
+            //
+            // The server's refusal already distinguishes "not on your plan"
+            // from "this week's is spent", and those are the two cases the card
+            // renders differently. Re-reading the plan is what lets the card
+            // name the date; it is not what decides which card to show.
+            if error.isAnswerableByUpgrading {
+                await entitlements.refresh()
+                if case .allowanceUsed = error {
+                    failure = .allowanceUsed(resetsAt: entitlements.plan.grader.resetsAt)
                 }
                 showingPaywall = true
             }

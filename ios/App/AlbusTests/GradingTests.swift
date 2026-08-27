@@ -9,110 +9,75 @@ import AlbusCore
 ///
 /// Both were wrong in ways every existing test was green through, which is why
 /// these are written against the reported symptom rather than the code path.
-@Suite("Grading allowance")
-struct GradingAllowanceTests {
+@Suite("Plan allowances")
+struct PlanAllowanceTests {
 
-    /// The bug as reported: "the app says all weekly gradings have been used,
-    /// even though only one has been used this week."
+    typealias Allowance = EntitlementService.Allowance
+
+    /// **The convention this whole feature rests on, and it is a reversal.**
     ///
-    /// A free student gets two a day and five a week. After two in one evening
-    /// the *day* is what stops them — but the meter read the week, so the
-    /// screen showed "3 left this week" directly above "that's this week's
-    /// markings used". Both numbers were true. Together they were nonsense.
-    @Test("the window that binds is the one that will actually refuse them")
-    func bindingIsTheTighterWindow() {
-        let allowance = GradingService.Allowance(
-            usedHour: 2, limitHour: 2,
-            usedDay: 2, limitDay: 2,
-            usedWeek: 2, limitWeek: 5
-        )
+    /// Until three tiers existed, `limit == 0` meant "no ceiling" — it was how
+    /// Plus was expressed. Free now genuinely gets *zero* gradings, so reading
+    /// zero as unlimited would have handed every free student unlimited use of
+    /// the most expensive call the app makes.
+    ///
+    /// Nil is unlimited. Zero is not included. They are different screens.
+    @Test("zero is not included; nil is unlimited")
+    func zeroIsNotUnlimited() {
+        let none = Allowance(limit: 0, used: 0)
+        #expect(none.isIncluded == false)
+        #expect(none.isUnlimited == false)
+        #expect(none.hasAny == false)
 
-        #expect(allowance.hasAny == false)
-        #expect(allowance.remaining == 0)
-        // Not the week — the week still has three in it.
-        #expect(allowance.binding.window == .day)
+        let unlimited = Allowance(limit: nil, used: 900)
+        #expect(unlimited.isIncluded)
+        #expect(unlimited.isUnlimited)
+        #expect(unlimited.hasAny)
+        #expect(unlimited.remaining == nil)
     }
 
-    /// A student who has marked one draft today has one left today, not four
-    /// left this week. The larger number is true and useless: they cannot spend
-    /// it.
-    @Test("a partly used day reports the day, not the week")
-    func partlyUsedDay() {
-        let allowance = GradingService.Allowance(
-            usedHour: 1, limitHour: 2,
-            usedDay: 1, limitDay: 2,
-            usedWeek: 1, limitWeek: 5
-        )
+    /// The two exhausted-looking states a screen must tell apart. Both have a
+    /// remaining of zero; one is answered with a price and one with a date, and
+    /// showing the wrong one promises a Monday that never comes.
+    @Test("out of allowance and not on the plan are distinguishable")
+    func exhaustedIsNotExcluded() {
+        let spent = Allowance(limit: 2, used: 2)
+        let excluded = Allowance(limit: 0, used: 0)
 
-        #expect(allowance.remaining == 1)
-        #expect(allowance.binding.window == .day)
-        #expect(allowance.hasAny)
+        #expect(spent.remaining == 0)
+        #expect(excluded.remaining == 0)
+        #expect(spent.isIncluded)          // the difference
+        #expect(excluded.isIncluded == false)
+        #expect(spent.hasAny == false)
+        #expect(excluded.hasAny == false)
     }
 
-    /// Ties break toward the longer window, and this is the reason: at zero on
-    /// both the hour and the day, naming the hour promises a grading back in
-    /// sixty minutes that the daily cap will refuse to hand over.
-    @Test("a tie names the window that takes longest to lift")
-    func tieBreaksLong() {
-        let inAnHour = Date.now.addingTimeInterval(3_600)
-        let tomorrow = Date.now.addingTimeInterval(86_400)
-
-        let allowance = GradingService.Allowance(
-            usedHour: 2, limitHour: 2,
-            usedDay: 2, limitDay: 2,
-            usedWeek: 2, limitWeek: 5,
-            hourResetsAt: inAnHour, dayResetsAt: tomorrow
-        )
-
-        #expect(allowance.binding.window == .day)
-        #expect(allowance.binding.resetsAt == tomorrow)
+    /// A downgrade mid-period leaves usage above the new limit. "-3 left" is
+    /// not a thing to show anybody.
+    @Test("usage past the limit never reads as negative")
+    func neverNegative() {
+        let downgraded = Allowance(limit: 2, used: 7)
+        #expect(downgraded.remaining == 0)
+        #expect(downgraded.hasAny == false)
+        #expect(downgraded.summary == "0 of 2 left")
     }
 
-    /// The live endpoint refuses on the hour before it looks at the day, so a
-    /// free student who has used two is told "hourly" by the server while the
-    /// day is equally gone. The screen takes the window from the allowance
-    /// instead, which is why the two can never contradict each other on the
-    /// same page.
-    @Test("both windows empty resolves to the one that lasts longer")
-    func hourAndDayBothEmpty() {
-        let allowance = GradingService.Allowance(
-            usedHour: 2, limitHour: 2,
-            usedDay: 2, limitDay: 2,
-            usedWeek: 2, limitWeek: 5
-        )
-        #expect(allowance.binding.window == .day)
-        #expect(GradingService.Failure.usedUp(allowance.binding.window)
-                == .usedUp(.day))
+    @Test("the meter's three sentences are three different sentences")
+    func summaries() {
+        #expect(Allowance(limit: 0).summary == "Not on this plan")
+        #expect(Allowance(limit: nil).summary == "Unlimited")
+        #expect(Allowance(limit: 5, used: 2).summary == "3 of 5 left")
     }
 
-    /// Plus reports a weekly limit of zero, meaning "no ceiling". Reading that
-    /// as "none left" would tell a paying student they had run out.
-    @Test("no weekly ceiling is not an empty weekly allowance")
-    func plusHasNoWeeklyCeiling() {
-        let allowance = GradingService.Allowance(
-            usedHour: 0, limitHour: 6,
-            usedDay: 9, limitDay: 20,
-            usedWeek: 40, limitWeek: 0,
-            isPlus: true
-        )
-
-        #expect(allowance.hasAny)
-        #expect(allowance.binding.window == .hour)
-        #expect(allowance.binding.limit == 6)
-    }
-
-    /// A student capped by nothing at all still has to render.
-    @Test("an uncapped student is not out of gradings")
-    func uncapped() {
-        let allowance = GradingService.Allowance(
-            usedHour: 3, limitHour: 0,
-            usedDay: 9, limitDay: 0,
-            usedWeek: 40, limitWeek: 0,
-            isPlus: true
-        )
-
-        #expect(allowance.hasAny)
-        #expect(allowance.remaining == nil)
+    /// Tiers are ordered, and access is asked of the plan rather than of the
+    /// name. `tier == .plus` is false for a Pro subscriber — the same shape as
+    /// the NULL comparison migration 0009 had to fix, one level up.
+    @Test("Pro outranks Plus outranks Free")
+    func tierOrdering() {
+        #expect(EntitlementService.Tier.free < .plus)
+        #expect(EntitlementService.Tier.plus < .pro)
+        #expect(EntitlementService.Tier.pro > .free)
+        #expect((EntitlementService.Tier.pro == .plus) == false)
     }
 
     /// Postgres writes microseconds and a two-digit offset. `ISO8601DateFormatter`
@@ -121,15 +86,158 @@ struct GradingAllowanceTests {
     /// silently drops every reset time that lands on a whole second.
     @Test("both shapes of Postgres timestamp parse")
     func timestampVariants() {
-        let withFraction = GradingService.Allowance.timestamp("2026-08-27T19:25:50.064319+00:00")
-        let whole = GradingService.Allowance.timestamp("2026-08-27T19:25:50+00:00")
-        let shortOffset = GradingService.Allowance.timestamp("2026-08-27T19:25:50.064319+00")
+        #expect(PostgresTimestamp.parse("2026-08-27T19:25:50.064319+00:00") != nil)
+        #expect(PostgresTimestamp.parse("2026-08-27T19:25:50+00:00") != nil)
+        #expect(PostgresTimestamp.parse("2026-08-27T19:25:50.064319+00") != nil)
+        #expect(PostgresTimestamp.parse(nil) == nil)
+        #expect(PostgresTimestamp.parse("not a date") == nil)
+    }
+}
 
-        #expect(withFraction != nil)
-        #expect(whole != nil)
-        #expect(shortOffset != nil)
-        #expect(GradingService.Allowance.timestamp(nil) == nil)
-        #expect(GradingService.Allowance.timestamp("not a date") == nil)
+/// What the paywall promises has to be what the database enforces.
+///
+/// These numbers live in two places on purpose — the screen must render before
+/// a network call returns, and `public.plans` must be the thing that refuses.
+/// Two places means they can drift, so the drift is what gets tested. If a
+/// price or a limit changes, this fails until both are updated, which is the
+/// entire point.
+@Suite("Pricing")
+struct PricingTests {
+
+    /// Mirrors `public.plans` as applied by migration 0034. Update together.
+    private struct ServerPlan {
+        let plan: PaywallScreen.Plan
+        let priceCents: Int
+        let tasks: Int?      // nil = unlimited
+        let chatMonth: Int?
+        let gradeWeek: Int?
+        let rubrics: Int?
+    }
+
+    private static let server: [ServerPlan] = [
+        .init(plan: .free, priceCents:    0, tasks:    5, chatMonth:    0, gradeWeek: 0, rubrics:    3),
+        .init(plan: .plus, priceCents:  799, tasks:   10, chatMonth:   25, gradeWeek: 2, rubrics:    5),
+        .init(plan: .pro,  priceCents: 1499, tasks:  nil, chatMonth:  nil, gradeWeek: 5, rubrics:  nil),
+    ]
+
+    @Test("every plan's price matches the server's")
+    func pricesMatch() {
+        for row in Self.server {
+            #expect(row.plan.priceCents == row.priceCents,
+                    "\(row.plan.title): \(row.plan.priceCents)c on screen, \(row.priceCents)c in public.plans")
+        }
+        #expect(PaywallScreen.Plan.free.price == "Free")
+        #expect(PaywallScreen.Plan.plus.price == "€7.99")
+        #expect(PaywallScreen.Plan.pro.price == "€14.99")
+    }
+
+    /// `EntitlementService.Plan.freeFallback` is what the app shows before the
+    /// first `my_plan()` call returns — so it is a third copy of Free's limits
+    /// and can drift like any other. It is the *most* dangerous copy: it is
+    /// what a student sees on a cold launch with no network.
+    @Test("the offline fallback matches Free on the server")
+    func fallbackMatchesFree() {
+        guard let free = Self.server.first(where: { $0.plan == .free }) else { return }
+        let fallback = EntitlementService.Plan.freeFallback
+
+        #expect(fallback.tier == .free)
+        #expect(fallback.priceCents == free.priceCents)
+        #expect(fallback.tasks.limit == free.tasks)
+        #expect(fallback.chat.limit == free.chatMonth)
+        #expect(fallback.grader.limit == free.gradeWeek)
+        #expect(fallback.rubrics.limit == free.rubrics)
+
+        // And the consequence, spelled out: the fallback must not accidentally
+        // hand out a feature Free does not have.
+        #expect(fallback.chat.hasAny == false)
+        #expect(fallback.grader.hasAny == false)
+    }
+
+    /// The brief's headline numbers, asserted as text a student will read.
+    /// A copy edit that drops "2" from the Plus card is a mis-sold plan.
+    @Test("each plan's card names its own grader allowance")
+    func graderAllowanceIsOnTheCard() {
+        let free = PaywallScreen.Plan.free.lines.map(\.0).joined(separator: " ")
+        let plus = PaywallScreen.Plan.plus.lines.map(\.0).joined(separator: " ")
+        let pro  = PaywallScreen.Plan.pro.lines.map(\.0).joined(separator: " ")
+
+        #expect(free.contains("No marking"))
+        #expect(plus.contains("2 markings a week"))
+        #expect(pro.contains("5 markings a week"))
+    }
+
+    @Test("each plan's card names its own Ask Albus allowance")
+    func chatAllowanceIsOnTheCard() {
+        #expect(PaywallScreen.Plan.free.lines.contains { $0.0.contains("No Ask Albus") })
+        #expect(PaywallScreen.Plan.plus.lines.contains { $0.0.contains("25 Ask Albus") })
+        #expect(PaywallScreen.Plan.pro.lines.contains { $0.0.contains("Unlimited Ask Albus") })
+    }
+
+    /// Every plan says the same four things in the same order, so the eye can
+    /// run down a column. Three lists of different lengths is three lists.
+    @Test("the three cards are comparable line for line")
+    func linesAreParallel() {
+        let counts = PaywallScreen.Plan.allCases.map { $0.lines.count }
+        #expect(Set(counts).count == 1, "plans list \(counts) lines — not comparable")
+    }
+
+    /// Free is a card, not a footnote. A student already on Free must be able
+    /// to see what they have from the only screen that knows.
+    @Test("Free appears on the paywall")
+    func freeIsShown() {
+        #expect(PaywallScreen.Plan.allCases.contains(.free))
+        #expect(PaywallScreen.Plan.free.pitch.isEmpty == false)
+    }
+}
+
+/// Which refusals a plan can fix, and which ones it cannot.
+@Suite("Refusals")
+struct RefusalTests {
+
+    /// Both of these end in the plans screen, and they must say different
+    /// things when they get there.
+    @Test("running out and never having it are both answerable by upgrading")
+    func upgradeable() {
+        #expect(GradingService.Failure.notOnPlan.isAnswerableByUpgrading)
+        #expect(GradingService.Failure.allowanceUsed(resetsAt: nil).isAnswerableByUpgrading)
+        #expect(ChatService.Failure.notOnPlan.isAnswerableByUpgrading)
+        #expect(ChatService.Failure.allowanceUsed(resetsAt: nil).isAnswerableByUpgrading)
+    }
+
+    /// Going too fast is not something a plan fixes. Offering to sell somebody
+    /// a subscription that would not have helped is worse than saying "wait".
+    @Test("going too fast is never answered with a price")
+    func rateLimitIsNotAPaywall() {
+        #expect(GradingService.Failure.tooFast.isAnswerableByUpgrading == false)
+        #expect(ChatService.Failure.rateLimited.isAnswerableByUpgrading == false)
+        #expect(GradingService.Failure.offline.isAnswerableByUpgrading == false)
+        #expect(GradingService.Failure.unavailable.isAnswerableByUpgrading == false)
+    }
+
+    /// Neither is a thing a purchase resolves, and both must stay reachable as
+    /// their own sentence rather than collapsing into "upgrade".
+    @Test("a risk pause is not a sales opportunity")
+    func riskIsNotAPaywall() {
+        #expect(GradingService.Failure.paused.isAnswerableByUpgrading == false)
+        #expect(GradingService.Failure.needsVerification.isAnswerableByUpgrading == false)
+    }
+
+    /// The copy has to survive a nil reset time — the server does not always
+    /// know when the next one lands, and "back at nil" is not a sentence.
+    @Test("every refusal renders a sentence, with or without a date")
+    func everyRefusalSpeaks() {
+        let cases: [GradingService.Failure] = [
+            .notOnPlan, .allowanceUsed(resetsAt: nil),
+            .allowanceUsed(resetsAt: .now.addingTimeInterval(86_400)),
+            .tooFast, .needsVerification, .paused, .tooShort, .noRubric,
+            .offline, .unavailable, .tooLongToMark, .tooLong(40_000),
+        ]
+        for failure in cases {
+            let text = failure.errorDescription ?? ""
+            #expect(text.isEmpty == false, "\(failure) has no sentence")
+            #expect(text.contains("nil") == false, "\(failure) leaked a nil")
+            #expect(text.contains("Optional") == false, "\(failure) leaked an Optional")
+        }
     }
 }
 

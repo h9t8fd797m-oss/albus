@@ -6,6 +6,7 @@
 import { requireUser } from "../_shared/auth.ts";
 import { errorResponse, HttpError, jsonResponse, mapPostgresError } from "../_shared/http.ts";
 import { assertCanGeneratePlan, recordTokensInBackground } from "../_shared/quota.ts";
+import { noteRefusal, recordSignals, type Signals } from "../_shared/signals.ts";
 import { loadCurriculumComponent, loadPersonalRubric } from "../_shared/curriculum.ts";
 import { curriculumCode } from "../_shared/codes.ts";
 import { generateBreakdown } from "../_shared/anthropic.ts";
@@ -104,11 +105,18 @@ function parseBody(body: RequestBody) {
 }
 
 Deno.serve(async (req) => {
+  // Hoisted so the `catch` can attribute a refusal. A denial that cannot
+  // be attributed is a denial the risk model cannot count.
+  let callerId: string | null = null;
+  let signals: Signals = { deviceHash: null, ipPrefixHash: null };
   try {
     if (req.method !== "POST") throw new HttpError(405, "METHOD_NOT_ALLOWED");
 
     // Identity comes from the verified JWT. Anything in the body is a claim.
     const caller = await requireUser(req);
+    callerId = caller.id;
+    // Hashed here and only here. What reaches Postgres is two digests.
+    signals = await recordSignals(req, caller.id);
 
     let body: RequestBody;
     try {
@@ -234,6 +242,7 @@ Deno.serve(async (req) => {
       steps: plan.steps,
     }, 201);
   } catch (e) {
+    noteRefusal(e, callerId, "breakdown", signals);
     return errorResponse(e);
   }
 });

@@ -5,10 +5,11 @@
 // The first paid endpoint, and the most expensive call the app makes. Three
 // things about it are deliberate:
 //
-//   * **The paywall is in Postgres.** `check_and_record_ai_usage` refuses
-//     kind='grade' for anyone who is not Plus, in the same transaction that
-//     reserves the usage slot. A gate in this file — or on the device — would
-//     be one `curl` away from free unlimited marking.
+//   * **The paywall is in Postgres.** `check_and_record_ai_usage` resolves the
+//     plan, checks the weekly allowance and reserves the slot in one
+//     transaction, under a per-user lock. A gate in this file — or on the
+//     device — would be one `curl` away from free unlimited marking, and a gate
+//     without the lock is one `curl -P` away from it (migration 0036).
 //   * **The rubric is loaded by id, never read from the body.** It comes back
 //     through the caller's own client, so RLS decides what the id resolves to.
 //     A forged id resolves to nothing, not to a stranger's rubric.
@@ -18,6 +19,7 @@
 import { requireUser, adminClient } from "../_shared/auth.ts";
 import { errorResponse, HttpError, jsonResponse, mapPostgresError } from "../_shared/http.ts";
 import { recordTokensInBackground } from "../_shared/quota.ts";
+import { noteRefusal, recordSignals, type Signals } from "../_shared/signals.ts";
 import { loadPersonalRubric, resolveGradingRubric } from "../_shared/curriculum.ts";
 import { gradeWork } from "../_shared/anthropic.ts";
 import {
@@ -95,10 +97,17 @@ function parseBody(body: RequestBody) {
 }
 
 Deno.serve(async (req) => {
+  // Hoisted so the `catch` can attribute a refusal. A denial that cannot
+  // be attributed is a denial the risk model cannot count.
+  let callerId: string | null = null;
+  let signals: Signals = { deviceHash: null, ipPrefixHash: null };
   try {
     if (req.method !== "POST") throw new HttpError(405, "METHOD_NOT_ALLOWED");
 
     const caller = await requireUser(req);
+    callerId = caller.id;
+    // Hashed here and only here. What reaches Postgres is two digests.
+    signals = await recordSignals(req, caller.id);
 
     let body: RequestBody;
     try {
@@ -351,6 +360,7 @@ Deno.serve(async (req) => {
       reused: false,
     }, 201);
   } catch (e) {
+    noteRefusal(e, callerId, "grade", signals);
     return errorResponse(e);
   }
 });

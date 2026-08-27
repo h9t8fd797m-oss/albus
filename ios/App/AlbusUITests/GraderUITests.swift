@@ -1,18 +1,20 @@
 import XCTest
 
-/// Drives Albus Grader against the real backend, as far as the button that
-/// would spend a grading.
+/// Drives Albus Grader against the real backend, from a fresh account.
 ///
-/// **The meter is the point of this file.** It read "3 left this week" directly
-/// above "that's this week's markings used", because the limit that actually
-/// refuses a free student is a daily cap of two and the meter was reading the
-/// week. Both numbers came from the server and both were true. A unit test on
-/// the binding logic proves the arithmetic; only this proves the RPC still
-/// returns the shape that arithmetic is built on — which is where the last
-/// three bugs in this feature lived.
+/// **A fresh account is a Free account, and Free does not include marking.**
+/// That reframes what this file is for. It used to prove the meter named the
+/// right window; now it proves the more basic thing underneath — that the plan
+/// call still returns a shape the client can decode, and that a student who
+/// cannot mark is shown a price rather than a broken screen.
 ///
-/// Stops short of marking anything. A grading is a real Opus call and there are
-/// two a day.
+/// It is still the only test that exercises the real RPC. A unit test on
+/// `Allowance` proves the arithmetic; only this proves `my_plan()` still
+/// returns what that arithmetic is built on, which is where the last three bugs
+/// in this feature lived.
+///
+/// Nothing here spends a grading. Marking is an Opus call and it is now a paid
+/// feature, so a free account is refused before any model runs.
 @MainActor
 final class GraderUITests: XCTestCase {
 
@@ -22,80 +24,113 @@ final class GraderUITests: XCTestCase {
         continueAfterFailure = false
     }
 
-    func testGraderMeterNamesTheWindowThatActuallyBinds() throws {
+    /// The whole free-tier contract on one screen.
+    ///
+    /// The failure this guards against is the plan call returning a shape the
+    /// client cannot decode. From here that looks like a screen with no meter
+    /// and no offer — which, before three tiers, is exactly how a changed RPC
+    /// shape presented twice.
+    func testFreeIsOfferedThePlansRatherThanABrokenGrader() throws {
         app.launch()
         OnboardingPath.reachApp(app)
 
         app.buttons["Tools"].tap()
 
+        // Twenty seconds, not ten. Tools ranks a two-hundred-entry catalogue the
+        // first time it is drawn, and on the first launch of a run that ran past
+        // ten — failing a test about the plan meter for a reason that had nothing
+        // to do with it. The same wait later in the same run takes under a second.
         let grader = app.staticTexts["Albus Grader"]
-        XCTAssertTrue(grader.waitForExistence(timeout: 10),
+        XCTAssertTrue(grader.waitForExistence(timeout: 20),
                       "the pinned Albus Grader card is not on Tools")
         grader.tap()
 
-        // "N left today" / "N left this hour" / "N left this week" / "Unlimited".
-        // Any of them is a pass; the failure being guarded against is the meter
-        // not resolving at all, which is what a changed RPC shape looks like
-        // from here — `grading_allowance()` gained six columns and the client
-        // decodes it by hand.
+        // "Not on the Free plan" / "N left this week" / "Unlimited" — any of the
+        // three is a decoded plan. None of them is a plan call that failed.
         let meter = app.staticTexts.containing(
-            NSPredicate(format: "label CONTAINS[c] 'left' OR label == 'Unlimited'")
+            NSPredicate(format:
+                "label CONTAINS[c] 'left this week' OR label == 'Unlimited' "
+                + "OR label CONTAINS[c] 'Not on the'")
         ).element
         XCTAssertTrue(meter.waitForExistence(timeout: 15),
-                      "the allowance meter never resolved — grading_allowance() "
-                      + "returned a shape the client could not decode")
+                      "the plan meter never resolved — my_plan() returned a "
+                      + "shape the client could not decode")
 
-        attach(app.screenshot(), named: "grader-start")
+        attach(app.screenshot(), named: "grader-free")
 
-        // A free student is capped by the day, never by the week: two a day
-        // against five a week means the week can only ever bind after three
-        // separate days of marking.
-        let label = meter.label
-        XCTAssertFalse(label.contains("this week"),
-                       "the meter is reading the weekly window again — it was "
-                       + "showing '3 left this week' while a daily cap of two "
-                       + "was the thing refusing the student. Got: \(label)")
+        // **Zero is not unlimited.** A limit of 0 and a limit of nil both leave
+        // nothing to spend, and the app used to read 0 as "no ceiling" — which
+        // under three tiers would hand every free student unlimited marking.
+        XCTAssertNotEqual(meter.label, "Unlimited",
+                          "a free account is reading its zero allowance as "
+                          + "unlimited — the nil/zero convention has inverted")
+
+        // Offered a price, not a date. Telling somebody who never had a grading
+        // that theirs comes back on Monday promises a Monday that never comes.
+        XCTAssertTrue(app.buttons["See the plans"].waitForExistence(timeout: 5),
+                      "a free account is not offered the plans")
+        XCTAssertFalse(app.buttons["Grade a piece of work"].exists,
+                       "the grader is offering to mark work the plan does not cover")
     }
 
-    /// The flow has to survive being walked, and it has to still be honest
-    /// about a missing rubric at the point the student commits.
-    func testGraderReachesTheMarkButtonAndWarnsWhenBlind() throws {
+    /// The paywall itself. The only test that renders it.
+    func testThePaywallShowsThreePlansAndMarksTheCurrentOne() throws {
         app.launch()
         OnboardingPath.reachApp(app)
 
         app.buttons["Tools"].tap()
-        app.staticTexts["Albus Grader"].tap()
+        // Same twenty seconds as the test above: Tools ranks the whole catalogue
+        // the first time it is drawn, and tapping into a screen that has not
+        // finished laying out fails for a reason unrelated to the paywall.
+        let grader = app.staticTexts["Albus Grader"]
+        XCTAssertTrue(grader.waitForExistence(timeout: 20),
+                      "the pinned Albus Grader card is not on Tools")
+        grader.tap()
 
-        guard app.buttons["Grade a piece of work"].waitForExistence(timeout: 15) else {
-            throw XCTSkip("out of gradings — the exhausted state is showing instead")
+        let seePlans = app.buttons["See the plans"]
+        guard seePlans.waitForExistence(timeout: 15) else {
+            throw XCTSkip("this account can mark — the plans are not being offered")
         }
-        app.buttons["Grade a piece of work"].tap()
+        seePlans.tap()
 
-        // Paste something long enough to be worth marking.
-        let editor = app.textViews.element(boundBy: 0)
-        XCTAssertTrue(editor.waitForExistence(timeout: 10), "no paste field on the work stage")
-        editor.tap()
-        editor.typeText(String(repeating: "The Cold War began in stages, not at once. ", count: 12))
+        // The intro animation runs first; a tap skips it.
+        let skip = app.otherElements["Skip the introduction"]
+        if skip.waitForExistence(timeout: 3) { skip.tap() }
 
-        app.buttons["Continue"].firstMatch.tap()
+        // **Visible, not merely present.** This is the assertion that matters
+        // and the one that was missing: the three cards sat below the fold
+        // behind the purchase bar for the first version of this screen, and
+        // `waitForExistence` was perfectly happy — an element that exists
+        // somewhere nobody can see it still exists. A student could not compare
+        // three prices on the screen whose only job is comparing three prices.
+        let window = app.windows.element(boundBy: 0).frame
+        for plan in ["Free", "Plus", "Pro"] {
+            let card = app.buttons.containing(
+                NSPredicate(format: "label BEGINSWITH %@", plan + ",")).firstMatch
+            XCTAssertTrue(card.waitForExistence(timeout: 10),
+                          "\(plan) is missing from the paywall")
+            XCTAssertTrue(card.isHittable,
+                          "\(plan) is on the paywall but not reachable — it is "
+                          + "off-screen or behind something")
+            XCTAssertTrue(window.contains(card.frame),
+                          "\(plan)'s card is outside the visible window "
+                          + "(\(card.frame) vs \(window)) — the student has to "
+                          + "scroll to find out what the plans cost")
+        }
 
-        // Rubric stage: take the blind option deliberately, which is the path
-        // that must never end in a grade.
-        let blind = app.staticTexts["I don't have a rubric"]
-        XCTAssertTrue(blind.waitForExistence(timeout: 10), "no blind option on the rubric stage")
-        blind.tap()
-        app.buttons["Continue"].firstMatch.tap()
+        attach(app.screenshot(), named: "paywall-three-plans")
 
-        XCTAssertTrue(app.buttons["Mark my work"].waitForExistence(timeout: 10),
-                      "the flow never reached the marking step")
+        // Prices, as a student reads them. A card with no price is not a plan.
+        XCTAssertTrue(app.staticTexts.containing(
+            NSPredicate(format: "label CONTAINS '7.99'")).element.waitForExistence(timeout: 5),
+                      "Plus has no price on the paywall")
+        XCTAssertTrue(app.staticTexts.containing(
+            NSPredicate(format: "label CONTAINS '14.99'")).element.exists,
+                      "Pro has no price on the paywall")
 
-        attach(app.screenshot(), named: "grader-presentation-blind")
-
-        // Said before the student commits, not after they have paid for it.
-        XCTAssertTrue(
-            app.staticTexts.containing(
-                NSPredicate(format: "label CONTAINS[c] 'no rubric'")).element.exists,
-            "the blind warning is missing from the step where the student commits")
+        // "You are here". The most useful thing a price list can tell somebody.
+        XCTAssertTrue(app.staticTexts["CURRENT"].exists,
+                      "the paywall does not say which plan the student is on")
     }
 
     /// The other way in.
@@ -129,11 +164,6 @@ final class GraderUITests: XCTestCase {
                       "marking from an assignment did not open Albus Grader")
 
         attach(app.screenshot(), named: "grader-from-assignment")
-
-        // It arrives knowing what it is marking, so it starts at the work step
-        // rather than asking which assignment this is.
-        XCTAssertTrue(app.staticTexts["What am I marking?"].waitForExistence(timeout: 5),
-                      "the grader did not carry the assignment in with it")
     }
 
     /// Screenshots survive the run, so a failure can be looked at rather than
@@ -144,5 +174,4 @@ final class GraderUITests: XCTestCase {
         attachment.lifetime = .keepAlways
         add(attachment)
     }
-
 }

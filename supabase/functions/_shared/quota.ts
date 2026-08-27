@@ -3,29 +3,48 @@
 // The free tier caps ACTIVE plans, not plans per month — a student in exam
 // season must never hit a wall mid-week. Finishing an assignment frees a slot.
 //
-// This is the *pre-flight* check: it exists so we never pay Anthropic for a
-// generation we are about to reject. The authoritative check lives inside
-// create_assignment_with_plan, in the same transaction as the insert, where
-// it cannot race.
+// This is the *pre-flight* check and it is an optimisation, not a control: it
+// exists so we never pay Anthropic for a generation we are about to reject.
+// The enforcement is a trigger on `public.assignments` (migration 0036), which
+// holds whatever path the write arrives by — including the one that skips this
+// file entirely by POSTing straight to the table, which is how the cap was
+// bypassed before that trigger existed.
 
 import { adminClient, type Caller } from "./auth.ts";
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import { HttpError } from "./http.ts";
 
-export const FREE_ACTIVE_PLAN_LIMIT = 3;
-
+/**
+ * Refuse early if the student is already holding as many open tasks as their
+ * plan allows.
+ *
+ * The limit is read from `public.plans` rather than written here. Three tiers
+ * with five limits each is fifteen numbers, and a copy of any of them in this
+ * file is a number that will eventually disagree with the one the database
+ * enforces — which is the bug migration 0033 had to fix on the meter.
+ */
 export async function assertCanGeneratePlan(caller: Caller): Promise<void> {
   const admin = adminClient();
 
-  const { data: ent } = await admin
-    .from("entitlements")
-    .select("tier, expires_at")
-    .eq("user_id", caller.id)
+  const { data: tier, error: tierError } = await admin
+    .rpc("effective_tier", { p_uid: caller.id });
+
+  // Fail open on an infrastructure error: the trigger still enforces the cap,
+  // so the worst case is a wasted generation, not a bypassed limit.
+  if (tierError) {
+    console.warn("quota pre-check could not resolve tier:", tierError.message);
+    return;
+  }
+
+  const { data: plan } = await admin
+    .from("plans")
+    .select("active_tasks")
+    .eq("tier", (tier as string) ?? "free")
     .maybeSingle();
 
-  const isPlus = ent?.tier === "plus" &&
-    (!ent.expires_at || new Date(ent.expires_at) > new Date());
-  if (isPlus) return;
+  const limit = plan?.active_tasks as number | null | undefined;
+  // null is unlimited; undefined means the lookup failed and the trigger has it.
+  if (limit === null || limit === undefined) return;
 
   const { count, error } = await admin
     .from("assignments")
@@ -33,18 +52,16 @@ export async function assertCanGeneratePlan(caller: Caller): Promise<void> {
     .eq("user_id", caller.id)
     .eq("status", "active");
 
-  // Fail open on an infrastructure error: the RPC will still enforce the cap,
-  // so the worst case is a wasted generation, not a bypassed limit.
   if (error) {
-    console.warn("quota pre-check failed, deferring to RPC:", error.message);
+    console.warn("quota pre-check failed, deferring to the trigger:", error.message);
     return;
   }
 
-  if ((count ?? 0) >= FREE_ACTIVE_PLAN_LIMIT) {
+  if ((count ?? 0) >= limit) {
     throw new HttpError(
       402,
-      "FREE_PLAN_LIMIT_REACHED",
-      "Free plans cover three active assignments at a time.",
+      "PLAN_TASK_LIMIT_REACHED",
+      "That's as many tasks as your plan keeps open at once. Finish one, or upgrade.",
     );
   }
 }

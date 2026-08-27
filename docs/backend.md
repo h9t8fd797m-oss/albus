@@ -67,24 +67,84 @@ be salvaged — a student waiting on a plan is better served by an adjusted plan
 than an error. It also scales a plan down when the model's total overshoots
 the student's stated budget by more than 50%.
 
-## Quota
+## Plans and quota
 
-Free tier caps **active** plans at three. Finishing one frees a slot, so a
-student in exam season is never walled off mid-week.
+Three tiers. Every limit lives in **`public.plans`** — one row per tier, read by
+the gate, the meter and the paywall alike:
 
-Enforced in **two** places, deliberately:
+| | Free (€0) | Plus (€7.99/mo) | Pro (€14.99/mo) |
+|---|---|---|---|
+| Active tasks | 5 | 10 | unlimited |
+| Ask Albus | — | 25 / month | unlimited |
+| Albus Grader | — | 2 / week | 5 / week |
+| Saved rubrics | 3 | 5 | unlimited |
+| Tools | basic | expanded | all + curriculum intelligence |
 
-1. `assertCanGeneratePlan()` — a pre-flight check so we never pay Anthropic
-   for a generation we are about to reject. Fails *open* on infrastructure
-   error, because the authoritative check still runs.
-2. `create_assignment_with_plan()` — inside the same transaction as the
-   insert, where it cannot race two concurrent requests.
+**`NULL` is unlimited. `0` is not included.** This is the load-bearing
+convention in the whole feature and it *reverses* what migration 0031 did, where
+`limit = 0` meant "no ceiling" because that was how Plus was expressed. With a
+Free tier that genuinely gets zero gradings, the old reading would have handed
+every free student unlimited use of the most expensive call the app makes.
 
-> **Bug found and fixed here (migration 0009).** Only a purchase creates an
+The two are different refusals, different screens and different sentences:
+
+| | code | HTTP | what the student is told |
+|---|---|---|---|
+| Not on this plan | `PLAN_UPGRADE_REQUIRED` | 402 | a price |
+| Bought and used up | `ALLOWANCE_WEEKLY` / `ALLOWANCE_MONTHLY` | 402 | a date |
+| Going too fast | `RATE_LIMIT_HOURLY` / `_DAILY` | 429 | "in a few minutes" |
+
+Collapsing the first two is how a paying student gets shown a paywall for
+something they already bought.
+
+**Rate limits are separate from allowances**, in their own columns. An allowance
+is what the student bought; a rate limit is what stops a compromised or scripted
+client burning it in four seconds. A Pro student has five gradings a week and
+still cannot fire them all in one minute.
+
+### Where a limit is enforced
+
+Inside Postgres, in the same transaction as the write, under a per-user advisory
+lock. Never in the Edge Function and never on the device.
+
+| limit | enforced by |
+|---|---|
+| Ask Albus, Grader | `check_and_record_ai_usage()` |
+| Active tasks | `assignments_active_limit` trigger |
+| Saved rubrics | `rubrics_limit` trigger |
+| Steps per plan | `subtasks_limit` trigger |
+
+**Triggers, not RPCs**, for everything that is a row count. `authenticated`
+holds INSERT on `assignments`, `rubrics` and `subtasks` — it has to, RLS is what
+scopes them — so a limit that lives only inside an RPC is bypassed by a client
+that simply does not call it. `assertCanGeneratePlan()` still runs as a
+pre-flight so we do not pay Anthropic for a generation we are about to reject,
+and it fails *open*, because the trigger is the authoritative check.
+
+> **Two bypasses found by attacking the live database (migration 0036).**
+>
+> **The RPC was a suggestion.** A Free account already holding its five went to
+> six by POSTing straight to `/rest/v1/assignments`, first attempt, no error.
+> The cap had been bypassable since 0008 and was never noticed because the only
+> client we ship happens to call the RPC.
+>
+> **Reserve-then-spend was racing.** Migration 0010 claimed two concurrent
+> requests could not both read the last remaining unit. That is not true under
+> READ COMMITTED: both read the same snapshot, both insert. A Plus account with
+> one grading left, twelve simultaneous requests — **two** came back with a
+> reservation. Fixed with `pg_advisory_xact_lock` keyed on the user.
+>
+> A note on how that was found: the same test run through one pooled connection
+> reported a single winner and looked clean, because the tooling was serialising
+> the requests it was supposed to be parallelising. A concurrency test that
+> cannot demonstrate concurrency proves nothing.
+
+> **Bug found and fixed earlier (migration 0009).** Only a purchase creates an
 > `entitlements` row, so for free users the tier lookup returned NULL. In SQL
 > `NULL = 'plus'` is NULL, not false, so `not (NULL and …)` was NULL and the
 > `if` never fired — the cap was skipped for exactly the users it exists to
-> limit. `coalesce(v_tier = 'plus', false)` is load-bearing.
+> limit. `coalesce(…, false)` is still load-bearing, and `effective_tier()` is
+> now the one place that comparison is written.
 
 ## Trust boundary
 
@@ -265,33 +325,93 @@ Apple does not know our user ids, so a notification for an unknown subscription
 is stored as `unlinked` and grants nothing until a signed client call binds it
 to an account.
 
-## Rate limiting
+## Rate limiting and risk
 
-`check_and_record_ai_usage` reserves a slot **before** the model is called, in
-the same transaction as the count. Two concurrent requests cannot both read the
-last remaining unit. A failed generation still consumes its slot, which is the
-correct direction to err.
+`check_and_record_ai_usage` takes a per-user advisory lock, then reserves a slot
+**before** the model is called, in the same transaction as the count. A failed
+generation is refunded on the way out; a reservation that bought nothing ages
+out of the count by itself after fifteen minutes, so an isolate torn down at the
+wall clock cannot charge a student forever (`ai_spend_count`).
 
-| | free / hour | free / day | plus / hour | plus / day |
-|---|---|---|---|---|
-| breakdown | 8 | 25 | 30 | 150 |
-| chat | 20 | 60 | 120 | 600 |
+Burst limits come from `public.plans`, and are **halved at `elevated` risk and
+quartered at `high`**:
+
+| | free/hr | free/day | plus/hr | plus/day | pro/hr | pro/day |
+|---|---|---|---|---|---|---|
+| breakdown | 6 | 20 | 20 | 60 | 40 | 150 |
+| chat | — | — | 20 | 60 | 60 | 300 |
+| grade | — | — | 3 | — | 3 | — |
 
 Separate budgets per kind, so exhausting chat does not block planning.
+
+### Account risk
+
+`account_risk(uid)` returns a score, a band and the arithmetic behind both. Six
+signals in four families — device sharing, network, behaviour, and account age.
+It exists to catch "delete the app and sign up again" farming, and it is
+designed around one constraint above all others: **a device is not a person and
+an IP is not a household.** A school hands out shared iPads; a carrier puts a
+city behind one address.
+
+Three rules the code enforces, not merely intends:
+
+1. **No single signal escalates past `elevated`.** Two independent families are
+   required. Account age is excluded from that count — every real student is
+   minutes old exactly once.
+2. **A paid account is never escalated past `elevated`.** A completed payment is
+   the strongest identity check in this system.
+3. **Escalation buys friction, not a door.** `elevated` halves burst limits;
+   `high` quarters them and asks for a real sign-in (only once there is one to
+   ask for — see `risk_verification_available`); only `severe` refuses, and only
+   model calls. Every screen and everything already written stays reachable at
+   every band, and every band recovers on its own as the signals age out.
+
+Verified against the live database: 30 fresh accounts on one school network
+score 40 / `elevated` / one family — tightened, never blocked. Six accounts from
+one device in one afternoon score 90 / `severe` / two families — refused, and
+back to `elevated` twenty-five hours later without anyone intervening.
+
+**Only hashes are stored.** The Edge Function computes
+HMAC-SHA256(value, pepper) and sends the digest; no IP address and no device
+identifier ever reaches Postgres. The IP is reduced to a /24 (or /48) prefix
+first — less identifying, and the right granularity for the question. The device
+identifier is iOS `identifierForVendor`: per-vendor, resets on delete, not a
+hardware serial, and the client may withhold it with no consequence.
+
+`x-forwarded-for` is read from the **last** entry, not the first. The first is
+the conventional "original client" and is exactly the one a client can forge; a
+signal an attacker picks is worse than no signal, because it looks like evidence.
+
+`security_events` records refusals — the code and the endpoint, never a request
+body. It is written from the Edge Function rather than the gate on purpose: a
+raised exception rolls back its own transaction, so a log line written next to
+the `raise` would be discarded along with it.
 
 ## Advisor findings that are intentional
 
 The database advisor reports three classes of finding on this schema. All are
 expected; none is an oversight.
 
-- **`rls_enabled_no_policy` on `subscription_transactions`** — deliberate. RLS
-  on, no grants, no policies means every client role is denied outright. This is
-  the strongest posture available, and the linter reads the absence of policies
-  as an omission.
-- **`authenticated_security_definer_function_executable`** — the two usage RPCs
-  must be DEFINER, because `authenticated` holds no write grant on `ai_usage`.
-  Both derive the user from `auth.uid()` and scope every write to that user.
-  Migration 0012 additionally bounds what they will persist.
+- **`rls_enabled_no_policy`** on `subscription_transactions`, `app_config`,
+  `identity_links` and `security_events` — deliberate. RLS on, no grants, no
+  policies means every client role is denied outright. This is the strongest
+  posture available, and the linter reads the absence of policies as an
+  omission. For the two risk tables it is also the point: a student who could
+  read `identity_links` would be able to enumerate which classmates share their
+  school's network hash.
+- **`authenticated_security_definer_function_executable`** on
+  `check_and_record_ai_usage`, `record_ai_usage_tokens`, `my_plan` and
+  `my_tier` — these must be DEFINER, because `authenticated` holds no write
+  grant on `ai_usage` and no read grant on another user's entitlement. All four
+  derive the user from `auth.uid()`; **none of them takes a user id**, which is
+  what makes asking about somebody else structurally impossible rather than
+  merely forbidden. The functions that *do* take a uid — `effective_tier`,
+  `account_risk`, `ai_spend_count`, `record_identity_link`, `log_security_event`
+  — are revoked from `authenticated` and are not on this list.
 - **`auth_allow_anonymous_sign_ins`** — the entire product is anonymous-first.
   Every user holds the `authenticated` role via an anonymous session; this is
-  the design, not a leak.
+  the design, not a leak. `public.plans` appears here because it is readable by
+  every signed-in user, which is intended: it is a price list.
+- **`auth_leaked_password_protection`, `auth_insufficient_mfa_options`** — the
+  app has no passwords and sends no email. Both become relevant only when Apple
+  Sign-In is switched on.

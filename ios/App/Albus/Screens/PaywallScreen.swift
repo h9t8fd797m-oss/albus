@@ -14,6 +14,7 @@ import AlbusCore
 /// the system for less movement.
 struct PaywallScreen: View {
     @Environment(\.dismiss) private var dismiss
+    @Environment(EntitlementService.self) private var entitlements
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     /// Where the intro has got to. `flight` is full-bleed, `hero` is the zoom
@@ -25,7 +26,7 @@ struct PaywallScreen: View {
     var autoplay: Bool = true
 
     @State private var phase: Phase
-    @State private var plan: Plan = .annual
+    @State private var plan: Plan = .plus
     @State private var runID = 0
 
     init(autoplay: Bool = true) {
@@ -34,35 +35,87 @@ struct PaywallScreen: View {
     }
 
     // Geometry from the design, in points.
-    private let heroTop: CGFloat = 56
+    private let heroTop: CGFloat = 44
     private let heroInset: CGFloat = 16
-    private let heroHeight: CGFloat = 310
-    private let arch: CGFloat = 175
+    // 310 in the design, which was drawn for a screen whose content
+    // started below the fold anyway. At three plans the cards have to
+    // clear it on a 667pt phone, and 210 is what does that.
+    private let heroHeight: CGFloat = 210
+    private let arch: CGFloat = 120
 
-    private enum Plan: String, CaseIterable, Identifiable {
-        case annual, monthly
+    /// The three plans, as a student compares them.
+    ///
+    /// The numbers here are *display* copy; `public.plans` is what enforces
+    /// them, read by the gate and the meter alike. They are written out rather
+    /// than fetched because a paywall that renders blank while a request is in
+    /// flight sells nothing — and because being wrong here costs a wrong price
+    /// on a card, never a wrong limit. `PricingTests` is what stops the two
+    /// drifting apart.
+    enum Plan: String, CaseIterable, Identifiable {
+        case free, plus, pro
         var id: String { rawValue }
 
-        var label: String { self == .annual ? "Annual" : "Monthly" }
-        var headline: String { self == .annual ? "$4.17" : "$4.99" }
-        var price: String { self == .annual ? "$49.99" : "$4.99" }
-        var period: String { self == .annual ? "per year" : "per month" }
-        var note: String? { self == .annual ? "$49.99 billed yearly" : nil }
-        var tag: String? { self == .annual ? "2 MONTHS FREE" : nil }
-    }
+        var title: String {
+            switch self {
+            case .free: "Free"
+            case .plus: "Plus"
+            case .pro:  "Pro"
+            }
+        }
 
-    private static let values: [(String, String)] = [
-        ("Plans your semester around you",
-         "Every deadline becomes a schedule that fits your real week."),
-        ("Rebuilds the plan when life moves",
-         "Miss a block and Albus redistributes the hours before you notice."),
-        ("Plans inside each task",
-         "Essays arrive as steps with estimates, not one line on a list."),
-        ("Knows what your courses ask for",
-         "Rubrics, reading lists and past papers shape the work he sets."),
-        ("Learns how you actually study",
-         "Your pace, your best hours, your habit of starting late."),
-    ]
+        /// Cents, matching `public.plans.price_cents`.
+        var priceCents: Int {
+            switch self {
+            case .free: 0
+            case .plus: 799
+            case .pro:  1499
+            }
+        }
+
+        var price: String {
+            priceCents == 0 ? "Free" : String(format: "€%.2f", Double(priceCents) / 100)
+        }
+
+        var period: String { priceCents == 0 ? "always" : "per month" }
+
+        /// The one line that says why this plan exists. Every tier gets one,
+        /// including Free — a plan with no stated purpose reads as a trap.
+        var pitch: String {
+            switch self {
+            case .free: "The planner, in full."
+            case .plus: "Albus answers back, and marks your work."
+            case .pro:  "No ceilings."
+            }
+        }
+
+        var tag: String? { self == .plus ? "MOST PICKED" : nil }
+
+        /// The four things that change across plans, in the same order every
+        /// time, so the eye can run down a column rather than read three lists.
+        ///
+        /// Deliberately not a forty-row feature matrix. A student deciding
+        /// between three prices needs to know what the next €7 buys; a wall of
+        /// ticks answers a question nobody asked.
+        var lines: [(String, String)] {
+            switch self {
+            case .free:
+                [("5 active tasks", "Planned, scheduled, and rebuilt when your week moves."),
+                 ("No Ask Albus", "Questions about your plan need Plus."),
+                 ("No marking", "The Grader needs Plus."),
+                 ("3 saved rubrics", "Paste a mark scheme once and reuse it.")]
+            case .plus:
+                [("10 active tasks", "For a term carrying more than one deadline."),
+                 ("25 Ask Albus messages a month", "Grounded in your own plan and rubric."),
+                 ("2 markings a week", "Your work, your rubric, a real grade."),
+                 ("5 rubrics, expanded tools", "The wider tool library comes with it.")]
+            case .pro:
+                [("Unlimited tasks", "However much you are actually carrying."),
+                 ("Unlimited Ask Albus", "Ask as often as the work needs."),
+                 ("5 markings a week", "Mark a draft, revise it, mark it again."),
+                 ("Everything else", "Every rubric, every tool, and curriculum intelligence.")]
+            }
+        }
+    }
 
     private var isFlying: Bool { phase == .flight }
     private var showsContent: Bool { phase != .flight }
@@ -77,9 +130,20 @@ struct PaywallScreen: View {
                         .padding(.horizontal, heroInset)
                         .padding(.top, heroTop)
 
-                    headline.padding(.top, 26)
+                    // **The picker comes before the detail.**
+                    //
+                    // It was the other way round, inherited from a two-plan
+                    // screen where the choice was monthly-or-annual and the
+                    // pitch above it was the actual content. With three plans
+                    // the choice *is* the content — and in that order the cards
+                    // landed below the fold, behind the purchase bar, on a
+                    // screen whose entire job is comparing three prices. The UI
+                    // test passed the whole time: `waitForExistence` is happy
+                    // with an element that exists, and those cards existed
+                    // perfectly well where nobody could see them.
+                    headline.padding(.top, 20)
+                    planPicker.padding(.top, 20)
                     valueList.padding(.top, 22)
-                    planPicker.padding(.top, 26)
                 }
                 .padding(.bottom, 200)
             }
@@ -147,7 +211,13 @@ struct PaywallScreen: View {
         Palette.night
             .frame(height: heroHeight)
             .frame(maxWidth: .infinity)
-            .overlay { MoonScene(animated: false, runID: runID) }
+            // The scene is authored at a fixed 370x310 and positions every
+            // element from its top-left, so it does not reflow — it has to be
+            // scaled into a shorter panel rather than clipped by one.
+            .overlay {
+                MoonScene(animated: false, runID: runID)
+                    .scaleEffect(heroHeight / MoonScene.height)
+            }
             .clipShape(RoundedCornersShape(top: arch, bottom: 22))
             .contentShape(Rectangle())
             .onTapGesture { runID += 1 }
@@ -164,16 +234,22 @@ struct PaywallScreen: View {
             .rise(showsContent, delay: 0.10)
     }
 
+    /// What the selected plan includes.
+    ///
+    /// The list is bound to the picker rather than sitting above it as a fixed
+    /// pitch: the question a student is answering is "what do these three cost
+    /// me and give me", and a static list of benefits answers neither half.
     private var valueList: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("WHAT PLUS ADDS")
+            Text(plan == .free ? "WHAT FREE COVERS" : "WHAT \(plan.title.uppercased()) ADDS")
                 .font(.system(size: 12.5, weight: .semibold, design: .rounded))
                 .tracking(1.5)
                 .foregroundStyle(Palette.gray)
                 .padding(.horizontal, 2)
+                .animation(nil, value: plan)
 
             VStack(spacing: 8) {
-                ForEach(Self.values, id: \.0) { title, detail in
+                ForEach(plan.lines, id: \.0) { title, detail in
                     VStack(alignment: .leading, spacing: 3) {
                         Text(title)
                             .font(.system(size: 14.5, weight: .semibold, design: .rounded))
@@ -196,12 +272,21 @@ struct PaywallScreen: View {
         }
         .padding(.horizontal, heroInset)
         .rise(showsContent, delay: 0.18)
+        .animation(.easeInOut(duration: 0.22), value: plan)
     }
 
+    /// Three cards, cheapest first.
+    ///
+    /// Free is a card rather than a footnote on purpose. A student on Free is
+    /// already using the plan and deserves to see what they have; hiding it
+    /// makes the screen a sales page rather than a price list, and makes
+    /// "what am I on now" unanswerable from the only screen that knows.
     private var planPicker: some View {
-        HStack(alignment: .top, spacing: 10) {
+        HStack(alignment: .top, spacing: 8) {
             ForEach(Plan.allCases) { option in
-                PlanCard(plan: option, isSelected: plan == option) { plan = option }
+                PlanCard(plan: option,
+                         isSelected: plan == option,
+                         isCurrent: current == option) { plan = option }
             }
         }
         .padding(.horizontal, heroInset)
@@ -216,18 +301,22 @@ struct PaywallScreen: View {
 
             VStack(spacing: 9) {
                 Button(action: purchase) {
-                    Text("Start 7 days free")
+                    Text(callToAction)
                         .font(.system(size: 16.5, weight: .semibold, design: .rounded))
                         .foregroundStyle(.white)
                         .frame(maxWidth: .infinity, minHeight: 52)
-                        .background(Palette.violet, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
-                        .shadow(color: Palette.violet.opacity(0.45), radius: 14, x: 0, y: 10)
+                        .background(isCurrentPlan ? Color(hex: 0x9CA3AF) : Palette.violet,
+                                    in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                        .shadow(color: Palette.violet.opacity(isCurrentPlan ? 0 : 0.45),
+                                radius: 14, x: 0, y: 10)
                 }
                 .buttonStyle(.plain)
+                .disabled(isCurrentPlan)
 
-                Text("Then \(plan.price) \(plan.period) · Cancel anytime")
+                Text(subCaption)
                     .font(.system(size: 11.5))
                     .foregroundStyle(Palette.gray)
+                    .multilineTextAlignment(.center)
 
                 HStack(spacing: 8) {
                     ForEach(Array(["Restore", "Terms", "Privacy"].enumerated()), id: \.offset) { index, label in
@@ -248,6 +337,32 @@ struct PaywallScreen: View {
         }
         .rise(showsContent, delay: 0.34)
         .allowsHitTesting(showsContent)
+    }
+
+    /// Which plan the student is on right now, so the screen can say so rather
+    /// than offering to sell them what they already have.
+    private var current: Plan {
+        Plan(rawValue: entitlements.tier.rawValue) ?? .free
+    }
+
+    private var isCurrentPlan: Bool { plan == current }
+
+    private var callToAction: String {
+        if isCurrentPlan { return "Your plan" }
+        if plan == .free { return "Free is included" }
+        return current == .free ? "Start 7 days free" : "Switch to \(plan.title)"
+    }
+
+    private var subCaption: String {
+        if isCurrentPlan {
+            return plan == .free
+                ? "You're on Free. Pick a plan above to see what it adds."
+                : "You're on \(plan.title). Thank you."
+        }
+        if plan == .free { return "Free needs no subscription." }
+        return current == .free
+            ? "Then \(plan.price) \(plan.period) · Cancel anytime"
+            : "\(plan.price) \(plan.period) · Changes at your next renewal"
     }
 
     private var closeButton: some View {
@@ -281,40 +396,48 @@ struct PaywallScreen: View {
     private struct PlanCard: View {
         let plan: Plan
         let isSelected: Bool
+        /// Whether this is the plan the student is already on. Marked rather
+        /// than hidden — "you are here" is the most useful thing a price list
+        /// can tell somebody who already pays.
+        let isCurrent: Bool
         let action: () -> Void
 
         var body: some View {
             Button(action: action) {
                 VStack(alignment: .leading, spacing: 0) {
-                    HStack(spacing: 7) {
+                    HStack(spacing: 5) {
                         Circle()
                             .fill(.white)
-                            .frame(width: 15, height: 15)
+                            .frame(width: 13, height: 13)
                             .overlay {
                                 Circle().strokeBorder(
                                     isSelected ? Palette.violet : Color(hex: 0xCFC8BC),
-                                    lineWidth: isSelected ? 5 : 1.5)
+                                    lineWidth: isSelected ? 4.5 : 1.5)
                             }
-                        Text(plan.label)
-                            .font(.system(size: 13.5, weight: .semibold, design: .rounded))
+                        Text(plan.title)
+                            .font(.system(size: 13, weight: .semibold, design: .rounded))
                             .foregroundStyle(Palette.ink)
+                            .lineLimit(1)
                     }
-                    Text(plan.headline)
-                        .font(.system(size: 22, weight: .bold, design: .rounded))
+                    Text(plan.price)
+                        .font(.system(size: 19, weight: .bold, design: .rounded))
                         .foregroundStyle(Palette.ink)
-                        .padding(.top, 9)
-                    Text("per month")
-                        .font(.system(size: 11.5))
+                        .minimumScaleFactor(0.7)
+                        .lineLimit(1)
+                        .padding(.top, 8)
+                    Text(plan.period)
+                        .font(.system(size: 10.5))
                         .foregroundStyle(Palette.gray)
                         .padding(.top, 1)
-                    Text(plan.note ?? " ")
-                        .font(.system(size: 11.5, weight: .semibold))
-                        .foregroundStyle(Palette.violet)
+                    Text(plan.pitch)
+                        .font(.system(size: 10.5))
+                        .foregroundStyle(Palette.gray)
+                        .fixedSize(horizontal: false, vertical: true)
                         .padding(.top, 6)
-                        .frame(minHeight: 16, alignment: .leading)
+                        .frame(minHeight: 26, alignment: .topLeading)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(isSelected ? 13 : 14)
+                .padding(isSelected ? 11 : 12)
                 .background(isSelected ? Color.white : Color(hex: 0xF3F1EC),
                             in: RoundedRectangle(cornerRadius: 16, style: .continuous))
                 .overlay {
@@ -323,19 +446,23 @@ struct PaywallScreen: View {
                                       lineWidth: isSelected ? 2 : 1)
                 }
                 .overlay(alignment: .topLeading) {
-                    if let tag = plan.tag {
+                    if let tag = isCurrent ? "CURRENT" : plan.tag {
                         Text(tag)
-                            .font(.system(size: 9.5, weight: .bold, design: .rounded))
-                            .tracking(1)
+                            .font(.system(size: 8.5, weight: .bold, design: .rounded))
+                            .tracking(0.8)
                             .foregroundStyle(.white)
-                            .padding(.horizontal, 8)
+                            .padding(.horizontal, 6)
                             .padding(.vertical, 3)
-                            .background(Palette.violet, in: Capsule())
-                            .offset(x: 10, y: -9)
+                            .background(isCurrent ? Color(hex: 0x4B5563) : Palette.violet,
+                                        in: Capsule())
+                            .offset(x: 8, y: -8)
                     }
                 }
             }
             .buttonStyle(.plain)
+            .accessibilityLabel(
+                "\(plan.title), \(plan.price) \(plan.period)"
+                + (isCurrent ? ", your current plan" : ""))
             .accessibilityAddTraits(isSelected ? [.isSelected] : [])
         }
     }

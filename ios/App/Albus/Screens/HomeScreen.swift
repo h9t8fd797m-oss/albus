@@ -292,14 +292,23 @@ struct HomeScreen: View {
         }
     }
 
-    /// Mirrors the server's free-tier cap. Guidance only — the database enforces
-    /// it in the same transaction as the insert, so this being wrong costs a
-    /// clearer message, never a bypassed limit.
+    /// How full the plan is. Guidance only — a trigger on `public.assignments`
+    /// enforces it on every write path (migration 0036), so this being wrong
+    /// costs a clearer message, never a bypassed limit.
+    ///
+    /// The number comes from the server's plan rather than a constant here.
+    /// Three tiers means three caps, and a literal in this file is a literal
+    /// that will eventually disagree with the one the database enforces.
     @ViewBuilder private var freeLimitNotice: some View {
-        if !entitlements.isPlus && assignments.count(where: { !$0.isComplete }) >= 3 {
-            StatusBanner(tone: .warning,
-                         message: "Free plans cover three assignments at a time.",
-                         retryTitle: "See Plus") { showingPaywall = true }
+        let tasks = entitlements.plan.tasks
+        if let limit = tasks.limit, limit > 0,
+           assignments.count(where: { !$0.isComplete }) >= limit {
+            StatusBanner(
+                tone: .warning,
+                message: "\(entitlements.plan.displayName) keeps \(limit) "
+                       + "\(limit == 1 ? "task" : "tasks") open at once. "
+                       + "Finish one, or move up a plan.",
+                retryTitle: "See plans") { showingPaywall = true }
         }
     }
 
