@@ -169,6 +169,7 @@ struct TaskDetailScreen: View {
                     .font(.system(size: 14, weight: .semibold))
                     .foregroundStyle(Tokens.Palette.ink)
                     .frame(width: 34, height: 34)
+                    .accessibilityLabel("Assignment options")
                     .background(Tokens.Glass.fill,
                                 in: RoundedRectangle(cornerRadius: Tokens.Radius.control,
                                                      style: .continuous))
