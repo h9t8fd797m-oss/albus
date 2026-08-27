@@ -169,7 +169,17 @@ export async function gradeWork(
   try {
     const response = await getClient().messages.create({
       model,
-      max_tokens: 4000,
+      // Sized to the *bounded* output, not to a round number.
+      //
+      // 4,000 was under it and this failed against the live endpoint: a
+      // three-criterion history rubric asked for band distances truncated
+      // mid-object, and truncated JSON does not parse, so a full Opus call was
+      // spent to return "Model output was not valid JSON". The normaliser caps
+      // a comment at 1,200 characters and a quote at 400, so eight criteria is
+      // ~3,400 tokens, feedback ~1,000, three improvements ~450. 8,000 clears
+      // that with room and costs nothing extra — max_tokens is a ceiling, and
+      // billing is on what is actually written.
+      max_tokens: 8000,
       system: [{ type: "text", text: systemPrompt, cache_control: { type: "ephemeral" } }],
       messages: [{ role: "user", content: userPrompt }],
       output_config: {
@@ -179,6 +189,17 @@ export async function gradeWork(
 
     if (response.stop_reason === "refusal") {
       throw new HttpError(422, "REFUSED", "Albus could not mark this work.");
+    }
+
+    // Truncation, said out loud.
+    //
+    // Without this it arrives as "not valid JSON", which sends whoever reads
+    // the log looking for a schema bug — the output was perfectly well formed
+    // right up to the token it was cut off at. Distinguishing the two is the
+    // difference between a five-minute fix and an afternoon.
+    if (response.stop_reason === "max_tokens") {
+      console.error("grading truncated at max_tokens — output cap is too low for this rubric");
+      throw new HttpError(502, "RESPONSE_TRUNCATED", "Marking ran long and was cut off.");
     }
 
     const block = response.content.find((b) => b.type === "text");

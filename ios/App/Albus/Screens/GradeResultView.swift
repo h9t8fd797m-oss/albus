@@ -2,201 +2,29 @@ import SwiftUI
 import SwiftData
 import AlbusCore
 
-/// Marking finished work against the rubric it will actually be marked against.
+/// What came back from a marking.
 ///
-/// Paste, not upload: it is the smallest thing that works, it needs no file
-/// permissions, and it is honest about what is being sent. Photos and documents
-/// are meaningfully more machinery and meaningfully more attack surface, and
-/// neither is needed to answer "is this any good yet".
-struct GradeSheet: View {
-    @Environment(\.dismiss) private var dismiss
-    @Environment(\.modelContext) private var context
-    @Environment(EntitlementService.self) private var entitlements
-
-    let assignment: Assignment
-
-    @Query(sort: \Rubric.updatedAt, order: .reverse) private var rubrics: [Rubric]
-
-    @State private var work = ""
-    @State private var rubricID: UUID?
-    @State private var isMarking = false
-    @State private var failure: GradingService.Failure?
-    @State private var result: Grading?
-    @State private var showingPaywall = false
-
-    private var rubric: Rubric? {
-        rubrics.first { $0.id == rubricID } ?? assignment.rubric
-    }
-
-    private var characters: Int {
-        work.trimmingCharacters(in: .whitespacesAndNewlines).count
-    }
-
-    private var canSubmit: Bool {
-        rubric != nil
-            && characters >= GradingService.minWorkCharacters
-            && characters <= GradingService.maxWorkCharacters
-            && !isMarking
-    }
-
-    var body: some View {
-        NavigationStack {
-            Group {
-                if let result {
-                    GradeResultView(grading: result)
-                } else {
-                    form
-                }
-            }
-            .navigationTitle(result == nil ? "Mark my work" : "Marked")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button(result == nil ? "Cancel" : "Done") { dismiss() }
-                }
-                if result == nil {
-                    ToolbarItem(placement: .confirmationAction) {
-                        Button("Mark it") { Task { await submit() } }
-                            .disabled(!canSubmit)
-                    }
-                }
-            }
-            .sheet(isPresented: $showingPaywall) { PaywallScreen() }
-        }
-        .interactiveDismissDisabled(isMarking)
-        .onAppear { rubricID = assignment.rubric?.id ?? rubrics.first?.id }
-    }
-
-    private var form: some View {
-        Form {
-            if rubrics.isEmpty {
-                Section {
-                    Text("Save a rubric first — marking needs something to mark against.")
-                        .font(Tokens.Typography.caption)
-                        .foregroundStyle(Tokens.Palette.inkSecondary)
-                }
-            } else {
-                Section {
-                    Picker("Rubric", selection: $rubricID) {
-                        ForEach(rubrics) { Text($0.name).tag(UUID?.some($0.id)) }
-                    }
-                } header: {
-                    Text("Marked against")
-                } footer: {
-                    if let rubric { Text(rubric.summary) }
-                }
-            }
-
-            Section {
-                TextEditor(text: $work)
-                    .frame(minHeight: 220)
-                    .font(Tokens.Typography.body)
-                    .disabled(isMarking)
-            } header: {
-                Text("Your work")
-            } footer: {
-                Text(lengthNote)
-            }
-
-            if let failure, failure != .needsPlus {
-                Section {
-                    StatusBanner(tone: .error,
-                                 message: failure.errorDescription ?? "Marking failed.")
-                }
-            }
-
-            if isMarking {
-                Section {
-                    HStack(spacing: Tokens.Spacing.m) {
-                        ProgressView()
-                        Text("Albus is reading it properly. This takes a moment.")
-                            .font(Tokens.Typography.caption)
-                            .foregroundStyle(Tokens.Palette.inkSecondary)
-                    }
-                }
-            }
-
-            Section {
-                Text("Albus sends this text to be marked and keeps only the marks and the feedback. Your work isn't stored.")
-                    .font(Tokens.Typography.micro)
-                    .foregroundStyle(Tokens.Palette.inkMuted)
-            }
-        }
-    }
-
-    private var lengthNote: String {
-        if characters == 0 {
-            return "Paste the finished piece. Albus marks what's here, not a summary of it."
-        }
-        if characters < GradingService.minWorkCharacters {
-            return "\(characters) characters — there isn't enough here to mark yet."
-        }
-        if characters > GradingService.maxWorkCharacters {
-            return "About \(characters / 6) words. That's longer than Albus can mark in one go."
-        }
-        return "About \(characters / 6) words."
-    }
-
-    private func submit() async {
-        guard let rubric else { return }
-        isMarking = true
-        failure = nil
-
-        do {
-            let marked = try await GradingService().grade(
-                work: work, rubricID: rubric.id,
-                assignmentID: assignment.remoteID, presentation: nil
-            )
-
-            let grading = Grading(
-                remoteID: marked.id,
-                model: marked.model,
-                inputChars: work.trimmingCharacters(in: .whitespacesAndNewlines).count,
-                overallMarks: marked.overallMarks,
-                totalMarks: marked.totalMarks,
-                criteria: marked.criteria.map {
-                    GradedCriterion(code: $0.code, name: $0.name, marks: $0.marks,
-                                    outOf: $0.outOf, comment: $0.comment,
-                                    quote: $0.quote, whereFound: $0.whereFound)
-                },
-                feedback: marked.feedback,
-                improvements: marked.improvements.map {
-                    GradedImprovement(change: $0.change, why: $0.why)
-                },
-                basis: marked.basis,
-                assignment: assignment
-            )
-            context.insert(grading)
-            try? context.save()
-
-            // Dropped deliberately once the result is stored: the work has been
-            // marked, and holding the essay in memory behind a visible result
-            // serves nobody.
-            work = ""
-            result = grading
-
-        } catch let error as GradingService.Failure {
-            failure = error
-            // A paywall is not an error. The student did nothing wrong; they
-            // asked for something they have not paid for.
-            if error == .needsPlus { showingPaywall = true }
-        } catch {
-            failure = .unavailable
-        }
-
-        isMarking = false
-    }
-}
-
-/// What came back.
+/// Used in three places — straight after a grading, reopened from history, and
+/// reopened from the assignment it belongs to — so it takes a `Grading` and
+/// owns no flow of its own.
+///
+/// **The order of this screen is the argument it makes.** What the marks were
+/// based on comes first, the grade second, what to change third, and the
+/// criteria last. A student who reads only the top of the screen should not be
+/// able to come away with a number whose basis they never saw.
 struct GradeResultView: View {
     let grading: Grading
+
+    /// Drives the one animation on this screen. A grade is the sentence the
+    /// student came for, and letting it settle in rather than appear fully
+    /// formed is the difference between a result and a readout.
+    @State private var revealed = false
 
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: Tokens.Spacing.l) {
                 basisBanner
-                score
+                headline
                 improvements
 
                 if !grading.feedback.isEmpty {
@@ -227,6 +55,12 @@ struct GradeResultView: View {
             .padding(Tokens.Spacing.xl)
         }
         .background(BackgroundGradient())
+        .task {
+            // Guarded so reopening a grading from history does not replay the
+            // reveal every time the view is reconstructed by a scroll.
+            guard !revealed else { return }
+            withAnimation(.spring(response: 0.5, dampingFraction: 0.7)) { revealed = true }
+        }
     }
 
     /// What this was marked against, said before anything that looks like a mark.
@@ -273,6 +107,79 @@ struct GradeResultView: View {
         }
     }
 
+    // MARK: - The grade
+
+    /// The one number the student came for.
+    ///
+    /// This screen used to show `overall_marks / total_marks` and call it done,
+    /// which is why it read as feedback with no grade attached: an MYP rubric
+    /// totals 32, and "0/32" is arithmetic. The grade is what a teacher writes
+    /// at the top — a 1, an F, 62% — and it only exists because the student is
+    /// asked which scale their course uses before anything is marked.
+    @ViewBuilder private var headline: some View {
+        GlassCard {
+            VStack(alignment: .leading, spacing: Tokens.Spacing.s) {
+                if let headline = grading.headline {
+                    HStack(alignment: .firstTextBaseline, spacing: Tokens.Spacing.s) {
+                        Text(headline)
+                            .font(Tokens.Typography.displayLarge)
+                            .foregroundStyle(Tokens.Palette.ink)
+                            .minimumScaleFactor(0.5)
+                            .lineLimit(1)
+                            .contentTransition(.numericText())
+
+                        // The raw marks, but only when they are not already the
+                        // headline — "36/100" printed twice helps nobody.
+                        if grading.headlineIsGrade, let score = grading.scoreText {
+                            Text(score)
+                                .font(Tokens.Typography.mono)
+                                .foregroundStyle(Tokens.Palette.inkSecondary)
+                        }
+                    }
+                    .scaleEffect(revealed ? 1 : 0.86, anchor: .leading)
+                    .opacity(revealed ? 1 : 0)
+
+                    if let fraction = grading.fraction {
+                        ProgressBar(fraction: revealed ? fraction : 0,
+                                    tint: Tokens.Palette.accent, height: 6)
+                            .animation(.spring(response: 0.9, dampingFraction: 0.9)
+                                .delay(0.15), value: revealed)
+                    }
+
+                    if let note = grading.gradeNote, !note.isEmpty {
+                        Text(note)
+                            .font(Tokens.Typography.caption)
+                            .foregroundStyle(Tokens.Palette.inkSecondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                } else if grading.basis == .blind {
+                    // Never a headline here, and never the "no marks" copy
+                    // below — that line says "this rubric", and a blind reading
+                    // has no rubric to speak of.
+                    Text("A read, not a grade")
+                        .font(Tokens.Typography.title)
+                        .foregroundStyle(Tokens.Palette.ink)
+                    Text("Add the rubric this is marked against and Albus can give "
+                         + "you the actual grade.")
+                        .font(Tokens.Typography.caption)
+                        .foregroundStyle(Tokens.Palette.inkSecondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                } else {
+                    // A rubric that carries no marks is a real case, and
+                    // rendering it as "0" would be a lie about the work.
+                    Text("Marked")
+                        .font(Tokens.Typography.title)
+                        .foregroundStyle(Tokens.Palette.ink)
+                    Text("This rubric doesn't carry marks, so Albus commented instead of scoring.")
+                        .font(Tokens.Typography.caption)
+                        .foregroundStyle(Tokens.Palette.inkSecondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+        }
+    }
+
     @ViewBuilder private var improvements: some View {
         if !grading.improvements.isEmpty {
             VStack(alignment: .leading, spacing: Tokens.Spacing.s) {
@@ -299,31 +206,6 @@ struct GradeResultView: View {
                     }
                 }
             }
-        }
-    }
-
-    @ViewBuilder private var score: some View {
-        GlassCard {
-            VStack(alignment: .leading, spacing: Tokens.Spacing.s) {
-                if let text = grading.scoreText {
-                    Text(text)
-                        .font(Tokens.Typography.displayLarge)
-                        .foregroundStyle(Tokens.Palette.ink)
-                    if let fraction = grading.fraction {
-                        ProgressBar(fraction: fraction, tint: Tokens.Palette.accent, height: 6)
-                    }
-                } else {
-                    // A rubric with no marks is a real case, and rendering it as
-                    // "0" would be a lie about the work.
-                    Text("Marked")
-                        .font(Tokens.Typography.title)
-                        .foregroundStyle(Tokens.Palette.ink)
-                    Text("This rubric doesn't carry marks, so Albus commented instead of scoring.")
-                        .font(Tokens.Typography.caption)
-                        .foregroundStyle(Tokens.Palette.inkSecondary)
-                }
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
         }
     }
 

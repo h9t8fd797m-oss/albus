@@ -81,20 +81,62 @@ struct ToolsScreen: View {
         .scrollDismissesKeyboard(.immediately)
         // Leaving the app is a visible step, not a side effect of a tap — and
         // the host is named, so a student always knows where they are going.
-        .confirmationDialog(
-            confirming.map { "Open \($0.name)?" } ?? "",
-            isPresented: Binding(get: { confirming != nil },
-                                 set: { if !$0 { confirming = nil } }),
-            titleVisibility: .visible
+        //
+        // A sheet rather than the system action sheet it was. This is the one
+        // place Albus vouches for someone else's software, and *why* a tool is
+        // worth opening is the useful half — a system dialog renders that as
+        // two lines of grey subtitle under a shouted title, which is exactly
+        // backwards. Destructive confirmations elsewhere in the app stay
+        // native, where recognition matters more than character.
+        .sheet(item: $confirming) { tool in
+            leavingSheet(tool)
+        }
+    }
+
+    /// "You're about to leave Albus."
+    private func leavingSheet(_ tool: StudyTool) -> some View {
+        AlbusSheetScaffold(
+            eyebrow: "Leaving Albus",
+            title: "Open \(tool.name)?",
+            primaryTitle: "Open in Safari",
+            primaryAction: {
+                openURL(tool.url)
+                confirming = nil
+            },
+            onCancel: { confirming = nil },
+            detents: [.height(340)]
         ) {
-            if let tool = confirming {
-                Button("Open in Safari") { openURL(tool.url) }
-                Button("Cancel", role: .cancel) {}
+            HStack(spacing: Tokens.Spacing.m) {
+                ToolIcon(tool: tool, side: 44, cornerRadius: 11)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(tool.name)
+                        .font(Tokens.Typography.cardTitle)
+                        .foregroundStyle(Tokens.Palette.ink)
+                    Text(tool.host)
+                        .font(Tokens.Typography.caption)
+                        .foregroundStyle(Tokens.Palette.inkMuted)
+                }
+                Spacer()
             }
-        } message: {
-            if let tool = confirming {
-                Text("\(tool.host) — \(tool.reason)")
+            .padding(Tokens.Spacing.l)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(Tokens.Palette.cardSurface,
+                        in: RoundedRectangle(cornerRadius: Tokens.Radius.card))
+            .overlay {
+                RoundedRectangle(cornerRadius: Tokens.Radius.card)
+                    .strokeBorder(Tokens.Palette.hairline, lineWidth: 0.5)
             }
+
+            // Why Albus is sending them there. The reason is the reason this
+            // catalogue exists at all, so it gets the room the system dialog
+            // never gave it.
+            AlbusNote(tool.reason)
+
+            Text("This opens in Safari. Albus doesn't send it anything about you "
+                 + "or your work.")
+                .font(Tokens.Typography.micro)
+                .foregroundStyle(Tokens.Palette.inkMuted)
+                .fixedSize(horizontal: false, vertical: true)
         }
     }
 

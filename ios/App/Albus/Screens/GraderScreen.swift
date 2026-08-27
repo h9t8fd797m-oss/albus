@@ -20,8 +20,18 @@ struct GraderScreen: View {
     @Environment(\.modelContext) private var context
     @Environment(\.dismiss) private var dismiss
 
+    /// Opened from an assignment rather than from Tools.
+    ///
+    /// There were two graders until this existed: this screen, and a `Form`
+    /// sheet on the task detail page that could not upload, could not
+    /// photograph a rubric and never asked how the student's course marks — so
+    /// the same button meant two different products depending on where it was
+    /// pressed. One flow, entered from either place.
+    var assignment: Assignment?
+
     @Query(sort: \Assignment.deadline) private var assignments: [Assignment]
     @Query(sort: \Rubric.updatedAt, order: .reverse) private var rubrics: [Rubric]
+    @Query(sort: \Grading.createdAt, order: .reverse) private var gradings: [Grading]
 
     /// Where the student is in the flow. One value, so back always means back.
     private enum Stage: Equatable {
@@ -56,8 +66,23 @@ struct GraderScreen: View {
     @State private var result: Grading?
     @State private var showingPaywall = false
 
+    /// Which line the marking screen is on, and whether the cactus is breathing.
+    @State private var beat = 0
+    @State private var breathing = false
+
     private var wordCount: Int {
         work.split(whereSeparator: \.isWhitespace).count
+    }
+
+    /// What this grading will be called in history.
+    ///
+    /// The work itself is deliberately never stored, so without a label a list
+    /// of past gradings is a column of identical dates. The assignment's title
+    /// when there is one, otherwise where the text came from — a filename, a
+    /// photo — and nothing at all for text pasted straight in, which the server
+    /// then names for us.
+    private var workTitle: String? {
+        chosenAssignment?.title ?? sourceLabel
     }
 
     /// Blind is the absence of a rubric, however the student got here — they
@@ -67,23 +92,35 @@ struct GraderScreen: View {
     }
 
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: Tokens.Spacing.xl) {
-                switch stage {
-                case .start:        startStage
-                case .work:         workStage
-                case .rubric:       rubricStage
-                case .presentation: presentationStage
-                case .marking:      markingStage
-                case .result:       resultStage
-                }
+        Group {
+            // The result owns the whole screen.
+            //
+            // It has its own `ScrollView`, and putting that inside this one
+            // gave a long grading two nested scrollers fighting each other —
+            // the criteria list would scroll to its end and then the page
+            // underneath would start moving. The flow's own footer rides above
+            // it as a safe-area inset instead.
+            if stage == .result, let result {
+                GradeResultView(grading: result)
+                    .safeAreaInset(edge: .bottom) { resultFooter }
+            } else {
+                flow
             }
-            .padding(Tokens.Spacing.xl)
         }
         .scrollContentBackground(.hidden)
         .navigationTitle("Albus Grader")
         .navigationBarTitleDisplayMode(.inline)
-        .task { allowance = await GradingService().allowance() }
+        .task {
+            // Arriving from an assignment answers "what am I marking?" already,
+            // so the flow starts at the next real question rather than showing
+            // a chooser with one obvious answer pre-ticked.
+            if let assignment, chosenAssignment == nil {
+                choose(assignment)
+                if stage == .start { stage = .work }
+            }
+            allowance = await GradingService().allowance()
+        }
+        .animation(.spring(response: 0.38, dampingFraction: 0.86), value: stage)
         .sheet(isPresented: $showingPaywall) { PaywallScreen() }
         .sheet(item: $editingRubric) { draft in
             RubricEditorSheet(draft: draft) { saved in
@@ -128,6 +165,23 @@ struct GraderScreen: View {
                       let image = UIImage(data: data) else { return }
                 extract(.image(image), label: "Photo of your work")
             }
+        }
+    }
+
+    /// Every stage that is a question rather than an answer.
+    private var flow: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: Tokens.Spacing.xl) {
+                switch stage {
+                case .start:        startStage
+                case .work:         workStage
+                case .rubric:       rubricStage
+                case .presentation: presentationStage
+                case .marking:      markingStage
+                case .result:       resultStage
+                }
+            }
+            .padding(Tokens.Spacing.xl)
         }
     }
 
@@ -180,6 +234,52 @@ struct GraderScreen: View {
             outOfGradings
         } else {
             PrimaryButton(title: "Grade a piece of work") { stage = .work }
+        }
+
+        historyLink
+    }
+
+    /// Everything marked before.
+    ///
+    /// Shown even when a student is out of gradings — that is precisely when
+    /// they want to reread the one they have, and it is the only thing on the
+    /// screen they can still do.
+    @ViewBuilder private var historyLink: some View {
+        if !gradings.isEmpty {
+            NavigationLink {
+                Screen { GradingHistoryScreen() }
+            } label: {
+                HStack(spacing: Tokens.Spacing.m) {
+                    Image(systemName: "clock.arrow.circlepath")
+                        .foregroundStyle(Tokens.Palette.accent)
+                        .frame(width: 32, height: 32)
+                        .background(Tokens.Palette.accentWash,
+                                    in: RoundedRectangle(cornerRadius: Tokens.Radius.chip))
+                    VStack(alignment: .leading, spacing: 1) {
+                        Text("Marked work")
+                            .font(Tokens.Typography.cardTitle)
+                            .foregroundStyle(Tokens.Palette.ink)
+                        Text(gradings.count == 1
+                             ? "1 grading, kept"
+                             : "\(gradings.count) gradings, kept")
+                            .font(Tokens.Typography.caption)
+                            .foregroundStyle(Tokens.Palette.inkSecondary)
+                    }
+                    Spacer()
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundStyle(Tokens.Palette.inkMuted)
+                }
+                .padding(Tokens.Spacing.l)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(Tokens.Palette.cardSurface,
+                            in: RoundedRectangle(cornerRadius: Tokens.Radius.card))
+                .overlay {
+                    RoundedRectangle(cornerRadius: Tokens.Radius.card)
+                        .strokeBorder(Tokens.Palette.hairline, lineWidth: 0.5)
+                }
+            }
+            .buttonStyle(.plain)
         }
     }
 
@@ -389,30 +489,108 @@ struct GraderScreen: View {
 
     // MARK: - 4 · Marking
 
+    /// Thirty to forty seconds is a long time to look at a spinner.
+    ///
+    /// The lines are what is actually happening, in order, rather than filler:
+    /// a student who reads them learns what marking involves, and one who does
+    /// not still gets a screen that is visibly alive. Nothing here is a
+    /// progress claim — the model does not report progress, so neither does
+    /// this.
+    private var markingBeats: [String] {
+        isBlind
+            ? ["Reading it through.",
+               "Working out what it is trying to do.",
+               "Finding the parts that are carrying it.",
+               "Finding the parts that are not.",
+               "Writing it up."]
+            : ["Reading it through.",
+               "Lining it up against your criteria.",
+               "Marking each strand in turn.",
+               "Finding the sentences that cost you marks.",
+               "Working out what the next band needs.",
+               "Writing it up."]
+    }
+
     @ViewBuilder private var markingStage: some View {
         VStack(spacing: Tokens.Spacing.l) {
             AlbusCactus(size: 74, mood: .busy)
+                // A slow breath, not a bounce. The cactus is concentrating.
+                .scaleEffect(breathing ? 1.04 : 0.97)
+                .animation(.easeInOut(duration: 1.6).repeatForever(autoreverses: true),
+                           value: breathing)
+
             Text(isBlind ? "Reading your work." : "Marking against your rubric.")
                 .font(Tokens.Typography.cardTitle)
                 .foregroundStyle(Tokens.Palette.ink)
-            Text("\(wordCount) words. About half a minute.")
+
+            Text(markingBeats[min(beat, markingBeats.count - 1)])
                 .font(Tokens.Typography.caption)
                 .foregroundStyle(Tokens.Palette.inkSecondary)
+                .multilineTextAlignment(.center)
+                .id(beat)
+                .transition(.opacity.combined(with: .move(edge: .bottom)))
+
+            Text("\(wordCount) words. About half a minute.")
+                .font(Tokens.Typography.micro)
+                .foregroundStyle(Tokens.Palette.inkMuted)
+
             ProgressView().tint(Tokens.Palette.accent)
         }
         .frame(maxWidth: .infinity)
         .padding(.top, Tokens.Spacing.xxl)
+        .task {
+            breathing = true
+            // Stops at the last line rather than looping. Coming back round to
+            // "Reading it through" after forty seconds reads as stuck.
+            while beat < markingBeats.count - 1 {
+                try? await Task.sleep(for: .seconds(5))
+                guard !Task.isCancelled else { return }
+                withAnimation(.easeInOut(duration: 0.35)) { beat += 1 }
+            }
+        }
     }
 
     // MARK: - 5 · Result
 
-    @ViewBuilder private var resultStage: some View {
-        if let result {
-            GradeResultView(grading: result)
+    /// Sits over the result rather than after it, so it is reachable without
+    /// scrolling to the bottom of a long grading.
+    private var resultFooter: some View {
+        HStack(spacing: Tokens.Spacing.m) {
+            SecondaryButton(title: "Mark something else") { reset() }
+            NavigationLink {
+                Screen { GradingHistoryScreen() }
+            } label: {
+                Image(systemName: "clock.arrow.circlepath")
+                    .font(.system(size: 15, weight: .semibold))
+                    .foregroundStyle(Tokens.Palette.accent)
+                    .frame(width: 46, height: 46)
+                    .background(Tokens.Palette.cardSurface, in: Circle())
+                    .overlay { Circle().strokeBorder(Tokens.Palette.hairline, lineWidth: 0.5) }
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Marked work")
         }
+        .padding(.horizontal, Tokens.Spacing.xl)
+        .padding(.vertical, Tokens.Spacing.m)
+        .background(.ultraThinMaterial)
+    }
+
+    /// The failure half of the result stage. Still inside the scrolling flow —
+    /// it is four lines, not a document.
+    @ViewBuilder private var resultStage: some View {
         if let failure {
             StatusBanner(tone: .error, message: failure.errorDescription ?? "Marking failed.")
-            PrimaryButton(title: "Try again") { stage = .presentation }
+
+            // Running out is the one failure a retry cannot fix, so it does not
+            // offer one. Everything else is worth another go — and costs
+            // nothing, because an identical request comes back from the server
+            // without a second model call.
+            if case .usedUp = failure {
+                outOfGradings
+            } else {
+                PrimaryButton(title: "Try again") { stage = .presentation }
+            }
+            historyLink
         }
     }
 
@@ -430,23 +608,31 @@ struct GraderScreen: View {
         .background(Tokens.Palette.accentWash, in: Capsule())
     }
 
+    /// How many gradings are left — of the limit that will actually stop them.
+    ///
+    /// This drew five dots and said "3 left this week" while a free student was
+    /// being stopped by a daily cap of two. Both numbers were true; together
+    /// they meant a student could read three remaining and be refused on the
+    /// next tap. The server now reports every window and which one binds.
     @ViewBuilder private var meter: some View {
         if let allowance {
-            if let left = allowance.weeklyRemaining {
+            if let left = allowance.remaining {
+                let binding = allowance.binding
                 HStack(spacing: 6) {
                     HStack(spacing: 3) {
-                        ForEach(0..<allowance.limitWeek, id: \.self) { index in
+                        ForEach(0..<binding.limit, id: \.self) { index in
                             Capsule()
                                 .fill(index < left ? Tokens.Palette.accent
                                                    : Tokens.Palette.hairline)
                                 .frame(width: 14, height: 4)
                         }
                     }
-                    Text("\(left) left this week")
+                    Text("\(left) left \(binding.window.phrase)")
                         .font(Tokens.Typography.overline)
                         .foregroundStyle(left > 0 ? Tokens.Palette.inkSecondary
                                                   : Tokens.Palette.danger)
                 }
+                .animation(.spring(response: 0.4, dampingFraction: 0.8), value: left)
             } else {
                 Text("Unlimited")
                     .font(Tokens.Typography.overline)
@@ -455,21 +641,56 @@ struct GraderScreen: View {
         }
     }
 
+    /// The exhausted state.
+    ///
+    /// It used to say "that's this week's markings used" no matter which limit
+    /// had been reached — printed directly beneath a meter reading "3 left this
+    /// week". A student who had marked one draft that morning was told their
+    /// week was gone. It now names the window it means and, more usefully, when
+    /// the next one comes back.
     private var outOfGradings: some View {
-        VStack(alignment: .leading, spacing: Tokens.Spacing.m) {
+        let binding = allowance?.binding
+        return VStack(alignment: .leading, spacing: Tokens.Spacing.m) {
             AlbusCactus(size: 56, mood: .cooked)
-            Text("That's this week's markings used.")
+            Text("That's \(binding.map { windowPhrase($0.window) } ?? "this week")'s markings used.")
                 .font(Tokens.Typography.cardTitle)
                 .foregroundStyle(Tokens.Palette.ink)
-            Text("They come back as the week rolls on. Albus Plus raises the limit.")
+            Text(returnsLine(binding))
                 .font(Tokens.Typography.caption)
                 .foregroundStyle(Tokens.Palette.inkSecondary)
+                .fixedSize(horizontal: false, vertical: true)
             PrimaryButton(title: "See Plus") { showingPaywall = true }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(Tokens.Spacing.l)
         .background(Tokens.Palette.cardSurface,
                     in: RoundedRectangle(cornerRadius: Tokens.Radius.card))
+    }
+
+    /// The possessive form — "today's", "this hour's" — which the phrase used
+    /// for the meter ("left today") cannot supply.
+    private func windowPhrase(_ window: GradingService.Allowance.Window) -> String {
+        switch window {
+        case .hour: "this hour"
+        case .day:  "today"
+        case .week: "this week"
+        }
+    }
+
+    /// When the next one is back, said as a time rather than a duration.
+    ///
+    /// "In 4 hours" is a number a student has to do arithmetic on; "back at
+    /// 19:25" is a thing they can plan around. Falls back to the vaguer line
+    /// only when the server could not say — never invents a time.
+    private func returnsLine(_ binding: GradingService.Allowance.Binding?) -> String {
+        let plus = "Albus Plus raises the limit."
+        guard let resets = binding?.resetsAt, resets > .now else {
+            return "They come back as the window rolls on. \(plus)"
+        }
+        let when = Calendar.current.isDateInToday(resets)
+            ? resets.formatted(date: .omitted, time: .shortened)
+            : resets.formatted(date: .abbreviated, time: .shortened)
+        return "The next one is back at \(when). \(plus)"
     }
 
     private func stageTitle(_ title: String, _ detail: String) -> some View {
@@ -563,6 +784,23 @@ struct GraderScreen: View {
 
     // MARK: - Actions
 
+    /// Back to the top, without re-asking what has not changed.
+    ///
+    /// The rubric and the scale survive: a student who marks a draft and then
+    /// the revision is marking the same thing against the same criteria, and
+    /// making them answer both questions again is the fastest way to make a
+    /// second grading not worth the trouble. The work does not survive — that
+    /// is the thing being replaced.
+    private func reset() {
+        work = ""
+        sourceLabel = nil
+        extractionFailure = nil
+        result = nil
+        failure = nil
+        beat = 0
+        stage = .work
+    }
+
     private func choose(_ assignment: Assignment) {
         chosenAssignment = assignment
         chosenRubric = assignment.rubric
@@ -593,7 +831,8 @@ struct GraderScreen: View {
                 work: work,
                 rubricID: chosenRubric?.remoteID,
                 assignmentID: chosenAssignment?.remoteID,
-                presentation: presentation
+                presentation: presentation,
+                title: workTitle
             )
 
             let grading = Grading(
@@ -602,6 +841,12 @@ struct GraderScreen: View {
                 inputChars: work.count,
                 overallMarks: marked.overallMarks,
                 totalMarks: marked.totalMarks,
+                gradeLabel: marked.gradeLabel,
+                gradeNote: marked.gradeNote,
+                // The server's title wins: it resolves the assignment's real
+                // name when there is one, and echoing back what we sent would
+                // label a grading with a filename the student has forgotten.
+                workTitle: marked.title ?? workTitle,
                 criteria: marked.criteria.map {
                     GradedCriterion(code: $0.code, name: $0.name, marks: $0.marks,
                                     outOf: $0.outOf, comment: $0.comment,
@@ -626,7 +871,31 @@ struct GraderScreen: View {
 
         } catch let error as GradingService.Failure {
             failure = error
-            if error == .needsPlus { showingPaywall = true }
+
+            // Running out is not something the student did wrong, so it opens
+            // the paywall rather than an error — but only after the allowance
+            // has been re-read, so the screen behind it stops claiming a
+            // grading is available.
+            if case .usedUp = error {
+                let fresh = await GradingService().allowance()
+                allowance = fresh
+
+                // The server names the *first* window it hit, and it checks the
+                // hour before the day. A free student who has used two is at
+                // zero on both — and answering "that's this hour's" promises a
+                // grading back in sixty minutes that the daily cap will refuse
+                // to hand over. Verified against the live endpoint: two
+                // gradings produced RATE_LIMIT_HOURLY while the day was equally
+                // gone and did not lift until the next morning.
+                //
+                // So the allowance decides which window gets named, here and in
+                // the card below, rather than two sources disagreeing on the
+                // same screen.
+                if let binding = fresh?.binding {
+                    failure = .usedUp(binding.window)
+                }
+                showingPaywall = true
+            }
             stage = .result
         } catch {
             failure = .unavailable

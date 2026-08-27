@@ -42,7 +42,11 @@ interface RequestBody {
   rubric_id?: unknown;
   work?: unknown;
   presentation?: unknown;
+  title?: unknown;
 }
+
+/** What a grading is called afterwards. The work itself is never stored. */
+const MAX_TITLE_CHARS = 80;
 
 function parseBody(body: RequestBody) {
   const uuid = (v: unknown): string | null =>
@@ -80,7 +84,14 @@ function parseBody(body: RequestBody) {
     ? body.presentation.trim().slice(0, MAX_PRESENTATION_CHARS)
     : null;
 
-  return { assignmentId, rubricId, work, presentation };
+  // What the student was marking, in their words — a filename, "Photo of your
+  // work", or nothing. Only ever used to label their own history row and, once
+  // fenced, to tell the model what kind of thing it is looking at.
+  const title = typeof body.title === "string"
+    ? body.title.replace(/\s+/g, " ").trim().slice(0, MAX_TITLE_CHARS)
+    : "";
+
+  return { assignmentId, rubricId, work, presentation, title };
 }
 
 Deno.serve(async (req) => {
@@ -123,6 +134,25 @@ Deno.serve(async (req) => {
       basis = resolved.basis;
     }
 
+    // What this piece is called.
+    //
+    // An assignment's own title wins — it is the one the student will recognise
+    // in their history — and what they typed is the fallback for loose work
+    // that belongs to no assignment.
+    let title = input.title || "Your work";
+    let taskType = "other";
+    if (input.assignmentId) {
+      const { data: assignment } = await caller.db
+        .from("assignments")
+        .select("title, task_type")
+        .eq("id", input.assignmentId)
+        .maybeSingle();
+      if (assignment) {
+        title = (assignment.title as string) || title;
+        taskType = (assignment.task_type as string) ?? taskType;
+      }
+    }
+
     // Have we already produced exactly this answer?
     //
     // Before the quota call on purpose: no model call happens, so no grading
@@ -136,6 +166,11 @@ Deno.serve(async (req) => {
     const workHash = await sha256([
       input.work,
       basis,
+      // In the hash because it is in the prompt: the same paragraphs submitted
+      // as "Lab report" and as "Personal statement" are two different questions
+      // and must not share one answer.
+      title,
+      taskType,
       rubric?.assessmentName ?? "",
       (rubric?.criteria ?? []).map((c) => `${c.code}:${c.name}:${c.marks}`).join("|"),
       input.presentation ?? "",
@@ -143,7 +178,10 @@ Deno.serve(async (req) => {
 
     const { data: existing } = await caller.db
       .from("gradings")
-      .select("id, created_at, overall_marks, total_marks, breakdown, feedback, improvements, model, basis")
+      // deno-fmt-ignore — one string literal on purpose: supabase-js infers the
+      // row type from the literal, and splitting it widens to `string`, which
+      // types every field of the result as an error.
+      .select("id, created_at, overall_marks, total_marks, grade_label, grade_note, work_title, breakdown, feedback, improvements, model, basis")
       // RLS already scopes this; the explicit filter is here so a hash
       // collision cannot hand one student another student's marks even if RLS
       // were ever loosened.
@@ -159,6 +197,9 @@ Deno.serve(async (req) => {
         created_at: existing.created_at,
         overall_marks: existing.overall_marks,
         total_marks: existing.total_marks,
+        grade_label: existing.grade_label,
+        grade_note: existing.grade_note,
+        title: existing.work_title,
         criteria: existing.breakdown,
         feedback: existing.feedback,
         improvements: existing.improvements,
@@ -182,20 +223,6 @@ Deno.serve(async (req) => {
       { p_kind: "grade", p_model: model },
     );
     if (quotaError) throw mapPostgresError(quotaError.message);
-
-    let title = "Your work";
-    let taskType = "other";
-    if (input.assignmentId) {
-      const { data: assignment } = await caller.db
-        .from("assignments")
-        .select("title, task_type")
-        .eq("id", input.assignmentId)
-        .maybeSingle();
-      if (assignment) {
-        title = (assignment.title as string) ?? title;
-        taskType = (assignment.task_type as string) ?? taskType;
-      }
-    }
 
     // Everything from here can fail *after* a grading has been reserved, and a
     // student who gets no marks must not lose one of five for the week. The
@@ -271,6 +298,14 @@ Deno.serve(async (req) => {
         input_chars: input.work.length,
         overall_marks: grade.overallMarks,
         total_marks: grade.totalMarks,
+        grade_label: grade.gradeLabel,
+        grade_note: grade.gradeNote,
+        work_title: title,
+        // Which reservation paid for this. It is what lets the quota count ask
+        // "was anything actually bought" instead of "is there a row", so a
+        // reservation the runtime killed before the refund could run stops
+        // counting against the student instead of costing them one forever.
+        usage_id: usageId ?? null,
         breakdown: criteriaPayload,
         feedback: grade.feedback,
         improvements: grade.improvements,
@@ -301,6 +336,9 @@ Deno.serve(async (req) => {
       created_at: saved.created_at,
       overall_marks: grade.overallMarks,
       total_marks: grade.totalMarks,
+      grade_label: grade.gradeLabel,
+      grade_note: grade.gradeNote,
+      title,
       criteria: criteriaPayload,
       feedback: grade.feedback,
       improvements: grade.improvements,

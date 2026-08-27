@@ -483,6 +483,21 @@ final class Grading {
     var inputChars: Int
     var overallMarks: Int?
     var totalMarks: Int?
+    /// **The grade.** What the student's course would actually put on this work
+    /// — "4", "B+", "62%" — in the scale they said their course uses.
+    ///
+    /// Not the same thing as `overallMarks`, and conflating the two is why this
+    /// was missing: a four-strand MYP rubric totals 32, and 0/32 is arithmetic,
+    /// not a grade. Nil for a blind reading, always, and enforced server-side
+    /// rather than trusted here.
+    var gradeLabel: String?
+    /// One line on how that grade was reached. Nil whenever `gradeLabel` is.
+    var gradeNote: String?
+    /// What was marked, for a history list to be readable.
+    ///
+    /// The work itself is deliberately never stored, so without this a list of
+    /// past gradings is a column of identical dates.
+    var workTitle: String?
     /// Per-criterion marks and comments, in rubric order.
     var criteria: [GradedCriterion]
     var feedback: String
@@ -506,6 +521,8 @@ final class Grading {
 
     init(id: UUID = UUID(), remoteID: UUID? = nil, model: String, inputChars: Int,
          overallMarks: Int? = nil, totalMarks: Int? = nil,
+         gradeLabel: String? = nil, gradeNote: String? = nil,
+         workTitle: String? = nil,
          criteria: [GradedCriterion] = [], feedback: String,
          improvements: [GradedImprovement] = [],
          basis: GradingBasis = .personal,
@@ -516,6 +533,9 @@ final class Grading {
         self.inputChars = inputChars
         self.overallMarks = overallMarks
         self.totalMarks = totalMarks
+        self.gradeLabel = gradeLabel
+        self.gradeNote = gradeNote
+        self.workTitle = workTitle
         self.criteria = criteria
         self.feedback = feedback
         self.improvements = improvements
@@ -539,6 +559,30 @@ final class Grading {
     /// Roughly, for display. Words are a unit students think in; characters
     /// are not.
     var approximateWords: Int { max(1, inputChars / 6) }
+
+    /// What to call this in a list. Never empty, because a row with no label is
+    /// a row nobody can pick out of five.
+    var displayTitle: String {
+        if let workTitle, !workTitle.isEmpty { return workTitle }
+        if let title = assignment?.title, !title.isEmpty { return title }
+        return basis == .blind ? "A reading" : "Marked work"
+    }
+
+    /// The one line that goes at the top: the grade if there is one, the marks
+    /// if there are only marks, and nothing at all for a blind reading — where
+    /// any headline would be read as a grade whatever sits beside it.
+    var headline: String? {
+        guard basis.isRubricBacked else { return nil }
+        if let gradeLabel, !gradeLabel.isEmpty { return gradeLabel }
+        return scoreText
+    }
+
+    /// True when the headline is a grade in the student's own scale rather than
+    /// the rubric's raw arithmetic. Only the first deserves to be called one.
+    var headlineIsGrade: Bool {
+        guard let gradeLabel, !gradeLabel.isEmpty else { return false }
+        return gradeLabel != scoreText
+    }
 }
 
 /// One criterion's result. `Codable` because SwiftData stores it inline on the

@@ -108,8 +108,15 @@ struct TaskDetailScreen: View {
         .fullScreenCover(item: $focusing) { record in
             FocusModeScreen(record: record)
         }
-        .sheet(isPresented: $grading) {
-            GradeSheet(assignment: assignment)
+        // Pushed, not presented.
+        //
+        // This used to open `GradeSheet` — a `Form` in a sheet that could not
+        // upload a file, could not photograph a rubric and never asked how the
+        // student's course marks, so "Mark my work" meant two different
+        // products depending on whether you tapped it here or in Tools. There
+        // is one grader now, and it arrives knowing which assignment it is on.
+        .navigationDestination(isPresented: $grading) {
+            Screen { GraderScreen(assignment: assignment) }
         }
         .sheet(item: $viewingGrade) { GradeResultView(grading: $0) }
         .sheet(isPresented: $reordering) {

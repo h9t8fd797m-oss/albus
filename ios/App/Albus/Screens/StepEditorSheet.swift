@@ -54,67 +54,88 @@ struct StepEditorSheet: View {
     private static let presets = [15, 25, 30, 45, 60, 90]
 
     var body: some View {
-        NavigationStack {
-            Form {
-                Section("Step") {
-                    TextField("What are you doing?", text: $draft.title, axis: .vertical)
-                        .lineLimit(1...4)
-                        .textInputAutocapitalization(.sentences)
-                }
+        AlbusSheetScaffold(
+            eyebrow: draft.isExisting ? "Editing a step" : "Adding a step",
+            title: draft.isExisting ? "What changed?" : "What are you doing?",
+            primaryTitle: "Save",
+            isPrimaryEnabled: draft.isSavable,
+            primaryAction: {
+                onSave(draft)
+                dismiss()
+            },
+            onCancel: { dismiss() },
+            detents: [.medium, .large]
+        ) {
+            SheetField(label: "The step") {
+                TextField("Read chapter 4 and take notes", text: $draft.title, axis: .vertical)
+                    .lineLimit(1...4)
+                    .font(Tokens.Typography.body)
+                    .textInputAutocapitalization(.sentences)
+            }
 
-                Section {
+            VStack(alignment: .leading, spacing: Tokens.Spacing.s) {
+                SheetField(label: "How long") {
                     HStack {
-                        TextField("Minutes", text: $draft.minutesText)
+                        TextField("30", text: $draft.minutesText)
                             .keyboardType(.numberPad)
+                            .font(Tokens.Typography.body)
                         Text("minutes")
+                            .font(Tokens.Typography.caption)
                             .foregroundStyle(Tokens.Palette.inkMuted)
                     }
-                    ScrollView(.horizontal, showsIndicators: false) {
-                        HStack(spacing: Tokens.Spacing.s) {
-                            ForEach(Self.presets, id: \.self) { value in
-                                FilterChip(title: "\(value)m",
-                                           isSelected: draft.minutesText == String(value)) {
+                }
+
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: Tokens.Spacing.s) {
+                        ForEach(Self.presets, id: \.self) { value in
+                            FilterChip(title: "\(value)m",
+                                       isSelected: draft.minutesText == String(value)) {
+                                // Snappy, because this is a chip a student taps
+                                // three or four times deciding — a slow spring
+                                // here reads as lag rather than polish.
+                                withAnimation(.spring(response: 0.28, dampingFraction: 0.8)) {
                                     draft.minutesText = String(value)
                                 }
                             }
                         }
                     }
-                } header: {
-                    Text("How long")
-                } footer: {
-                    Text("Changing this re-flows everything after it. Between 5 and 600 minutes.")
                 }
 
-                if draft.isExisting, onDelete != nil {
-                    Section {
-                        Button("Delete step", role: .destructive) { confirmingDelete = true }
+                AlbusNote("Changing this re-flows everything after it. Anywhere between "
+                          + "**5 and 600 minutes**.")
+            }
+
+            if draft.isExisting, onDelete != nil {
+                Button(role: .destructive) { confirmingDelete = true } label: {
+                    HStack(spacing: Tokens.Spacing.s) {
+                        Image(systemName: "trash")
+                        Text("Delete step")
                     }
+                    .font(Tokens.Typography.label)
+                    .fontWeight(.semibold)
+                    .foregroundStyle(Tokens.Palette.danger)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, Tokens.Spacing.m)
+                    .background(Tokens.Palette.danger.opacity(0.10),
+                                in: RoundedRectangle(cornerRadius: Tokens.Radius.control,
+                                                     style: .continuous))
                 }
+                .buttonStyle(.plain)
             }
-            .navigationTitle(draft.isExisting ? "Edit step" : "Add step")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { dismiss() }
-                }
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Save") {
-                        onSave(draft)
-                        dismiss()
-                    }
-                    .disabled(!draft.isSavable)
-                }
+        }
+        // Destructive confirmation stays a system dialog on purpose. It is the
+        // one interaction where familiarity beats personality: a student needs
+        // to recognise it instantly as "this deletes something", and every
+        // other app on the phone has taught them what this looks like.
+        .confirmationDialog("Delete this step?", isPresented: $confirmingDelete,
+                            titleVisibility: .visible) {
+            Button("Delete", role: .destructive) {
+                onDelete?()
+                dismiss()
             }
-            .confirmationDialog("Delete this step?", isPresented: $confirmingDelete,
-                                titleVisibility: .visible) {
-                Button("Delete", role: .destructive) {
-                    onDelete?()
-                    dismiss()
-                }
-                Button("Cancel", role: .cancel) {}
-            } message: {
-                Text("The time it was holding goes back to the rest of your plan.")
-            }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("The time it was holding goes back to the rest of your plan.")
         }
     }
 }
