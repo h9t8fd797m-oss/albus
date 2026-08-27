@@ -273,22 +273,21 @@ begin
   insert into verify_results (area,test,expected,actual,pass)
     values ('gate','Plus asks for a third grading this week','ALLOWANCE_WEEKLY',r,r='ALLOWANCE_WEEKLY');
 
-  insert into public.ai_usage (user_id,kind,model,input_tokens,output_tokens,created_at)
-  select D,'chat','claude-sonnet-5',10,10, now()-interval '10 days' from generate_series(1,25);
-
+  -- Plus buys planning and marking, not conversation. Ask Albus moved inside a
+  -- task and became Pro-only; Plus must be refused with a price, not a date.
   perform set_config('request.jwt.claims', json_build_object('sub',D,'role','authenticated')::text, true);
   execute 'set local role authenticated';
   begin perform public.check_and_record_ai_usage('chat','claude-sonnet-5'); r := 'ALLOWED';
   exception when others then r := sqlerrm; end;
   execute 'reset role';
   insert into verify_results (area,test,expected,actual,pass)
-    values ('gate','Plus asks a 26th question this month','ALLOWANCE_MONTHLY',r,r='ALLOWANCE_MONTHLY');
+    values ('gate','Plus asks Albus a question','PLAN_UPGRADE_REQUIRED',r,r='PLAN_UPGRADE_REQUIRED');
 
-  -- Pro: five gradings a week, and chat with no ceiling at all.
+  -- Pro: five gradings a week, and 300 grounded questions a month.
   insert into public.ai_usage (user_id,kind,model,input_tokens,output_tokens,created_at)
   select C,'grade','claude-opus-5',10,10, now()-interval '1 day'*g from generate_series(1,5) g;
   insert into public.ai_usage (user_id,kind,model,input_tokens,output_tokens,created_at)
-  select C,'chat','claude-sonnet-5',10,10, now()-interval '10 days' from generate_series(1,200);
+  select C,'chat','claude-sonnet-5',10,10, now()-interval '10 days' from generate_series(1,300);
 
   perform set_config('request.jwt.claims', json_build_object('sub',C,'role','authenticated')::text, true);
   execute 'set local role authenticated';
@@ -303,7 +302,7 @@ begin
   exception when others then r := sqlerrm; end;
   execute 'reset role';
   insert into verify_results (area,test,expected,actual,pass)
-    values ('gate','Pro asks a 201st question this month (unlimited)','ALLOWED',r,r='ALLOWED');
+    values ('gate','Pro asks a 301st question this month','ALLOWANCE_MONTHLY',r,r='ALLOWANCE_MONTHLY');
 
   -- An expiry in the past is Free, whatever the row says.
   update public.entitlements set expires_at = now()-interval '1 day' where user_id=C;

@@ -75,7 +75,7 @@ the gate, the meter and the paywall alike:
 | | Free (€0) | Plus (€7.99/mo) | Pro (€14.99/mo) |
 |---|---|---|---|
 | Active tasks | 5 | 10 | unlimited |
-| Ask Albus | — | 25 / month | unlimited |
+| Ask Albus | — | — | 300 / month, inside a task |
 | Albus Grader | — | 2 / week | 5 / week |
 | Saved rubrics | 3 | 5 | unlimited |
 | Tools | basic | expanded | all + curriculum intelligence |
@@ -339,7 +339,7 @@ quartered at `high`**:
 | | free/hr | free/day | plus/hr | plus/day | pro/hr | pro/day |
 |---|---|---|---|---|---|---|
 | breakdown | 6 | 20 | 20 | 60 | 40 | 150 |
-| chat | — | — | 20 | 60 | 60 | 300 |
+| chat | — | — | — | — | 12 | 40 |
 | grade | — | — | 3 | — | 3 | — |
 
 Separate budgets per kind, so exhausting chat does not block planning.

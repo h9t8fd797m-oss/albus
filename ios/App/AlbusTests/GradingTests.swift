@@ -116,8 +116,8 @@ struct PricingTests {
 
     private static let server: [ServerPlan] = [
         .init(plan: .free, priceCents:    0, tasks:    5, chatMonth:    0, gradeWeek: 0, rubrics:    3),
-        .init(plan: .plus, priceCents:  799, tasks:   10, chatMonth:   25, gradeWeek: 2, rubrics:    5),
-        .init(plan: .pro,  priceCents: 1499, tasks:  nil, chatMonth:  nil, gradeWeek: 5, rubrics:  nil),
+        .init(plan: .plus, priceCents:  799, tasks:   10, chatMonth:    0, gradeWeek: 2, rubrics:    5),
+        .init(plan: .pro,  priceCents: 1499, tasks:  nil, chatMonth:  300, gradeWeek: 5, rubrics:  nil),
     ]
 
     @Test("every plan's price matches the server's")
@@ -166,11 +166,15 @@ struct PricingTests {
         #expect(pro.contains("5 markings a week"))
     }
 
-    @Test("each plan's card names its own Ask Albus allowance")
-    func chatAllowanceIsOnTheCard() {
-        #expect(PaywallScreen.Plan.free.lines.contains { $0.0.contains("No Ask Albus") })
-        #expect(PaywallScreen.Plan.plus.lines.contains { $0.0.contains("25 Ask Albus") })
-        #expect(PaywallScreen.Plan.pro.lines.contains { $0.0.contains("Unlimited Ask Albus") })
+    /// Ask Albus is Pro-only now, and lives inside a task rather than in a tab.
+    /// Free and Plus must say so rather than staying silent about it — an
+    /// absent line reads as an oversight, and the whole reason Pro exists is
+    /// that this line is on it.
+    @Test("only Pro's card offers Ask Albus")
+    func chatIsProOnly() {
+        #expect(PaywallScreen.Plan.pro.lines.contains { $0.0.contains("Ask Albus") })
+        #expect(PaywallScreen.Plan.plus.lines.contains { $0.0.contains("No Ask Albus") })
+        #expect(PaywallScreen.Plan.free.lines.contains { $0.0.contains("Ask Albus") } == false)
     }
 
     /// Every plan says the same four things in the same order, so the eye can

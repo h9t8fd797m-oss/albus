@@ -75,10 +75,18 @@ without waiting on the account.
 | **Notifications** | Twelve kinds, planned purely in `AlbusCore`. 58 tests. |
 | **Grader** | Marks work against the student's own rubric and gives a real grade. |
 | **Plans** | Free, Plus and Pro. Every limit is a row in `public.plans`, enforced in Postgres. |
+| **Settings** | The fourth tab: plan and meters, profile, notifications, version. |
 
 Every tab is a real screen: Home is the assignment list, Rubrics owns saved
-rubrics, Albus is the chat, Tools is the catalogue. Focus Mode, the plan editor,
-grading, the month calendar and notification settings all exist.
+rubrics, Tools is the catalogue, Settings owns the plan and the preferences.
+Focus Mode, the plan editor, grading, the month calendar and notification
+settings all exist.
+
+**Ask Albus is not a tab.** It was, and the tell that it should not have been is
+that the tab carried an assignment *picker* — a surface with no context of its
+own, asking the student to supply it. It now opens from inside an assignment,
+where the rubric and the deadline are already known, and it is Pro-only. See
+`AskAlbus.swift`.
 
 ## Two things that are load-bearing
 
@@ -252,7 +260,7 @@ before any model runs.
 | | Free (€0) | Plus (€7.99/mo) | Pro (€14.99/mo) |
 |---|---|---|---|
 | Active tasks | 5 | 10 | unlimited |
-| Ask Albus | — | 25 / month | unlimited |
+| Ask Albus | — | — | 300 / month |
 | Albus Grader | — | 2 / week | 5 / week |
 | Saved rubrics | 3 | 5 | unlimited |
 | Tools | basic | expanded | all + curriculum intelligence |

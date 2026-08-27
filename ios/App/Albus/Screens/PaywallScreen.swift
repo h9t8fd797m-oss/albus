@@ -83,8 +83,8 @@ struct PaywallScreen: View {
         var pitch: String {
             switch self {
             case .free: "The planner, in full."
-            case .plus: "Albus answers back, and marks your work."
-            case .pro:  "No ceilings."
+            case .plus: "Albus marks your work."
+            case .pro:  "Marks more, and answers back."
             }
         }
 
@@ -100,19 +100,19 @@ struct PaywallScreen: View {
             switch self {
             case .free:
                 [("5 active tasks", "Planned, scheduled, and rebuilt when your week moves."),
-                 ("No Ask Albus", "Questions about your plan need Plus."),
+                 ("3 saved rubrics", "Paste a mark scheme once and reuse it."),
                  ("No marking", "The Grader needs Plus."),
-                 ("3 saved rubrics", "Paste a mark scheme once and reuse it.")]
+                 ("The core tools", "The study tools Albus picks for a step.")]
             case .plus:
                 [("10 active tasks", "For a term carrying more than one deadline."),
-                 ("25 Ask Albus messages a month", "Grounded in your own plan and rubric."),
+                 ("5 saved rubrics", "And the expanded tool library."),
                  ("2 markings a week", "Your work, your rubric, a real grade."),
-                 ("5 rubrics, expanded tools", "The wider tool library comes with it.")]
+                 ("No Ask Albus", "Asking about an assignment is Pro.")]
             case .pro:
                 [("Unlimited tasks", "However much you are actually carrying."),
-                 ("Unlimited Ask Albus", "Ask as often as the work needs."),
+                 ("Unlimited rubrics, every tool", "Plus curriculum intelligence."),
                  ("5 markings a week", "Mark a draft, revise it, mark it again."),
-                 ("Everything else", "Every rubric, every tool, and curriculum intelligence.")]
+                 ("Ask Albus, in any task", "It already knows the rubric and the deadline.")]
             }
         }
     }

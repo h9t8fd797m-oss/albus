@@ -2,69 +2,17 @@ import SwiftUI
 import SwiftData
 import AlbusCore
 
-/// Ask Albus, as a full tab: a conversation grounded in the student's work.
+/// Ask Albus: a conversation grounded in one assignment.
 ///
-/// The same conversation view backs the sheet opened from Task detail, so the
-/// two cannot drift. Only the grounding differs — the tab lets the student pick
-/// which assignment they are asking about; the sheet fixes it.
-struct AlbusScreen: View {
-    @Query(sort: \Assignment.deadline) private var assignments: [Assignment]
-    @State private var grounding: Assignment?
+/// This was a tab. It is not any more — a general chat surface competes with
+/// the free frontier products every student already has, and loses; a
+/// conversation that already knows the rubric, the plan and the deadline does
+/// not. So the only way in is from the assignment itself, which is also what
+/// makes the grounding free rather than something the student has to set up.
+///
+/// The tab version carried an assignment *picker*, which is the tell: it
+/// existed because the surface had no context of its own and had to ask for it.
 
-    private var openAssignments: [Assignment] {
-        assignments.filter { !$0.isComplete }
-    }
-
-    var body: some View {
-        VStack(spacing: 0) {
-            header
-            if !openAssignments.isEmpty {
-                groundingPicker
-            }
-            Conversation(assignment: grounding)
-        }
-        .onAppear {
-            // Default to the nearest deadline: the thing most likely being
-            // asked about, and it makes the first reply grounded for free.
-            if grounding == nil { grounding = openAssignments.first }
-        }
-    }
-
-    private var header: some View {
-        VStack(alignment: .leading, spacing: Tokens.Spacing.xs) {
-            Text("ASK ALBUS")
-                .font(Tokens.Typography.overline)
-                .tracking(Tokens.Tracking.overline)
-                .foregroundStyle(Tokens.Palette.inkMuted)
-            Text("Albus")
-                .font(Tokens.Typography.displayLarge)
-                .foregroundStyle(Tokens.Palette.ink)
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(.horizontal, Tokens.Spacing.xl)
-        .padding(.top, Tokens.Spacing.s)
-        .padding(.bottom, Tokens.Spacing.m)
-    }
-
-    private var groundingPicker: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: Tokens.Spacing.s) {
-                ForEach(openAssignments) { assignment in
-                    FilterChip(title: assignment.title, isSelected: grounding?.id == assignment.id) {
-                        withAnimation(Tokens.Motion.quick) {
-                            grounding = grounding?.id == assignment.id ? nil : assignment
-                        }
-                    }
-                }
-            }
-            .padding(.horizontal, Tokens.Spacing.xl)
-        }
-        .scrollClipDisabled()
-        .padding(.bottom, Tokens.Spacing.m)
-    }
-}
-
-/// Ask Albus as a sheet, fixed to one assignment.
 struct AskAlbusSheet: View {
     @Environment(\.dismiss) private var dismiss
     let assignment: Assignment
