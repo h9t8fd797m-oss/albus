@@ -300,10 +300,17 @@ struct GraderScreen: View {
         stageTitle("What am I marking?",
                    "Anything on your list brings its rubric and deadline with it.")
 
-        if !openAssignments.isEmpty {
+        // Arriving from an assignment answers this question before the student
+        // sees the screen. Saying so is the difference between "already sorted"
+        // and "my tap did nothing".
+        if let chosen = chosenAssignment {
+            AlbusNote("Marking **\(chosen.title)**. Pick another below to change it.")
+        }
+
+        if !markableAssignments.isEmpty {
             VStack(alignment: .leading, spacing: Tokens.Spacing.s) {
                 SectionHeader(label: "Your work") { EmptyView() }
-                ForEach(openAssignments) { assignment in
+                ForEach(markableAssignments) { assignment in
                     Button { choose(assignment) } label: {
                         assignmentRow(assignment)
                     }
@@ -348,8 +355,43 @@ struct GraderScreen: View {
         PrimaryButton(title: "Continue", isEnabled: wordCount > 30) { stage = .rubric }
     }
 
-    private var openAssignments: [Assignment] {
-        assignments.filter { $0.statusValue == .active }.prefix(6).map { $0 }
+    /// What the picker offers, and why it is not simply "active work".
+    ///
+    /// **Finished work stays markable for a month.** Filtering to `.active`
+    /// dropped an assignment out of this list at the exact moment it became
+    /// most worth marking — a student ticks the last step, taps Mark my work,
+    /// and the thing they just finished is the one option missing.
+    ///
+    /// **Whatever the screen was opened with is always first, and never cut.**
+    /// Arriving from an assignment pre-selects it in `.task`, but the checkmark
+    /// is drawn by `assignmentRow`, which only exists for rows in this list. An
+    /// assignment that was finished, or sat past the cap, was selected with
+    /// nothing on screen saying so — indistinguishable from a broken button.
+    private var markableAssignments: [Assignment] {
+        Self.markable(from: assignments, chosen: chosenAssignment)
+    }
+
+    /// The rule above, as a function of its inputs so it can be tested.
+    ///
+    /// Twelve rather than six: Plus allows ten open at once and Pro has no cap,
+    /// so six silently hid work on both paid plans.
+    static func markable(from all: [Assignment],
+                         chosen: Assignment?,
+                         now: Date = .now,
+                         keepFinishedFor: TimeInterval = 30 * 24 * 60 * 60,
+                         limit: Int = 12) -> [Assignment] {
+        let active = all.filter { $0.statusValue == .active }
+        let recentlyFinished = all
+            .filter { $0.statusValue == .completed
+                      && $0.updatedAt > now.addingTimeInterval(-keepFinishedFor) }
+            .sorted { $0.updatedAt > $1.updatedAt }
+
+        var shown = active + recentlyFinished
+        if let chosen {
+            shown.removeAll { $0.id == chosen.id }
+            shown.insert(chosen, at: 0)
+        }
+        return Array(shown.prefix(limit))
     }
 
     // MARK: - 2 · The rubric
@@ -682,10 +724,16 @@ struct GraderScreen: View {
                     in: RoundedRectangle(cornerRadius: Tokens.Radius.card))
     }
 
-    /// What the next plan up actually buys, in gradings rather than adjectives.
+    /// What the next plan up buys, in gradings rather than adjectives.
+    ///
+    /// Named as plans, not as bare counts. "Plus marks two pieces of work a
+    /// week" sat under a title about Plus and Pro and read as a statement about
+    /// what the student already had — so a Free student was told, on the screen
+    /// refusing them, that they got two a week. Every clause now starts with
+    /// the plan it belongs to.
     private var offerLine: String {
-        "Plus marks two pieces of work a week against your own rubric. "
-        + "Pro marks five."
+        "Plus includes two markings a week, against your own rubric. "
+        + "Pro includes five."
     }
 
     /// When the next one is back, said as a time rather than a duration.
@@ -719,9 +767,12 @@ struct GraderScreen: View {
     }
 
     private func assignmentRow(_ assignment: Assignment) -> some View {
-        selectableRow(
+        let rubric = assignment.rubric != nil ? "Rubric on file" : "No rubric saved"
+        return selectableRow(
             title: assignment.title,
-            detail: assignment.rubric != nil ? "Rubric on file" : "No rubric saved",
+            // Finished work is listed on purpose; without the word, a student
+            // wonders why a task they completed is still here.
+            detail: assignment.statusValue == .completed ? "Finished · \(rubric)" : rubric,
             selected: chosenAssignment?.id == assignment.id
         )
     }

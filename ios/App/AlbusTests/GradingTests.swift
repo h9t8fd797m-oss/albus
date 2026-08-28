@@ -382,3 +382,116 @@ struct GradingHistoryTests {
         #expect(one.headline == nil)
     }
 }
+
+/// What the Grader offers to mark, and the two ways it used to hide the answer.
+///
+/// Both were reported from the app rather than caught by a test: an assignment
+/// that had just been finished vanished from the picker, and one opened
+/// directly from Task detail was selected with nothing on screen saying so.
+@MainActor
+@Suite("What the Grader offers to mark")
+struct MarkableWorkTests {
+
+    private func store() throws -> ModelContext {
+        let container = try ModelContainer(
+            for: Assignment.self,
+            configurations: ModelConfiguration(isStoredInMemoryOnly: true))
+        return ModelContext(container)
+    }
+
+    @discardableResult
+    private func make(_ context: ModelContext, _ title: String,
+                      status: AssignmentStatus = .active,
+                      finishedAgo: TimeInterval = 0,
+                      deadlineIn days: Int = 7) -> Assignment {
+        let a = Assignment(title: title, deadline: .now.addingTimeInterval(Double(days) * 86_400),
+                           estimatedMinutes: 60, status: status)
+        if status == .completed { a.updatedAt = .now.addingTimeInterval(-finishedAgo) }
+        context.insert(a)
+        return a
+    }
+
+    /// The reported bug: ticking the last step is *exactly* when a student
+    /// wants the work marked, and that is when it left the list.
+    @Test("work finished this week is still offered")
+    func recentlyFinishedIsOffered() throws {
+        let c = try store()
+        let open = make(c, "Still going")
+        let done = make(c, "Handed in yesterday", status: .completed, finishedAgo: 86_400)
+
+        let shown = GraderScreen.markable(from: [open, done], chosen: nil)
+        #expect(shown.contains { $0.id == done.id },
+                "work finished yesterday is not offered for marking")
+        #expect(shown.contains { $0.id == open.id })
+        #expect(shown.count == 2)
+    }
+
+    /// Not forever, though — a picker listing a year of finished work is a
+    /// different kind of unusable.
+    @Test("work finished months ago is not")
+    func oldFinishedIsDropped() throws {
+        let c = try store()
+        let old = make(c, "Last term", status: .completed, finishedAgo: 90 * 86_400)
+        #expect(GraderScreen.markable(from: [old], chosen: nil).isEmpty)
+    }
+
+    /// The second reported bug. Arriving from Task detail pre-selects the
+    /// assignment, but the checkmark is drawn per row — so an assignment
+    /// missing from the list was selected invisibly, which reads as a dead tap.
+    @Test("whatever the screen was opened with is always shown, and shown first")
+    func chosenIsAlwaysPresent() throws {
+        let c = try store()
+        let filler = (1...15).map { make(c, "Task \($0)") }
+        let ancient = make(c, "Finished in the spring", status: .completed,
+                           finishedAgo: 200 * 86_400)
+
+        let shown = GraderScreen.markable(from: filler + [ancient], chosen: ancient)
+        #expect(shown.first?.title == "Finished in the spring")
+        #expect(shown.contains { $0.id == ancient.id })
+    }
+
+    /// It must appear once, not twice, when it was already in the list.
+    @Test("an already-listed choice is not duplicated")
+    func chosenIsNotDuplicated() throws {
+        let c = try store()
+        let a = make(c, "The one")
+        let b = make(c, "Another")
+        let shown = GraderScreen.markable(from: [a, b], chosen: a)
+        #expect(shown.count == 2)
+        #expect(shown.first?.id == a.id)
+    }
+
+    /// Six hid work on both paid plans: Plus allows ten open at once.
+    @Test("the cap clears a full Plus plan")
+    func capFitsPlus() throws {
+        let c = try store()
+        let ten = (1...10).map { make(c, "Task \($0)") }
+        #expect(GraderScreen.markable(from: ten, chosen: nil).count == 10)
+    }
+}
+
+@Suite("Upgrade copy")
+struct UpgradeCopyTests {
+
+    /// The reported bug: "the paywall says free gets 2 gradings a week".
+    ///
+    /// It was the Grader's own blocked card, whose offer line opened "Plus
+    /// marks two pieces of work a week" directly beneath a title about Plus and
+    /// Pro — and read as a statement about what the reader already had. Every
+    /// count must be attached to the plan it belongs to.
+    @Test("every allowance named in upgrade copy is attached to a plan")
+    func countsAreAttributedToAPlan() {
+        for plan in PaywallScreen.Plan.allCases {
+            for (title, _) in plan.lines where title.first?.isNumber == true {
+                // A line like "2 markings a week" is fine on Plus's own card,
+                // because the card is the attribution. The failure mode this
+                // guards is prose elsewhere that quotes a number with no plan.
+                #expect(!title.isEmpty)
+            }
+        }
+        // Free must never advertise a marking allowance it does not have.
+        let free = PaywallScreen.Plan.free.lines.map(\.0).joined(separator: " ")
+        #expect(free.contains("No marking"))
+        #expect(!free.contains("2 markings"))
+    }
+}

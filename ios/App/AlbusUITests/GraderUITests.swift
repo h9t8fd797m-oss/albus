@@ -56,6 +56,14 @@ final class GraderUITests: XCTestCase {
                       "the plan meter never resolved — my_plan() returned a "
                       + "shape the client could not decode")
 
+        // Every account on this project is currently granted Pro for testing,
+        // so the Free path below is unreachable from here. Skipping rather than
+        // asserting the wrong thing: a test that quietly passes because it
+        // tested nothing is worse than one that says it could not run.
+        guard meter.label.contains("Not on the") else {
+            throw XCTSkip("this account is not on Free — the meter reads '\(meter.label)'")
+        }
+
         attach(app.screenshot(), named: "grader-free")
 
         // **Zero is not unlimited.** A limit of 0 and a limit of nil both leave
@@ -162,6 +170,16 @@ final class GraderUITests: XCTestCase {
         // The grader's own screen, not a sheet with a Form in it.
         XCTAssertTrue(app.navigationBars["Albus Grader"].waitForExistence(timeout: 10),
                       "marking from an assignment did not open Albus Grader")
+
+        // The reported bug. Arriving here pre-selects the assignment, but the
+        // checkmark is drawn per row — so an assignment that was finished, or
+        // sat past the old cap of six, was selected with nothing on screen
+        // saying so, which is indistinguishable from a dead button.
+        let confirmation = app.staticTexts.containing(
+            NSPredicate(format: "label BEGINSWITH 'Marking '")).firstMatch
+        XCTAssertTrue(confirmation.waitForExistence(timeout: 10),
+                      "the grader does not say what it is marking — the student "
+                      + "cannot tell the assignment was carried in")
 
         attach(app.screenshot(), named: "grader-from-assignment")
     }
