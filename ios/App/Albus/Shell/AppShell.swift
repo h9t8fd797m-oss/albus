@@ -17,16 +17,23 @@ struct AppShell: View {
     /// blocks belonged to. Home is now the assignment list, which is what a
     /// student actually keeps track of, and the freed slot went to Rubrics,
     /// which needed somewhere to live.
+    ///
+    /// Ask Albus held the third slot and no longer does. A conversation about
+    /// an assignment belongs *beside that assignment*, where it already knows
+    /// the rubric and the deadline without being told — so it lives in Task
+    /// detail now, and the tab went to Settings, which had never had a home at
+    /// all. Every preference in the app was previously reachable only through
+    /// one small button on Home.
     enum Tab: String, CaseIterable, Identifiable {
-        case home, rubrics, albus, tools
+        case home, rubrics, tools, settings
         var id: String { rawValue }
 
         var title: String {
             switch self {
             case .home: "Home"
             case .rubrics: "Rubrics"
-            case .albus: "Albus"
             case .tools: "Tools"
+            case .settings: "Settings"
             }
         }
 
@@ -34,8 +41,8 @@ struct AppShell: View {
             switch self {
             case .home: "house"
             case .rubrics: "list.bullet.rectangle.portrait"
-            case .albus: "text.alignleft"
             case .tools: "wrench.and.screwdriver"
+            case .settings: "gearshape"
             }
         }
     }
@@ -48,8 +55,8 @@ struct AppShell: View {
                 switch tab {
                 case .home: NavigationStack { Screen { HomeScreen() } }
                 case .rubrics: NavigationStack { Screen { RubricsScreen() } }
-                case .albus: NavigationStack { Screen { AlbusScreen() } }
                 case .tools: NavigationStack { Screen { ToolsScreen() } }
+                case .settings: NavigationStack { Screen { SettingsScreen() } }
                 }
             }
 

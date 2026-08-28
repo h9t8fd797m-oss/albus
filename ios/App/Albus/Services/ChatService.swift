@@ -23,10 +23,56 @@ struct ChatService {
         let grounded: Bool
     }
 
-    /// Reuses `PlanService.Failure` rather than defining a parallel set: the
-    /// two endpoints fail for the same reasons and a student should not get two
-    /// different sentences for one quota.
-    typealias Failure = PlanService.Failure
+    /// Its own reasons, no longer `PlanService.Failure`.
+    ///
+    /// The two endpoints used to share a failure type on the argument that they
+    /// failed for the same reasons. Under three plans they do not: planning is
+    /// bounded by how many tasks a student holds open, and Ask Albus by a
+    /// monthly message allowance that Free does not have at all. One shared
+    /// type would have to say something vague enough to be true of both, and
+    /// "you have reached a limit" is not worth showing anybody.
+    enum Failure: LocalizedError, Equatable {
+        /// This plan has no Ask Albus. The answer is a price list.
+        case notOnPlan
+        /// The plan includes it and this month's messages are gone. Carries
+        /// when the next one arrives, which is the only actionable part.
+        case allowanceUsed(resetsAt: Date?)
+        case rateLimited
+        case offline
+        case unavailable
+        case rejected(String)
+
+        var errorDescription: String? {
+            switch self {
+            case .notOnPlan:
+                "Ask Albus is part of Plus and Pro."
+            case .allowanceUsed(let resetsAt):
+                if let resetsAt, resetsAt > .now {
+                    "That's this month's messages used. The next one is back "
+                    + "\(resetsAt.formatted(date: .abbreviated, time: .omitted))."
+                } else {
+                    "That's this month's messages used."
+                }
+            case .rateLimited:
+                "That's a lot of questions at once. Try again shortly."
+            case .offline:
+                "No connection — Albus needs one to answer."
+            case .unavailable:
+                "Albus can't answer right now."
+            case .rejected(let why):
+                why
+            }
+        }
+
+        /// Whether a different plan is the way out. Drives whether the screen
+        /// offers a price list; nothing else decides it.
+        var isAnswerableByUpgrading: Bool {
+            switch self {
+            case .notOnPlan, .allowanceUsed: true
+            default: false
+            }
+        }
+    }
 
     /// Matches `MAX_HISTORY_TURNS` in `_shared/chat_prompt.ts`. The server
     /// clamps regardless; trimming here just avoids paying to send what will
@@ -68,7 +114,8 @@ struct ChatService {
         )
 
         do {
-            return try await client.functions.invoke("chat", options: .init(body: body))
+            return try await client.functions.invoke(
+                "chat", options: .init(headers: DeviceSignal.headers(), body: body))
         } catch let error as FunctionsError {
             throw Self.translate(error)
         } catch let error as URLError {
@@ -83,14 +130,24 @@ struct ChatService {
 
         let body = try? JSONDecoder().decode(ErrorBody.self, from: data)
         switch body?.error {
+        case "PLAN_UPGRADE_REQUIRED":                 return .notOnPlan
+        case "ALLOWANCE_MONTHLY":                     return .allowanceUsed(resetsAt: nil)
         case "RATE_LIMIT_HOURLY", "RATE_LIMIT_DAILY": return .rateLimited
+        case "VERIFICATION_REQUIRED", "ABUSE_SUSPECTED":
+            // Both carry a message written for a student to read, and neither
+            // is a thing the app can fix by offering a plan.
+            return .rejected(body?.message ?? "Albus can't answer right now.")
         case "GLOBAL_CAPACITY_REACHED":               return .unavailable
         case "MESSAGE_TOO_LONG":                      return .rejected("That message is too long.")
         default: break
         }
 
         switch code {
-        case 402:      return .quotaReached
+        // An unrecognised 402 is *some* payment-shaped refusal, and the two it
+        // could be want opposite sentences. Rather than guess — and eventually
+        // tell a subscriber to buy what they already have — hand back what the
+        // server said. It is the one party that knows which it was.
+        case 402, 403: return .rejected(body?.message ?? "Albus couldn't answer that.")
         case 429:      return .rateLimited
         case 413:      return .rejected("That message is too long.")
         case 422:      return .rejected(body?.message ?? "Albus couldn't answer that.")

@@ -13,11 +13,13 @@ struct TaskDetailScreen: View {
     @Environment(PlanCoordinator.self) private var coordinator
     @Environment(Preferences.self) private var preferences
     @Environment(FocusSession.self) private var focusSession
+    @Environment(EntitlementService.self) private var entitlements
 
     let assignment: Assignment
 
     @State private var expanded: UUID?
     @State private var asking = false
+    @State private var showingPaywall = false
     @State private var editing: StepDraft?
     @State private var addingStep = false
     @State private var focusing: PlanSessionRecord?
@@ -73,9 +75,7 @@ struct TaskDetailScreen: View {
                 albusNote
                 gradeEntry
                 plan
-                AskAlbusBar(prompt: "Ask Albus about this \(assignment.taskType)…") {
-                    asking = true
-                }
+                askAlbus
             }
             .padding(.horizontal, Tokens.Spacing.xl)
             .padding(.bottom, Tokens.Spacing.xl)
@@ -88,6 +88,7 @@ struct TaskDetailScreen: View {
         .sheet(isPresented: $asking) {
             AskAlbusSheet(assignment: assignment)
         }
+        .sheet(isPresented: $showingPaywall) { PaywallScreen() }
         .sheet(item: $editing) { draft in
             StepEditorSheet(draft: draft) { saved in
                 guard let step = steps.first(where: { $0.id == saved.id }) else { return }
@@ -108,8 +109,15 @@ struct TaskDetailScreen: View {
         .fullScreenCover(item: $focusing) { record in
             FocusModeScreen(record: record)
         }
-        .sheet(isPresented: $grading) {
-            GradeSheet(assignment: assignment)
+        // Pushed, not presented.
+        //
+        // This used to open `GradeSheet` — a `Form` in a sheet that could not
+        // upload a file, could not photograph a rubric and never asked how the
+        // student's course marks, so "Mark my work" meant two different
+        // products depending on whether you tapped it here or in Tools. There
+        // is one grader now, and it arrives knowing which assignment it is on.
+        .navigationDestination(isPresented: $grading) {
+            Screen { GraderScreen(assignment: assignment) }
         }
         .sheet(item: $viewingGrade) { GradeResultView(grading: $0) }
         .sheet(isPresented: $reordering) {
@@ -124,6 +132,34 @@ struct TaskDetailScreen: View {
     /// fresh one starting now when the student got there early.
     private func start(_ step: Subtask) {
         focusing = coordinator.session(toStart: step, context: context)
+    }
+
+    /// Ask Albus, in the only place it exists now.
+    ///
+    /// Shown to everyone rather than hidden from Free and Plus. A feature a
+    /// student cannot see is a feature they cannot want — and the tap costs
+    /// nothing, because the server refuses the call before any model runs. The
+    /// gate here decides which *screen* opens, never whether the request is
+    /// allowed; `check_and_record_ai_usage` still answers that in Postgres.
+    @ViewBuilder private var askAlbus: some View {
+        let included = entitlements.plan.chat.isIncluded
+        VStack(alignment: .leading, spacing: Tokens.Spacing.xs) {
+            if !included {
+                HStack(spacing: Tokens.Spacing.xs) {
+                    Text("PRO")
+                        .font(Tokens.Typography.overline)
+                        .tracking(Tokens.Tracking.overline)
+                        .foregroundStyle(Tokens.Palette.accent)
+                    Text("Ask about this assignment and Albus answers from your own rubric.")
+                        .font(Tokens.Typography.caption)
+                        .foregroundStyle(Tokens.Palette.inkMuted)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+            AskAlbusBar(prompt: "Ask Albus about this \(assignment.taskType)…") {
+                if included { asking = true } else { showingPaywall = true }
+            }
+        }
     }
 
     // MARK: - Chrome
@@ -162,6 +198,7 @@ struct TaskDetailScreen: View {
                     .font(.system(size: 14, weight: .semibold))
                     .foregroundStyle(Tokens.Palette.ink)
                     .frame(width: 34, height: 34)
+                    .accessibilityLabel("Assignment options")
                     .background(Tokens.Glass.fill,
                                 in: RoundedRectangle(cornerRadius: Tokens.Radius.control,
                                                      style: .continuous))
@@ -264,18 +301,23 @@ struct TaskDetailScreen: View {
 
     // MARK: - Marking
 
-    /// Offered when the work is finished, which is when it is worth marking.
+    /// Marking, offered whenever there is an assignment to mark.
     ///
-    /// Kept available afterwards too — a student who fixed the first three
-    /// things and wants to know if it moved is exactly the person this is for.
+    /// It used to appear only once the assignment was finished, or had been
+    /// marked before. That is the wrong way round: the moment a student most
+    /// wants a grade is on the draft, while there is still time to act on it —
+    /// and a finished piece is the one case where feedback arrives too late to
+    /// change anything. The gate also meant the second entry point could not
+    /// be reached at all in a fresh account, which is why it went so long
+    /// without anyone noticing it opened a different grader.
     @ViewBuilder private var gradeEntry: some View {
         let previous = assignment.gradings.sorted { $0.createdAt > $1.createdAt }
 
-        if assignment.isComplete || !previous.isEmpty {
-            GlassCard {
-                VStack(alignment: .leading, spacing: Tokens.Spacing.m) {
+        GlassCard {
+            VStack(alignment: .leading, spacing: Tokens.Spacing.m) {
                     VStack(alignment: .leading, spacing: Tokens.Spacing.xs) {
-                        Text(assignment.isComplete ? "FINISHED" : "MARKED BEFORE")
+                        Text(gradeEyebrow(finished: assignment.isComplete,
+                                          marked: !previous.isEmpty))
                             .font(Tokens.Typography.overline)
                             .tracking(Tokens.Tracking.overline)
                             .foregroundStyle(Tokens.Palette.inkMuted)
@@ -293,6 +335,7 @@ struct TaskDetailScreen: View {
                     PrimaryButton(title: previous.isEmpty ? "Mark my work" : "Mark it again") {
                         grading = true
                     }
+                    .accessibilityIdentifier("markMyWork")
 
                     if !previous.isEmpty {
                         VStack(spacing: Tokens.Spacing.xs) {
@@ -324,8 +367,13 @@ struct TaskDetailScreen: View {
                     }
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
-            }
         }
+    }
+
+    /// What the card calls itself, which depends on where the work has got to.
+    private func gradeEyebrow(finished: Bool, marked: Bool) -> String {
+        if marked { return "MARKED BEFORE" }
+        return finished ? "FINISHED" : "WHEN YOU HAVE A DRAFT"
     }
 
     // MARK: - Plan

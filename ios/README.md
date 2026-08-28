@@ -43,8 +43,10 @@ not match, and SwiftData then failed with *Sandbox access to file-write-create
 denied*. A working app is worth more than an entitlement that cannot be
 verified here.
 
-Quota enforcement does not depend on any of this — the global spend fuse
-(migration 0013) bounds abuse regardless of how many accounts exist.
+Quota enforcement does not depend on any of this. The global spend fuse
+(migration 0013) bounds abuse regardless of how many accounts exist, and
+`account_risk` (0035) notices a device that has signed up five times this
+afternoon — neither of which cares whether the Keychain held.
 
 ## ⚠️ Signing is deliberately unset
 
@@ -71,10 +73,20 @@ without waiting on the account.
 | **Tokens** | Colours, type, spacing sampled from the design exports. |
 | **App shell** | Full-screen gradient + floating tab bar, four tabs. |
 | **Notifications** | Twelve kinds, planned purely in `AlbusCore`. 58 tests. |
+| **Grader** | Marks work against the student's own rubric and gives a real grade. |
+| **Plans** | Free, Plus and Pro. Every limit is a row in `public.plans`, enforced in Postgres. |
+| **Settings** | The fourth tab: plan and meters, profile, notifications, version. |
 
 Every tab is a real screen: Home is the assignment list, Rubrics owns saved
-rubrics, Albus is the chat, Tools is the catalogue. Focus Mode, the plan editor,
-grading, the month calendar and notification settings all exist.
+rubrics, Tools is the catalogue, Settings owns the plan and the preferences.
+Focus Mode, the plan editor, grading, the month calendar and notification
+settings all exist.
+
+**Ask Albus is not a tab.** It was, and the tell that it should not have been is
+that the tab carried an assignment *picker* — a surface with no context of its
+own, asking the student to supply it. It now opens from inside an assignment,
+where the rubric and the deadline are already known, and it is Pro-only. See
+`AskAlbus.swift`.
 
 ## Two things that are load-bearing
 
@@ -155,10 +167,10 @@ rebuild that called `removeAllPendingNotificationRequests` would delete a
 running timer's only alert — `reschedule` can fire mid-session. The rebuild only
 ever touches `albus.plan.*`, checked in both the client and the coordinator.
 
-*The 64-slot ceiling is real for paying users only.* iOS keeps the 64
-soonest-firing pending notifications and silently discards the rest. Free tier
-caps at three assignments and never approaches it; Plus is uncapped. The planner
-allocates to 48 explicitly and logs anything it drops.
+*The 64-slot ceiling is real for Pro only.* iOS keeps the 64 soonest-firing
+pending notifications and silently discards the rest. Free caps at five active
+assignments and Plus at ten, so neither approaches it; Pro is uncapped. The
+planner allocates to 48 explicitly and logs anything it drops.
 
 ### Blocked on a Team ID
 
@@ -190,3 +202,110 @@ strings "$(ls -t $(find "$D" -name PendingNotifications.plist) | head -1)" | gre
 ```
 
 That is how the last two copy bugs were found, after every unit test was green.
+
+
+---
+
+## Albus Grader — the one number, and the one that was wrong
+
+Marking is the most expensive call the app makes, so three things about it are
+worth knowing before changing any of it.
+
+**A grade is not a mark total.** `overall_marks / total_marks` is the rubric's
+arithmetic — an MYP rubric totals 32, and "0/32" is not what a course writes at
+the top of the page. `grade_label` is the grade, in the scale the student names
+before anything is marked, and it is the reason the flow asks *how does your
+course mark this?* at all. A blind reading is structurally incapable of carrying
+one: the normaliser strips it after the model has spoken, and the client refuses
+it a second time.
+
+**A reservation is not a spend.** The usage slot is taken before the model runs,
+because that is what stops ten parallel requests each seeing zero used. The
+refund on failure is a fast path, not the guarantee — it needs the function to
+survive long enough to run. So `grading_spend_count` asks whether anything was
+actually bought (tokens billed, or a grading pointing at the row) and lets
+anything younger than fifteen minutes count as in flight. A reservation the
+runtime killed ages out by itself.
+
+**The meter and the gate must count the same way.** They did not, and the screen
+showed "3 left this week" directly above "that's this week's markings used",
+because the limit that refuses a free student is a daily cap of two.
+`grading_allowance()` returns every window and the client names whichever binds,
+breaking ties toward the *longer* one — at zero on both the hour and the day,
+promising one back in an hour is a promise the daily cap will not keep.
+
+### What no unit test caught
+
+Every defect in this feature so far has been green in the suite and obvious in
+the output. Read real responses:
+
+```bash
+deno test supabase/functions/_tests/          # the prompt, the normaliser, the signals
+xcodebuild test -scheme Albus -only-testing:AlbusUITests/GraderUITests
+```
+
+The UI tests drive the real backend. `testGraderMeterNamesTheWindowThatActuallyBinds`
+is the regression test for the meter — it asserts the shape the plan call
+returns, which the client decodes by hand and which has changed twice.
+
+Marking is deliberately *not* exercised end to end there: a grading is a real
+Opus call, and it is now a paid feature — a Free account gets `PLAN_UPGRADE_REQUIRED`
+before any model runs.
+
+
+---
+
+## Plans — Free, Plus, Pro
+
+| | Free (€0) | Plus (€7.99/mo) | Pro (€14.99/mo) |
+|---|---|---|---|
+| Active tasks | 5 | 10 | unlimited |
+| Ask Albus | — | — | 300 / month |
+| Albus Grader | — | 2 / week | 5 / week |
+| Saved rubrics | 3 | 5 | unlimited |
+| Tools | basic | expanded | all + curriculum intelligence |
+
+**The app enforces none of this**, and that is the design. `public.plans` is the
+single source of truth; the gate, the meter and the paywall all read it, and
+every refusal happens inside a Postgres transaction under a per-user lock.
+`EntitlementService` exists to draw the right screen. A tampered value there
+buys a nicer paywall and nothing else.
+
+### The one convention to know before touching any of it
+
+**`nil` is unlimited. `0` is not included.**
+
+This reverses what the code used to say. Before three tiers, `limit == 0` meant
+"no ceiling" — it was how Plus was expressed. Free now genuinely gets *zero*
+gradings, so the old reading would have shown every free student unlimited
+marking. `Allowance.isIncluded` is checked before `remaining` everywhere, and
+`PlanAllowanceTests` is what keeps it that way.
+
+The two exhausted-looking states are different products:
+
+| | what it means | what the student is shown |
+|---|---|---|
+| `limit == 0` | not on this plan | a price |
+| `remaining == 0` | bought, and used up | a date |
+
+Showing the second to somebody in the first state promises a Monday that never
+comes. Showing the first to somebody in the second sells a Plus subscriber Plus.
+
+### The device header
+
+`DeviceSignal` adds `x-albus-device` to the three function calls. It is
+`identifierForVendor` — per-vendor, resets on delete, not a hardware serial —
+and the server hashes it with a secret we do not ship before storing the digest.
+Withholding it costs a student nothing: a missing signal cannot escalate an
+account on its own. See `docs/security-model.md` § 6.
+
+### Verifying it
+
+```bash
+psql "$DATABASE_URL" -f scripts/verify-entitlements.sql   # 46 adversarial checks
+xcodebuild test -scheme Albus -only-testing:AlbusTests    # the client's half
+```
+
+The one thing neither can check is concurrency — a single connection cannot
+demonstrate a race, and will happily report a race-prone gate as clean. That
+check goes over HTTP with real sockets; the recipe is in the SQL file's header.

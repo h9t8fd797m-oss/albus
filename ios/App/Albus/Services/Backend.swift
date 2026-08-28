@@ -51,14 +51,32 @@ enum Backend {
             supabaseURL: url,
             supabaseKey: key,
             options: .init(
+                // Marking a full essay on Opus legitimately runs past thirty
+                // seconds, and the default sixty is close enough to that for a
+                // slow call to be abandoned while the server is still happily
+                // working on it. The student then sees a failure for work that
+                // *was* marked, having spent a grading to see it.
+                //
+                // Applied to the whole client rather than one call: the same
+                // headroom is harmless everywhere else, and a per-call timeout
+                // is not something this SDK exposes.
                 auth: .init(
                     // Keychain where available (survives app deletion, so a
                     // reinstall cannot reset the free quota), UserDefaults only
                     // when Keychain is genuinely unavailable. See the type.
                     storage: ResilientAuthStorage(),
                     autoRefreshToken: true
-                )
+                ),
+                global: .init(session: Self.patientSession)
             )
         )
     }
+
+    /// A session that waits as long as a grading actually takes.
+    private static let patientSession: URLSession = {
+        let configuration = URLSessionConfiguration.default
+        configuration.timeoutIntervalForRequest = 180
+        configuration.timeoutIntervalForResource = 240
+        return URLSession(configuration: configuration)
+    }()
 }

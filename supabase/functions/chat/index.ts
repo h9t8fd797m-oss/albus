@@ -13,6 +13,7 @@ import { requireUser } from "../_shared/auth.ts";
 import { errorResponse, HttpError, jsonResponse, mapPostgresError } from "../_shared/http.ts";
 import { chatReply } from "../_shared/anthropic.ts";
 import { recordTokensInBackground } from "../_shared/quota.ts";
+import { noteRefusal, recordSignals, type Signals } from "../_shared/signals.ts";
 import {
   buildChatSystemPrompt,
   buildChatUserPrompt,
@@ -184,10 +185,17 @@ async function loadContext(
 }
 
 Deno.serve(async (req) => {
+  // Hoisted so the `catch` can attribute a refusal. A denial that cannot
+  // be attributed is a denial the risk model cannot count.
+  let callerId: string | null = null;
+  let signals: Signals = { deviceHash: null, ipPrefixHash: null };
   try {
     if (req.method !== "POST") throw new HttpError(405, "METHOD_NOT_ALLOWED");
 
     const caller = await requireUser(req);
+    callerId = caller.id;
+    // Hashed here and only here. What reaches Postgres is two digests.
+    signals = await recordSignals(req, caller.id);
 
     let body: {
       message?: unknown;
@@ -268,6 +276,7 @@ Deno.serve(async (req) => {
       knowledge: knowledge.map((k) => k.section),
     });
   } catch (e) {
+    noteRefusal(e, callerId, "chat", signals);
     return errorResponse(e);
   }
 });

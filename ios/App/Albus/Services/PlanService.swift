@@ -57,7 +57,12 @@ struct PlanService {
         var errorDescription: String? {
             switch self {
             case .quotaReached:
-                "Free plans cover three assignments at a time. Finish one to start another."
+                // No number: Free keeps 5 open, Plus 10, Pro as many as the
+                // student is actually carrying. A literal here would be wrong
+                // for two of the three, and the one it was wrong for would
+                // never see it — which is how it stayed wrong.
+                "That's as many tasks as your plan keeps open at once. "
+                + "Finish one, or move up a plan."
             case .rateLimited:
                 "That's a lot of planning at once. Try again shortly."
             case .offline:
@@ -128,7 +133,8 @@ struct PlanService {
         guard let client else { throw Failure.unavailable }
 
         do {
-            return try await client.functions.invoke("breakdown", options: .init(body: body))
+            return try await client.functions.invoke(
+                "breakdown", options: .init(headers: DeviceSignal.headers(), body: body))
         } catch let error as FunctionsError {
             throw Self.translate(error)
         } catch let error as URLError {
@@ -146,7 +152,10 @@ struct PlanService {
 
         let body = try? JSONDecoder().decode(ErrorBody.self, from: data)
         switch body?.error {
-        case "FREE_PLAN_LIMIT_REACHED":                 return .quotaReached
+        // Both names: `FREE_PLAN_LIMIT_REACHED` is what migration 0034 retired,
+        // and an app in someone's hand is always older than the server it talks to.
+        case "PLAN_TASK_LIMIT_REACHED", "FREE_PLAN_LIMIT_REACHED":
+            return .quotaReached
         case "RATE_LIMIT_HOURLY", "RATE_LIMIT_DAILY":   return .rateLimited
         case "GLOBAL_CAPACITY_REACHED":                 return .unavailable
         default: break
