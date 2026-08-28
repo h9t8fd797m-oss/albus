@@ -53,9 +53,26 @@ let cachedPepper: Promise<CryptoKey> | null = null;
 function pepperKey(): Promise<CryptoKey> {
   if (cachedPepper) return cachedPepper;
   cachedPepper = (async () => {
-    const explicit = Deno.env.get("ALBUS_SIGNAL_PEPPER");
-    const fallback = Deno.env.get("ALBUS_SUPABASE_SECRET_KEY") ??
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
+    // Guarded. `Deno.env.get` *throws* without `--allow-env` rather than
+    // returning undefined, and an abuse-telemetry helper must never be the
+    // thing that raises out of a student's request. Without permission there is
+    // no pepper, and no pepper means no signal — `recordSignals` catches this
+    // and records nothing, which is the correct degradation. Falling back to a
+    // constant would be worse than useless: it would produce hashes anyone
+    // knowing the constant could reverse.
+    const env = (name: string): string | undefined => {
+      try {
+        return Deno.env.get(name);
+      } catch {
+        return undefined;
+      }
+    };
+    const explicit = env("ALBUS_SIGNAL_PEPPER");
+    const fallback = env("ALBUS_SUPABASE_SECRET_KEY") ??
+      env("SUPABASE_SERVICE_ROLE_KEY") ?? "";
+    if (!explicit && !fallback) {
+      throw new Error("no pepper material available; refusing to hash unpeppered");
+    }
     const material = explicit ?? `albus-signal-pepper|${fallback}`;
     return await crypto.subtle.importKey(
       "raw",

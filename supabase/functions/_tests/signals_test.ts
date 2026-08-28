@@ -5,8 +5,15 @@
 // or lets a client choose its own signal (and defeats the whole thing).
 
 import { assert, assertEquals, assertNotEquals } from "jsr:@std/assert";
-import { deviceId, ipPrefix, peppered } from "../_shared/signals.ts";
 import { mapPostgresError } from "../_shared/http.ts";
+
+// Set before `signals.ts` is imported, because the pepper is resolved once and
+// cached on first use. CI has no secrets, and hashing without a pepper is
+// refused by design — so the tests supply their own rather than depending on an
+// environment that will not exist on a runner.
+Deno.env.set("ALBUS_SIGNAL_PEPPER", "test-pepper-not-a-real-secret");
+
+const { deviceId, ipPrefix, peppered } = await import("../_shared/signals.ts");
 
 const req = (headers: Record<string, string>) =>
   new Request("https://example.test", { headers });
