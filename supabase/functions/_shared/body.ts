@@ -1,13 +1,7 @@
 import { HttpError } from "./http.ts";
 
-/**
- * Read JSON through a byte ceiling instead of calling `req.json()` unbounded.
- *
- * Field-level limits stop expensive prompts, but they happen after the entire
- * body has already been allocated. This closes the cheaper denial-of-service
- * path: stream until the endpoint's real maximum, cancel, and parse once.
- */
-export async function readJsonBody<T>(req: Request, maxBytes: number): Promise<T> {
+/** Read raw request bytes through a hard streaming ceiling. */
+export async function readRawBody(req: Request, maxBytes: number): Promise<Uint8Array> {
   const announced = Number(req.headers.get("content-length"));
   if (Number.isFinite(announced) && announced > maxBytes) {
     throw new HttpError(413, "PAYLOAD_TOO_LARGE");
@@ -38,6 +32,19 @@ export async function readJsonBody<T>(req: Request, maxBytes: number): Promise<T
     raw.set(chunk, offset);
     offset += chunk.byteLength;
   }
+
+  return raw;
+}
+
+/**
+ * Read JSON through a byte ceiling instead of calling `req.json()` unbounded.
+ *
+ * Field-level limits stop expensive prompts, but they happen after the entire
+ * body has already been allocated. This closes the cheaper denial-of-service
+ * path: stream until the endpoint's real maximum, cancel, and parse once.
+ */
+export async function readJsonBody<T>(req: Request, maxBytes: number): Promise<T> {
+  const raw = await readRawBody(req, maxBytes);
 
   try {
     const text = new TextDecoder("utf-8", { fatal: true }).decode(raw);

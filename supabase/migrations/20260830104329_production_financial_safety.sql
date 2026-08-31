@@ -109,6 +109,42 @@ $$;
 revoke all on function private.ai_reservation_cost(text, text)
   from public, anon, authenticated;
 
+-- A missing price must remain fail-expensive, but it must not remain silent.
+-- Keep this volatile because emitting the warning is an intentional observable
+-- side effect: it is the signal that the model-price catalogue needs updating.
+create or replace function private.ai_metered_cost(
+  p_model text,
+  p_input_tokens integer,
+  p_output_tokens integer
+) returns bigint
+language plpgsql
+volatile
+set search_path = ''
+as $$
+declare
+  v_input_rate integer;
+  v_output_rate integer;
+begin
+  select p.input_microusd_per_token, p.output_microusd_per_token
+    into v_input_rate, v_output_rate
+    from private.ai_model_prices p
+   where p.model = p_model;
+
+  if not found then
+    v_input_rate := 50;
+    v_output_rate := 100;
+    raise warning 'AI model "%" has no configured token price; using fallback input=50/output=100 micro-USD per token',
+      coalesce(p_model, '<null>');
+  end if;
+
+  return greatest(0, coalesce(p_input_tokens, 0))::bigint * v_input_rate
+       + greatest(0, coalesce(p_output_tokens, 0))::bigint * v_output_rate;
+end;
+$$;
+
+revoke all on function private.ai_metered_cost(text, integer, integer)
+  from public, anon, authenticated;
+
 -- Price the history before any rolling money fuse can rely on it. Existing
 -- token rows were written by the server and are clamped, so they can use the
 -- same uncached model prices as finalisation. A row without token evidence
@@ -120,13 +156,7 @@ update public.ai_usage u
          when u.input_tokens is null and u.output_tokens is null then null
          else least(
            10000000::bigint,
-           greatest(0, coalesce(u.input_tokens, 0))::bigint *
-             coalesce((select p.input_microusd_per_token
-                         from private.ai_model_prices p where p.model = u.model), 50)
-           +
-           greatest(0, coalesce(u.output_tokens, 0))::bigint *
-             coalesce((select p.output_microusd_per_token
-                         from private.ai_model_prices p where p.model = u.model), 100)
+           private.ai_metered_cost(u.model, u.input_tokens, u.output_tokens)
          )::integer
        end;
 
@@ -504,12 +534,10 @@ begin
          output_tokens = case when p_output_tokens is null then null else v_output end,
          actual_cost_microusd = case
            when p_input_tokens is null and p_output_tokens is null then null
-           else least(10000000,
-             v_input * coalesce((select p.input_microusd_per_token
-                                   from private.ai_model_prices p where p.model = u.model), 50)
-             +
-             v_output * coalesce((select p.output_microusd_per_token
-                                    from private.ai_model_prices p where p.model = u.model), 100))
+           else least(
+             10000000::bigint,
+             private.ai_metered_cost(u.model, v_input, v_output)
+           )::integer
            end,
          failure_code = case when p_state = 'failed'
                              then left(coalesce(p_failure_code, 'UNKNOWN'), 64)

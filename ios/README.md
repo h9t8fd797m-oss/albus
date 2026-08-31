@@ -302,7 +302,7 @@ account on its own. See `docs/security-model.md` § 6.
 ### Verifying it
 
 ```bash
-supabase test db --local                    # 86 policy and financial-safety checks
+supabase test db --local                    # 92 policy and financial-safety checks
 scripts/security-concurrency-local.sh       # real multi-connection limit races
 xcodebuild test -scheme Albus -only-testing:AlbusTests
 ```

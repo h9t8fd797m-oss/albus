@@ -370,6 +370,27 @@ select ok(not public.finalize_ai_usage((select id from test_usage), 'failed', 1,
 select is((select actual_cost_microusd from public.ai_usage
             where id = (select id from test_usage)), 110,
           'actual cost is derived from server-owned model prices');
+
+create temporary table test_unpriced_usage (id uuid primary key);
+with inserted as (
+  insert into public.ai_usage (
+    user_id, kind, model, attempt_state, reserved_cost_microusd
+  ) values (
+    '10000000-0000-4000-8000-000000000002', 'breakdown',
+    'claude-unpriced-test', 'reserved', 500000
+  ) returning id
+)
+insert into test_unpriced_usage select id from inserted;
+select is(
+  case when public.finalize_ai_usage(
+    (select id from test_unpriced_usage), 'completed', 10, 20, null
+  ) then (
+    select actual_cost_microusd from public.ai_usage
+     where id = (select id from test_unpriced_usage)
+  ) else null end,
+  2500,
+  'an unpriced model warns and retains the conservative 50/100 token rates'
+);
 select ok(
   exists (
     select 1 from pg_constraint c

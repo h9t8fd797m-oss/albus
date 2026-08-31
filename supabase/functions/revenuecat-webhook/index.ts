@@ -16,6 +16,7 @@
 // also where the stolen-subscription check lives.
 
 import { adminClient } from "../_shared/auth.ts";
+import { readRawBody } from "../_shared/body.ts";
 import { errorResponse, HttpError, jsonResponse } from "../_shared/http.ts";
 import {
   constantTimeEqual,
@@ -132,12 +133,7 @@ Deno.serve(async (req) => {
     // make us parse arbitrary input.
     requireAuthorised(req);
 
-    const announced = Number(req.headers.get("content-length"));
-    if (Number.isFinite(announced) && announced > MAX_BODY_BYTES) {
-      throw new HttpError(413, "PAYLOAD_TOO_LARGE");
-    }
-    const raw = new Uint8Array(await req.arrayBuffer());
-    if (raw.byteLength > MAX_BODY_BYTES) throw new HttpError(413, "PAYLOAD_TOO_LARGE");
+    const raw = await readRawBody(req, MAX_BODY_BYTES);
     await requireValidSignature(req, raw);
 
     let payload: { event?: RevenueCatEvent };

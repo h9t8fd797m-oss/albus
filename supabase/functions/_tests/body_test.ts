@@ -1,5 +1,5 @@
-import { assertEquals, assertRejects } from "jsr:@std/assert@1";
-import { readJsonBody } from "../_shared/body.ts";
+import { assert, assertEquals, assertRejects } from "jsr:@std/assert@1";
+import { readJsonBody, readRawBody } from "../_shared/body.ts";
 import { HttpError } from "../_shared/http.ts";
 
 Deno.test("bounded JSON reader accepts a body below its byte ceiling", async () => {
@@ -33,6 +33,28 @@ Deno.test("bounded JSON reader stops a streamed body that lies about its size", 
   const request = new Request("https://example.test", { method: "POST", body: stream });
   const error = await assertRejects(() => readJsonBody(request, 32), HttpError);
   assertEquals(error.status, 413);
+});
+
+Deno.test("bounded raw reader cancels an unannounced oversized chunked body", async () => {
+  let pulls = 0;
+  let cancelled = false;
+  const stream = new ReadableStream<Uint8Array>({
+    pull(controller) {
+      pulls += 1;
+      controller.enqueue(new Uint8Array(8));
+    },
+    cancel() {
+      cancelled = true;
+    },
+  });
+  const request = new Request("https://example.test", { method: "POST", body: stream });
+
+  assertEquals(request.headers.get("content-length"), null);
+  const error = await assertRejects(() => readRawBody(request, 12), HttpError);
+  assertEquals(error.status, 413);
+  assertEquals(error.code, "PAYLOAD_TOO_LARGE");
+  assert(cancelled, "the reader should cancel its source after crossing the ceiling");
+  assert(pulls < 10, "the reader should stop rather than draining an unbounded stream");
 });
 
 Deno.test("bounded JSON reader gives malformed input a safe public error", async () => {
