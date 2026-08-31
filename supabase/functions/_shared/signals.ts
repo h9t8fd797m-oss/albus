@@ -113,7 +113,10 @@ export function ipPrefix(req: Request): string | null {
     return hextets.length === 3 ? `v6:${hextets.join(":")}` : null;
   }
   const octets = addr.split(".");
-  if (octets.length !== 4 || octets.some((o) => !/^\d{1,3}$/.test(o))) return null;
+  if (
+    octets.length !== 4 ||
+    octets.some((o) => !/^\d{1,3}$/.test(o) || Number(o) > 255)
+  ) return null;
   return `v4:${octets.slice(0, 3).join(".")}`;
 }
 
@@ -125,7 +128,10 @@ export function deviceId(req: Request): string | null {
   // An IDFV is a UUID. Anything else is a client bug or someone probing, and
   // either way it is not worth hashing — an unbounded header must never become
   // an unbounded write.
-  return /^[0-9a-fA-F-]{36}$/.test(trimmed) ? trimmed.toLowerCase() : null;
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+      .test(trimmed)
+    ? trimmed.toLowerCase()
+    : null;
 }
 
 /**
@@ -152,12 +158,16 @@ export async function recordSignals(req: Request, userId: string): Promise<Signa
       const writes: PromiseLike<unknown>[] = [];
       if (deviceHash) {
         writes.push(admin.rpc("record_identity_link", {
-          p_user_id: userId, p_kind: "device", p_hash: deviceHash,
+          p_user_id: userId,
+          p_kind: "device",
+          p_hash: deviceHash,
         }));
       }
       if (ipPrefixHash) {
         writes.push(admin.rpc("record_identity_link", {
-          p_user_id: userId, p_kind: "ip_prefix", p_hash: ipPrefixHash,
+          p_user_id: userId,
+          p_kind: "ip_prefix",
+          p_hash: ipPrefixHash,
         }));
       }
       await Promise.all(writes);
@@ -217,7 +227,10 @@ const DENIAL_SEVERITY: Record<string, "info" | "warn" | "alert"> = {
   RUBRIC_PLAN_LIMIT: "info",
   RATE_LIMIT_HOURLY: "warn",
   RATE_LIMIT_DAILY: "warn",
+  API_RATE_LIMIT: "warn",
   GLOBAL_CAPACITY_REACHED: "alert",
+  AI_EMERGENCY_STOP: "alert",
+  FAIR_USE_REACHED: "warn",
   VERIFICATION_REQUIRED: "warn",
   ABUSE_SUSPECTED: "alert",
   RUBRIC_CEILING: "alert",
@@ -241,7 +254,8 @@ export function logDenial(
 
   const kind = code === "ABUSE_SUSPECTED" || code === "VERIFICATION_REQUIRED"
     ? "risk.blocked"
-    : code.startsWith("RATE_LIMIT") || code === "GLOBAL_CAPACITY_REACHED"
+    : code.startsWith("RATE_LIMIT") || code === "GLOBAL_CAPACITY_REACHED" ||
+        code === "AI_EMERGENCY_STOP"
     ? "ratelimit.hit"
     : "entitlement.denied";
 

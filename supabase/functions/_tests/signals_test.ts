@@ -15,8 +15,7 @@ Deno.env.set("ALBUS_SIGNAL_PEPPER", "test-pepper-not-a-real-secret");
 
 const { deviceId, ipPrefix, peppered } = await import("../_shared/signals.ts");
 
-const req = (headers: Record<string, string>) =>
-  new Request("https://example.test", { headers });
+const req = (headers: Record<string, string>) => new Request("https://example.test", { headers });
 
 Deno.test("an IPv4 address is reduced to its /24", () => {
   assertEquals(ipPrefix(req({ "x-forwarded-for": "203.0.113.42" })), "v4:203.0.113");
@@ -61,6 +60,7 @@ Deno.test("a missing or unparseable forwarded-for yields no signal", () => {
   assertEquals(ipPrefix(req({})), null);
   assertEquals(ipPrefix(req({ "x-forwarded-for": "not-an-address" })), null);
   assertEquals(ipPrefix(req({ "x-forwarded-for": "999.1.1" })), null);
+  assertEquals(ipPrefix(req({ "x-forwarded-for": "999.1.1.1" })), null);
   assertEquals(ipPrefix(req({ "x-forwarded-for": "  " })), null);
 });
 
@@ -68,6 +68,7 @@ Deno.test("the device header is accepted only in the shape of an IDFV", () => {
   const idfv = "9F1A2B3C-4D5E-4F60-8A1B-2C3D4E5F6071";
   assertEquals(deviceId(req({ "x-albus-device": idfv })), idfv.toLowerCase());
   assertEquals(deviceId(req({ "x-albus-device": "not-a-uuid" })), null);
+  assertEquals(deviceId(req({ "x-albus-device": "-".repeat(36) })), null);
   assertEquals(deviceId(req({ "x-albus-device": "x".repeat(4096) })), null);
   assertEquals(deviceId(req({})), null);
 });
@@ -111,6 +112,21 @@ Deno.test("going too fast is 429, and stays distinct from running out", () => {
     mapPostgresError("RATE_LIMIT_HOURLY").code,
     mapPostgresError("ALLOWANCE_WEEKLY").code,
   );
+});
+
+Deno.test("the outer request flood gate is a retryable 429", () => {
+  const e = mapPostgresError("API_RATE_LIMIT");
+  assertEquals(e.status, 429);
+  assertEquals(e.code, "RATE_LIMIT_HOURLY");
+  assert(!e.message.includes("API_RATE_LIMIT"));
+});
+
+Deno.test("monthly AI safety ceiling is distinct from rate and entitlement", () => {
+  const e = mapPostgresError("FAIR_USE_REACHED");
+  assertEquals(e.status, 402);
+  assertEquals(e.code, "FAIR_USE_REACHED");
+  assert(!e.message.includes("upgrade"));
+  assert(!e.message.includes("FAIR_USE_REACHED"));
 });
 
 // A refusal that names the signal that produced it is a refusal that tells the

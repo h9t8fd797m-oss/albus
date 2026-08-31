@@ -50,6 +50,7 @@ struct PlanService {
     enum Failure: LocalizedError, Equatable {
         case quotaReached
         case rateLimited
+        case fairUseReached
         case offline
         case unavailable
         case rejected(String)
@@ -65,6 +66,9 @@ struct PlanService {
                 + "Finish one, or move up a plan."
             case .rateLimited:
                 "That's a lot of planning at once. Try again shortly."
+            case .fairUseReached:
+                "This account has reached its monthly AI safety limit. "
+                + "Existing tasks still work, and capacity returns gradually over 30 days."
             case .offline:
                 "No connection — Albus will plan this when you're back online."
             case .unavailable:
@@ -157,6 +161,7 @@ struct PlanService {
         case "PLAN_TASK_LIMIT_REACHED", "FREE_PLAN_LIMIT_REACHED":
             return .quotaReached
         case "RATE_LIMIT_HOURLY", "RATE_LIMIT_DAILY":   return .rateLimited
+        case "FAIR_USE_REACHED":                        return .fairUseReached
         case "GLOBAL_CAPACITY_REACHED":                 return .unavailable
         default: break
         }

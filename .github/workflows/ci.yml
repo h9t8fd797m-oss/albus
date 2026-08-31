@@ -27,7 +27,7 @@ jobs:
         run: |
           set -euo pipefail
           # Real key shapes. .env.example uses xxxx placeholders and is exempt.
-          PATTERN='sb_secret_[A-Za-z0-9]{20,}|sk-ant-[A-Za-z0-9_-]{20,}|eyJ[A-Za-z0-9_-]{30,}\.[A-Za-z0-9_-]{30,}'
+          PATTERN='sb_secret_[A-Za-z0-9]{20,}|sbp_[A-Za-z0-9]{20,}|sk-ant-[A-Za-z0-9_-]{20,}|gh[pousr]_[A-Za-z0-9]{30,}|-----BEGIN (EC |RSA )?PRIVATE KEY-----|eyJ[A-Za-z0-9_-]{30,}\.[A-Za-z0-9_-]{30,}'
           if grep -rEn "$PATTERN" . \
                --exclude-dir=.git --exclude=.env.example --exclude=ci.yml; then
             echo "::error::A live credential appears to be committed. Rotate it, then remove it."

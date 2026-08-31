@@ -11,8 +11,7 @@
 // bypassed before that trigger existed.
 
 import { adminClient, type Caller } from "./auth.ts";
-import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
-import { HttpError } from "./http.ts";
+import { HttpError, mapPostgresError } from "./http.ts";
 
 /**
  * Refuse early if the student is already holding as many open tasks as their
@@ -66,35 +65,102 @@ export async function assertCanGeneratePlan(caller: Caller): Promise<void> {
   }
 }
 
+export type AIKind = "breakdown" | "chat" | "grade";
+export type AIUsageState = "completed" | "failed";
+
 /**
- * Records token usage after the response has been sent.
+ * Bound all authenticated traffic before parsing or telemetry writes.
  *
- * `void (async () => ...)()` was losing these writes: Supabase Edge Runtime may
- * tear the isolate down as soon as the response is returned, so a promise with
- * nothing holding it is not guaranteed to run. `EdgeRuntime.waitUntil` keeps
- * the worker alive until it settles. Still fire-and-forget from the caller's
- * point of view — token accounting must never fail a student's request — but
- * now it actually happens.
+ * AI-specific limits are intentionally much tighter, but they happen after a
+ * request has proved it is eligible. Without this outer gate a free account
+ * could call a paid endpoint forever, be refused before reserving AI usage,
+ * and still create auth, database and security-log work on every request.
  */
-export function recordTokensInBackground(
-  db: SupabaseClient,
+export async function assertAPIRequestRate(userId: string, endpoint: AIKind): Promise<void> {
+  const { error } = await adminClient().rpc("check_api_request_rate", {
+    p_user_id: userId,
+    p_endpoint: endpoint,
+  });
+  if (error) throw mapPostgresError(error.message);
+}
+
+/**
+ * Reserve with the service client, never the caller-scoped client.
+ *
+ * The old RPC had to be executable by `authenticated` because it recovered the
+ * user from `auth.uid()`. That meant a modified client could call the metering
+ * API directly and fill the project-wide fuse without ever touching a model.
+ * The replacement accepts only the id we got from a verified JWT and is granted
+ * only to `service_role`.
+ */
+export async function reserveAIUsage(
+  userId: string,
+  kind: AIKind,
+  model: string,
+): Promise<string> {
+  const { data, error } = await adminClient().rpc("check_and_record_ai_usage", {
+    p_user_id: userId,
+    p_kind: kind,
+    p_model: model,
+  });
+  if (error) throw mapPostgresError(error.message);
+  if (typeof data !== "string" || data.length === 0) {
+    throw new HttpError(500, "USAGE_RESERVATION_FAILED");
+  }
+  return data;
+}
+
+/**
+ * Finish one reservation exactly once.
+ *
+ * Failed work remains in the attempt ledger because it may have reached the
+ * provider and must continue to count against rate and monetary limits. The
+ * database excludes it from the student's purchased allowance. Accounting is
+ * awaited instead of detached: Edge isolates may be torn down immediately
+ * after a response, and a cost ledger that only usually writes is not a ledger.
+ *
+ * Failure is soft for the product response. The original reservation already
+ * carries a conservative cost and remains rate-limited even if this write has
+ * an infrastructure failure, so financial protection fails closed.
+ */
+export async function finalizeAIUsage(
   usageId: string,
-  inputTokens: number,
-  outputTokens: number,
-): void {
-  const write = (async () => {
+  state: AIUsageState,
+  inputTokens: number | null = null,
+  outputTokens: number | null = null,
+  failureCode: string | null = null,
+): Promise<boolean> {
+  let lastFailure = "unknown";
+  // A transient database/network edge after a paid provider response should
+  // not leave the ledger reserved merely because one write was unlucky. Keep
+  // retries bounded and synchronous; the database transition itself is
+  // one-way, so a retry cannot double-charge or rewrite a terminal outcome.
+  for (let attempt = 1; attempt <= 3; attempt++) {
     try {
-      await db.rpc("record_ai_usage_tokens", {
+      const { data, error } = await adminClient().rpc("finalize_ai_usage", {
         p_usage_id: usageId,
+        p_state: state,
         p_input_tokens: inputTokens,
         p_output_tokens: outputTokens,
+        p_failure_code: failureCode,
       });
+      if (!error) {
+        if (data !== true) {
+          console.error("AI usage finalisation changed no reservation", { usageId, state });
+        }
+        return data === true;
+      }
+      lastFailure = error.message;
     } catch (e) {
-      console.warn("token accounting failed:", e);
+      lastFailure = e instanceof Error ? e.message : String(e);
     }
-  })();
+  }
+  console.error("AI usage finalisation failed after three attempts:", lastFailure);
+  return false;
+}
 
-  const runtime = (globalThis as { EdgeRuntime?: { waitUntil(p: Promise<unknown>): void } })
-    .EdgeRuntime;
-  if (runtime?.waitUntil) runtime.waitUntil(write);
+/** Only a short machine code reaches the ledger; never a prompt or provider message. */
+export function usageFailureCode(error: unknown): string {
+  const raw = (error as { code?: unknown })?.code;
+  return typeof raw === "string" && /^[A-Z0-9_]{1,64}$/.test(raw) ? raw : "UNKNOWN";
 }

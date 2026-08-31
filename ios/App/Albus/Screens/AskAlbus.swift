@@ -38,7 +38,7 @@ struct AskAlbusSheet: View {
 
 /// The conversation itself. Owns its transcript and nothing else.
 struct Conversation: View {
-    let assignment: Assignment?
+    let assignment: Assignment
 
     @State private var turns: [ChatService.Turn] = []
     /// 1-based, when the student narrowed the question to one step.
@@ -58,7 +58,7 @@ struct Conversation: View {
         }
         // A new grounding is a new conversation; carrying turns across would
         // send one assignment's history as context for another.
-        .onChange(of: assignment?.id) {
+        .onChange(of: assignment.id) {
             turns.removeAll()
             failure = nil
             focusStep = nil
@@ -72,7 +72,7 @@ struct Conversation: View {
     /// start?" being answered about the essay and about the paragraph in front
     /// of them.
     @ViewBuilder private var stepPicker: some View {
-        let steps = (assignment?.subtasks ?? []).sorted { $0.ordinal < $1.ordinal }
+        let steps = assignment.subtasks.sorted { $0.ordinal < $1.ordinal }
         if steps.count > 1 {
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: Tokens.Spacing.s) {
@@ -128,30 +128,26 @@ struct Conversation: View {
 
     private var opener: some View {
         VStack(alignment: .leading, spacing: Tokens.Spacing.m) {
-            AlbusNote(assignment == nil
-                      ? "Ask me about planning and studying. Pick an assignment above and I can answer about that specific plan."
-                      : "Ask me anything about **\(assignment?.title ?? "")** — where to start, how to structure it, what the rubric wants.")
-            if assignment != nil {
-                VStack(alignment: .leading, spacing: Tokens.Spacing.s) {
-                    ForEach(Self.suggestions, id: \.self) { suggestion in
-                        Button {
-                            draft = suggestion
-                            Task { await send() }
-                        } label: {
-                            HStack {
-                                Text(suggestion)
-                                    .font(Tokens.Typography.caption)
-                                    .foregroundStyle(Tokens.Palette.accent)
-                                    .multilineTextAlignment(.leading)
-                                Spacer(minLength: 0)
-                            }
-                            .padding(.horizontal, Tokens.Spacing.m)
-                            .padding(.vertical, Tokens.Spacing.s)
-                            .background(Tokens.Palette.accentWash,
-                                        in: Capsule())
+            AlbusNote("Ask me anything about **\(assignment.title)** — where to start, how to structure it, what the rubric wants.")
+            VStack(alignment: .leading, spacing: Tokens.Spacing.s) {
+                ForEach(Self.suggestions, id: \.self) { suggestion in
+                    Button {
+                        draft = suggestion
+                        Task { await send() }
+                    } label: {
+                        HStack {
+                            Text(suggestion)
+                                .font(Tokens.Typography.caption)
+                                .foregroundStyle(Tokens.Palette.accent)
+                                .multilineTextAlignment(.leading)
+                            Spacer(minLength: 0)
                         }
-                        .buttonStyle(.plain)
+                        .padding(.horizontal, Tokens.Spacing.m)
+                        .padding(.vertical, Tokens.Spacing.s)
+                        .background(Tokens.Palette.accentWash,
+                                    in: Capsule())
                     }
+                    .buttonStyle(.plain)
                 }
             }
         }
@@ -224,11 +220,20 @@ struct Conversation: View {
         isSending = true
         defer { isSending = false }
 
+        // A locally saved assignment can outlive a failed plan request. It has
+        // no server row yet, so there is nothing the caller-scoped backend can
+        // ground a conversation in. Never manufacture an id or fall back to a
+        // general chat: both would violate what Ask Albus promises.
+        guard let assignmentID = assignment.remoteID else {
+            failure = "This assignment needs a finished Albus plan before you can ask about it."
+            return
+        }
+
         // History excludes the message being sent — the server appends it.
         let history = Array(turns.dropLast())
 
         do {
-            let reply = try await service.send(message, about: assignment?.remoteID,
+            let reply = try await service.send(message, about: assignmentID,
                                                step: focusStep, history: history)
             turns.append(.init(role: .assistant, content: reply.reply))
         } catch let error as ChatService.Failure {

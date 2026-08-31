@@ -302,10 +302,12 @@ account on its own. See `docs/security-model.md` § 6.
 ### Verifying it
 
 ```bash
-psql "$DATABASE_URL" -f scripts/verify-entitlements.sql   # 46 adversarial checks
-xcodebuild test -scheme Albus -only-testing:AlbusTests    # the client's half
+supabase test db --local                    # 86 policy and financial-safety checks
+scripts/security-concurrency-local.sh       # real multi-connection limit races
+xcodebuild test -scheme Albus -only-testing:AlbusTests
 ```
 
 The one thing neither can check is concurrency — a single connection cannot
 demonstrate a race, and will happily report a race-prone gate as clean. That
-check goes over HTTP with real sockets; the recipe is in the SQL file's header.
+check uses twelve independent Postgres connections and requires exactly one
+winner at the final grading, active-task, and rubric slot.

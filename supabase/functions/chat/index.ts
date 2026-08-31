@@ -6,13 +6,20 @@
 // Not a general chatbot, deliberately. Every turn is grounded in work the
 // caller owns, which is both the product argument and the security one: the
 // assignment is loaded through the caller-scoped client, so RLS decides what
-// can enter the context window. A forged assignment_id simply finds nothing.
+// can enter the context window. Missing, forged and foreign ids are refused
+// before retrieval, quota reservation, or an Anthropic call.
 
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import { requireUser } from "../_shared/auth.ts";
-import { errorResponse, HttpError, jsonResponse, mapPostgresError } from "../_shared/http.ts";
+import { readJsonBody } from "../_shared/body.ts";
+import { errorResponse, HttpError, jsonResponse } from "../_shared/http.ts";
 import { chatReply } from "../_shared/anthropic.ts";
-import { recordTokensInBackground } from "../_shared/quota.ts";
+import {
+  assertAPIRequestRate,
+  finalizeAIUsage,
+  reserveAIUsage,
+  usageFailureCode,
+} from "../_shared/quota.ts";
 import { noteRefusal, recordSignals, type Signals } from "../_shared/signals.ts";
 import {
   buildChatSystemPrompt,
@@ -25,8 +32,7 @@ import {
 } from "../_shared/chat_prompt.ts";
 import { loadKnowledge } from "../_shared/knowledge.ts";
 
-const UUID_RE =
-  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 const MODEL_CHAT_RUBRIC = "claude-sonnet-5";
 const MODEL_CHAT_PLAIN = "claude-haiku-4-5";
@@ -123,7 +129,9 @@ async function loadContext(
     rubrics: {
       name: string;
       body: string | null;
-      rubric_items: Array<{ code: string | null; name: string; marks: number | null; ordinal: number }>;
+      rubric_items: Array<
+        { code: string | null; name: string; marks: number | null; ordinal: number }
+      >;
     } | null;
     subtasks: Array<{
       title: string;
@@ -178,8 +186,8 @@ async function loadContext(
         criterionCode: c?.code ?? null,
       };
     }),
-    rubricSummary: personalSummary
-      ?? (criteria.size > 0 ? [...criteria.values()].join("\n") : null),
+    rubricSummary: personalSummary ??
+      (criteria.size > 0 ? [...criteria.values()].join("\n") : null),
     focusStep,
   };
 }
@@ -194,29 +202,27 @@ Deno.serve(async (req) => {
 
     const caller = await requireUser(req);
     callerId = caller.id;
+    await assertAPIRequestRate(caller.id, "chat");
     // Hashed here and only here. What reaches Postgres is two digests.
     signals = await recordSignals(req, caller.id);
 
-    let body: {
+    const body = await readJsonBody<{
       message?: unknown;
       assignment_id?: unknown;
       history?: unknown;
       step?: unknown;
-    };
-    try {
-      body = await req.json();
-    } catch {
-      throw new HttpError(400, "INVALID_JSON");
-    }
+    }>(req, 32_768);
 
     const message = typeof body.message === "string" ? body.message.trim() : "";
     if (message.length < 1) throw new HttpError(422, "EMPTY_MESSAGE");
     if (message.length > MAX_MESSAGE_CHARS) throw new HttpError(413, "MESSAGE_TOO_LONG");
 
-    const assignmentId =
-      typeof body.assignment_id === "string" && UUID_RE.test(body.assignment_id)
-        ? body.assignment_id
-        : null;
+    const assignmentId = typeof body.assignment_id === "string" && UUID_RE.test(body.assignment_id)
+      ? body.assignment_id
+      : null;
+    if (!assignmentId) {
+      throw new HttpError(422, "ASSIGNMENT_REQUIRED", "Open an assignment before asking Albus.");
+    }
 
     // 1-based step number the student is looking at. Bounds are checked against
     // the loaded plan below; anything out of range is simply ignored rather than
@@ -227,54 +233,63 @@ Deno.serve(async (req) => {
     // Both loads in parallel: one is about the assignment, one about the
     // student, and neither needs the other.
     const [context, student] = await Promise.all([
-      assignmentId ? loadContext(caller.db, assignmentId, focusStep) : Promise.resolve(null),
+      loadContext(caller.db, assignmentId, focusStep),
       loadStudent(caller.db),
     ]) as [ChatContext | null, StudentContext | null];
+
+    // Unknown and foreign ids deliberately have the same public result. RLS
+    // makes both `null`; answering either one generally would reopen the exact
+    // general-chat surface the product removed and would still cost money.
+    if (!context) {
+      throw new HttpError(404, "ASSIGNMENT_NOT_FOUND", "That assignment is unavailable.");
+    }
 
     // Which corpus, if any, comes from the caller's own profile row — never
     // from the request. A student cannot ask for another qualification's
     // reference material by claiming to study it.
     const knowledge = await loadKnowledge(caller.db, student?.curriculumCode ?? null, message);
 
-    // Curriculum questions deserve the stronger model even with no assignment
-    // open: "does an E in TOK fail my diploma" is not a question to answer
-    // approximately.
-    const model = context?.rubricSummary || knowledge.length > 0
+    const model = context.rubricSummary || knowledge.length > 0
       ? MODEL_CHAT_RUBRIC
       : MODEL_CHAT_PLAIN;
 
     // Reserve a slot before spending anything. Atomic in Postgres, so two
     // concurrent requests cannot both pass the last remaining unit of quota.
-    const { data: usageId, error: quotaError } = await caller.db.rpc(
-      "check_and_record_ai_usage",
-      { p_kind: "chat", p_model: model },
-    );
-    if (quotaError) throw mapPostgresError(quotaError.message);
+    const usageId = await reserveAIUsage(caller.id, "chat", model);
+    let result: Awaited<ReturnType<typeof chatReply>> | null = null;
+    try {
+      result = await chatReply(
+        model,
+        buildChatSystemPrompt(context, student),
+        sanitiseHistory(body.history),
+        buildChatUserPrompt(knowledge, message),
+      );
 
-    const result = await chatReply(
-      model,
-      buildChatSystemPrompt(context, student),
-      sanitiseHistory(body.history),
-      buildChatUserPrompt(knowledge, message),
-    );
-
-    if (usageId) {
-      recordTokensInBackground(
-        caller.db,
-        usageId as string,
+      await finalizeAIUsage(
+        usageId,
+        "completed",
         result.inputTokens,
         result.outputTokens,
       );
-    }
 
-    return jsonResponse({
-      reply: result.text,
-      model,
-      grounded: context !== null,
-      // Which sections shaped the answer. Cheap to return, and the difference
-      // between trusting the retrieval and hoping it worked.
-      knowledge: knowledge.map((k) => k.section),
-    });
+      return jsonResponse({
+        reply: result.text,
+        model,
+        grounded: true,
+        // Which sections shaped the answer. Cheap to return, and the difference
+        // between trusting the retrieval and hoping it worked.
+        knowledge: knowledge.map((k) => k.section),
+      });
+    } catch (e) {
+      await finalizeAIUsage(
+        usageId,
+        "failed",
+        result?.inputTokens ?? null,
+        result?.outputTokens ?? null,
+        usageFailureCode(e),
+      );
+      throw e;
+    }
   } catch (e) {
     noteRefusal(e, callerId, "chat", signals);
     return errorResponse(e);

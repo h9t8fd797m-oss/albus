@@ -38,6 +38,7 @@ struct ChatService {
         /// when the next one arrives, which is the only actionable part.
         case allowanceUsed(resetsAt: Date?)
         case rateLimited
+        case fairUseReached
         case offline
         case unavailable
         case rejected(String)
@@ -45,7 +46,7 @@ struct ChatService {
         var errorDescription: String? {
             switch self {
             case .notOnPlan:
-                "Ask Albus is part of Plus and Pro."
+                "Ask Albus is part of Pro."
             case .allowanceUsed(let resetsAt):
                 if let resetsAt, resetsAt > .now {
                     "That's this month's messages used. The next one is back "
@@ -55,6 +56,9 @@ struct ChatService {
                 }
             case .rateLimited:
                 "That's a lot of questions at once. Try again shortly."
+            case .fairUseReached:
+                "This account has reached its monthly AI safety limit. "
+                + "Capacity returns gradually over 30 days."
             case .offline:
                 "No connection — Albus needs one to answer."
             case .unavailable:
@@ -99,7 +103,7 @@ struct ChatService {
         self.client = client
     }
 
-    func send(_ message: String, about assignmentID: UUID?, step: Int? = nil,
+    func send(_ message: String, about assignmentID: UUID, step: Int? = nil,
               history: [Turn]) async throws -> Reply {
         let trimmed = String(message.trimmingCharacters(in: .whitespacesAndNewlines)
             .prefix(Self.maxMessageChars))
@@ -108,7 +112,7 @@ struct ChatService {
 
         let body = Request(
             message: trimmed,
-            assignment_id: assignmentID?.uuidString.lowercased(),
+            assignment_id: assignmentID.uuidString.lowercased(),
             history: Array(history.suffix(Self.maxHistoryTurns)),
             step: step
         )
@@ -133,6 +137,7 @@ struct ChatService {
         case "PLAN_UPGRADE_REQUIRED":                 return .notOnPlan
         case "ALLOWANCE_MONTHLY":                     return .allowanceUsed(resetsAt: nil)
         case "RATE_LIMIT_HOURLY", "RATE_LIMIT_DAILY": return .rateLimited
+        case "FAIR_USE_REACHED":                      return .fairUseReached
         case "VERIFICATION_REQUIRED", "ABUSE_SUSPECTED":
             // Both carry a message written for a student to read, and neither
             // is a thing the app can fix by offering a plan.

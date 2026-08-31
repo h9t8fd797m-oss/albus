@@ -19,7 +19,7 @@ bad()  { printf '  \033[31m✗\033[0m %s\n' "$1"; fail=1; }
 hdr()  { printf '\n\033[1m%s\033[0m\n' "$1"; }
 
 hdr "No secrets committed"
-PATTERN='sb_secret_[A-Za-z0-9]{20,}|sk-ant-[A-Za-z0-9_-]{20,}|eyJ[A-Za-z0-9_-]{30,}\.[A-Za-z0-9_-]{30,}'
+PATTERN='sb_secret_[A-Za-z0-9]{20,}|sbp_[A-Za-z0-9]{20,}|sk-ant-[A-Za-z0-9_-]{20,}|gh[pousr]_[A-Za-z0-9]{30,}|-----BEGIN (EC |RSA )?PRIVATE KEY-----|eyJ[A-Za-z0-9_-]{30,}\.[A-Za-z0-9_-]{30,}'
 # Tracked files only. CI scans a fresh checkout, which by definition contains
 # nothing gitignored — scanning the working tree instead finds your real .env
 # and prints your live keys to the terminal, which is a worse outcome than the
@@ -59,6 +59,16 @@ if command -v deno >/dev/null; then
     && deno task test >/dev/null 2>&1 ) && pass "check, lint and test" || bad "deno gate failed"
 else
   pass "deno not installed — skipped"
+fi
+
+hdr "Database security tests"
+if command -v supabase >/dev/null && supabase status >/dev/null 2>&1; then
+  supabase test db --local >/dev/null 2>&1 \
+    && scripts/security-concurrency-local.sh >/dev/null 2>&1 \
+    && pass "pgTAP policy checks plus real multi-connection races" \
+    || bad "database security gate failed"
+else
+  bad "local Supabase is not running — database security was not verified"
 fi
 
 hdr "Core logic tests"

@@ -20,11 +20,11 @@ ios/
 
 supabase/
   migrations/       Append-only SQL. The schema and every security rule.
-  functions/        Edge Functions — breakdown, chat, receipt, webhook
+  functions/        Edge Functions — breakdown, assignment chat, grader, RevenueCat
   config.toml       Auth and session configuration
 
 docs/               architecture, database, security model, backend
-scripts/            verify-rls.sql, setup-github.sh
+scripts/            local CI, adversarial concurrency tests, data generators
 .github/workflows/  CI and migration deploy
 ```
 
@@ -32,17 +32,15 @@ scripts/            verify-rls.sql, setup-github.sh
 
 | | State |
 |---|---|
-| Database, RLS, security rules | **done** — 14 tables, verified |
+| Database, RLS, financial controls | **built** — local adversarial suite; live deployment pending |
 | Accounts (anonymous-first) | **done** |
 | `POST /breakdown` — study plans | **done**, deployed |
 | `POST /chat` — Ask Albus | **done**, deployed |
-| Rate limiting | **done** — hourly and daily, race-proof |
-| Scheduler | **done** — 25 tests + 300 fuzz scenarios |
-| Estimator | **done** — 10 tests |
-| Design tokens, app shell | **done** — runs in the simulator |
-| **Screens** | **not started** — tabs show placeholders |
-| Payments | deferred to RevenueCat |
-| Curriculum corpus | 1 course of ~18 |
+| Rate/cost limiting | **built** — request, attempt, allowance, per-account and global USD fuses |
+| Scheduler, estimator, notifications | **built** and unit-tested |
+| Albus Grader | **built** — rubric-backed history and blind-reading fallback |
+| Ask Albus | **built** — Pro-only inside an assignment |
+| Payments | server path fails closed; RevenueCat SDK/products still pending |
 
 ## Getting set up
 
@@ -67,9 +65,11 @@ Signing is deliberately unset, so it runs in the simulator as is. See
 ### Running the tests
 
 ```bash
-cd ios/AlbusCore && swift test        # 37 — scheduler, estimator, fuzz
-cd ios && xcodebuild test -project Albus.xcodeproj -scheme Albus \
-  -destination 'platform=iOS Simulator,name=iPhone 16'   # 7 — data layer
+scripts/ci-local.sh --full
+
+# After a database/security change, with local Supabase running:
+supabase test db --local
+scripts/security-concurrency-local.sh
 ```
 
 ## Branching
@@ -91,29 +91,29 @@ backstop. See `CONTRIBUTING.md`.
 
 ## Where the security actually lives
 
-Not in application code — in the database. Row Level Security decides what
-every query can see, so a bug in a function cannot leak another student's work.
-Each user-owned table carries four owner-scoped policies plus a restrictive
-owner-only policy that ANDs with everything, including any policy added later.
+Not in application state — in the server. Row Level Security decides what every
+query can see, raw write grants are narrower than the RLS policies, and AI
+entitlement/rate/cost reservations are service-only database operations.
 
 Three things worth knowing before changing anything:
 
 - **The Anthropic key never reaches the client.** That is the entire reason the
   Edge Functions exist. An app on someone's phone can be taken apart.
 - **Entitlements are written by exactly one function**, revoked from every
-  client role. No code path lets a client grant itself Plus.
+  client role. No code path lets a client grant itself Plus or Pro.
 - **`completion_logs` has no field that could hold a title or note.** The
   privacy guarantee is structural, not a convention.
 
-Read `docs/security-model.md` before touching the schema, and run
-`scripts/verify-rls.sql` after — every row must return `pass = true`.
+Read `docs/security-model.md` before touching the schema, then run the pgTAP and
+multi-connection attack suites documented there.
 
 ## Before launch
 
-- [ ] CAPTCHA on anonymous sign-ins — **needs client work first**: enabling it
-      rejects every sign-up that does not carry a token, so it ships with the
-      onboarding screen. Until then a global spend fuse bounds the damage.
+- [ ] Configure Turnstile keys and enable CAPTCHA on client and server together.
 - [ ] Sign in with Apple, once the Developer account is configured
 - [x] ~~Schedule `reap_abandoned_anonymous_users`~~ — running daily at 04:17
+- [x] Schedule privacy/security-data retention — running daily at 04:43
+- [ ] Rotate the Anthropic key and configure the signal pepper
+- [ ] Configure RevenueCat SDK, products, webhook secrets, app-id allowlist and product allowlist
 - [ ] MFA on the Supabase account (only you can do this)
-- [ ] Reconcile migration history so `supabase db push` works in CI
+- [ ] Deploy this branch, remove old Apple functions, and run live adversarial checks
