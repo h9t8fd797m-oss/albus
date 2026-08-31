@@ -110,7 +110,7 @@ struct PaywallScreen: View {
                  ("No Ask Albus", "Asking about an assignment is Pro.")]
             case .pro:
                 [("Unlimited tasks", "However much you are actually carrying."),
-                 ("Unlimited rubrics, every tool", "Plus curriculum intelligence."),
+                 ("Unlimited rubrics, every tool", "IB curriculum intelligence."),
                  ("5 markings a week", "Mark a draft, revise it, mark it again."),
                  ("Ask Albus, in any task", "It already knows the rubric and the deadline.")]
             }

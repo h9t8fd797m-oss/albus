@@ -145,10 +145,14 @@ struct SettingsScreen: View {
                             .foregroundStyle(Tokens.Palette.ink)
                     }
 
-                    SheetPicker(
-                        label: "Programme",
-                        options: Preferences.Program.allCases.map { (value: $0, title: $0.rawValue) },
-                        selection: preferences.program)
+                    // One programme is not a question, so the control hides
+                    // itself rather than presenting a list of length one.
+                    if Preferences.Program.offered.count > 1 {
+                        SheetPicker(
+                            label: "Programme",
+                            options: Preferences.Program.offered.map { (value: $0, title: $0.rawValue) },
+                            selection: preferences.program)
+                    }
 
                     // Only A-level has more than one authority, and a picker
                     // with one option is not a choice.

@@ -77,6 +77,19 @@ struct CurriculumTests {
     // student could pick ever reached any of it.
 
     @MainActor
+    @Test("launch offers only IB without invalidating a stored programme")
+    func offeredProgrammesPreserveStoredValues() {
+        #expect(Preferences.Program.offered == [.ib])
+
+        let defaults = scratchDefaults()
+        defaults.set("A-Level", forKey: "albus.profile.program")
+        let preferences = Preferences(defaults: defaults)
+
+        #expect(preferences.program == .aLevel)
+        #expect(preferences.curriculumCode == "A_LEVEL_AQA")
+    }
+
+    @MainActor
     @Test("A-level reaches the subjects Albus has data for")
     func aLevelFindsItsSubjects() {
         let preferences = Preferences(defaults: scratchDefaults())

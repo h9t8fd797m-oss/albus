@@ -1,16 +1,10 @@
 import XCTest
 
-/// The A-level path through onboarding, which nothing else covers.
-///
-/// The existing core-loop tests take the default programme (IB), and Albus has
-/// no verified IB data — so they walk straight past the subject step and never
-/// touch any of this. That is correct for what they test and useless for what
-/// this does.
+/// The IB-only route through onboarding.
 ///
 /// Deliberately cheap: it stops before "Build my plan", so it creates no account
-/// and costs no model call. What it proves is that a student who says they do
-/// A-levels is actually offered the curriculum Albus holds — the thing that was
-/// broken, and that a passing build says nothing about.
+/// and costs no model call. It proves the one-option programme picker stays out
+/// of the way while IB subjects and their assessment components remain wired.
 @MainActor
 final class CurriculumOnboardingUITests: XCTestCase {
 
@@ -24,59 +18,60 @@ final class CurriculumOnboardingUITests: XCTestCase {
         app.launchArguments = ["-albus.profile.onboarded", "NO"]
     }
 
-    func testALevelStudentIsOfferedTheCurriculum() throws {
+    func testIBIsTheOnlyProgrammeAndReachesItsComponents() throws {
         app.launch()
 
         XCTAssertTrue(app.staticTexts["A few things first."].waitForExistence(timeout: 30),
                       "onboarding never appeared")
 
-        // Before: the only qualification with verified data was the one
-        // programme onboarding did not offer.
-        let aLevel = app.buttons["A-Level"]
-        XCTAssertTrue(aLevel.exists, "A-Level is missing from the programme list")
-        aLevel.tap()
+        XCTAssertFalse(app.buttons["IB"].exists,
+                       "a one-option programme picker should not be shown")
+        XCTAssertFalse(app.buttons["A-Level"].exists,
+                       "A-Level should not be offered by the IB-only product")
+        XCTAssertFalse(app.buttons["AP"].exists,
+                       "AP should not be offered by the IB-only product")
+        XCTAssertFalse(app.buttons["University"].exists,
+                       "University should not be offered by the IB-only product")
 
-        app.buttons["Next"].tap()
+        let subjectsTitle = app.staticTexts["Which of these do you take?"]
+        let profileNext = app.buttons["Next"]
+        // A cold simulator occasionally reports a synthesized accessibility
+        // tap before SwiftUI receives it. Use the visible centre, like a real
+        // finger, and retry only while the profile is still on screen.
+        for _ in 0..<3 where !subjectsTitle.exists {
+            profileNext.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
+            if subjectsTitle.waitForExistence(timeout: 3) { break }
+            guard app.staticTexts["A few things first."].exists else { break }
+        }
 
-        XCTAssertTrue(app.staticTexts["Which of these do you take?"].waitForExistence(timeout: 10),
-                      "an A-level student was not offered any subjects")
+        XCTAssertTrue(subjectsTitle.waitForExistence(timeout: 10),
+                      "an IB student was not offered any subjects")
 
         let biology = app.buttons["Biology"]
         XCTAssertTrue(biology.exists, "Biology is missing — the bundled corpus is not reaching the UI")
-        biology.tap()
+        // Trust the resulting state rather than XCTest's event report. A
+        // chosen subject changes the advance action from "Skip for now" to
+        // "Next".
+        for _ in 0..<3 where !app.buttons["Next"].exists {
+            biology.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
+            if app.buttons["Next"].waitForExistence(timeout: 2) { break }
+            guard app.buttons["Skip for now"].exists else { break }
+        }
+        XCTAssertTrue(app.buttons["Next"].waitForExistence(timeout: 5),
+                      "Biology did not become selected")
         app.buttons["Next"].tap()
 
-        // The component picker is the whole point: this is what turns a generic
-        // breakdown into one shaped by what the paper is actually worth.
+        // This is what turns a generic breakdown into one shaped by the IB
+        // component the student is actually preparing.
         XCTAssertTrue(app.staticTexts["WHICH SUBJECT"].waitForExistence(timeout: 10),
                       "the chosen subject was not offered on the first assignment")
         app.buttons["Biology"].tap()
 
         XCTAssertTrue(app.staticTexts["WHICH PART OF THE COURSE"].waitForExistence(timeout: 5),
-                      "no component picker for a subject Albus has a specification for")
+                      "no component picker for an IB subject Albus knows")
 
-        // The chips sit in a LazyVGrid below the fold, and lazy means they are
-        // not in the tree until they are near the viewport — `exists` was false
-        // for a control that renders perfectly well once scrolled to.
-        let paper = app.buttons["Paper 3"]
-        for _ in 0..<4 where !paper.exists { app.swipeUp() }
-        XCTAssertTrue(paper.exists, "Biology's papers are missing")
-    }
-
-    /// The other half of the same guarantee: a student on a programme Albus
-    /// holds nothing for must not be shown an empty grid or an extra step.
-    func testProgrammeWithoutDataSkipsTheSubjectStep() throws {
-        app.launch()
-
-        XCTAssertTrue(app.staticTexts["A few things first."].waitForExistence(timeout: 30),
-                      "onboarding never appeared")
-
-        app.buttons["University"].tap()
-        app.buttons["Next"].tap()
-
-        XCTAssertTrue(app.textFields["e.g. History term paper"].waitForExistence(timeout: 10),
-                      "a programme with no curriculum data did not go straight to the deadline")
-        XCTAssertFalse(app.staticTexts["WHICH SUBJECT"].exists,
-                       "offered a subject picker with nothing to put in it")
+        let component = app.buttons["Scientific investigation (SL)"]
+        for _ in 0..<4 where !component.exists { app.swipeUp() }
+        XCTAssertTrue(component.exists, "Biology's IB components are missing")
     }
 }
