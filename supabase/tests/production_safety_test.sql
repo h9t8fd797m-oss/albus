@@ -381,13 +381,19 @@ with inserted as (
   ) returning id
 )
 insert into test_unpriced_usage select id from inserted;
-select is(
-  case when public.finalize_ai_usage(
+-- Finalise in its own statement. Reading `ai_usage` inside the same statement
+-- that calls `finalize_ai_usage` returns the pre-update snapshot — the row is
+-- read as it stood when the statement began, so the assertion sees NULL rather
+-- than the cost the function just wrote.
+select ok(
+  public.finalize_ai_usage(
     (select id from test_unpriced_usage), 'completed', 10, 20, null
-  ) then (
-    select actual_cost_microusd from public.ai_usage
-     where id = (select id from test_unpriced_usage)
-  ) else null end,
+  ),
+  'an unpriced model still finalises'
+);
+select is(
+  (select actual_cost_microusd from public.ai_usage
+    where id = (select id from test_unpriced_usage)),
   2500,
   'an unpriced model warns and retains the conservative 50/100 token rates'
 );
