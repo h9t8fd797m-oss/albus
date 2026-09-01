@@ -21,7 +21,6 @@ struct OnboardingFlow: View {
     // Screen 1
     @State private var name = ""
     @State private var program: Preferences.Program = .ib
-    @State private var board = Preferences.defaultExamBoard
     @State private var load: Preferences.StudyLoad = .standard
 
     // Screen 2 — only shown when Albus has verified data for the programme.
@@ -72,15 +71,8 @@ struct OnboardingFlow: View {
         guard let qualification = program.qualification else { return [] }
         return CurriculumSubject.subjects(
             qualification: qualification,
-            board: qualification == .aLevel ? board : nil
+            board: nil
         )
-    }
-
-    /// Boards worth asking about. One board is not a question, so the control
-    /// hides itself rather than presenting a list of length one.
-    private var offeredBoards: [String] {
-        let boards = program.qualification.map { CurriculumSubject.boards(for: $0) } ?? []
-        return boards.count > 1 ? boards : []
     }
 
     /// Two form steps, or three when there are subjects to choose.
@@ -110,18 +102,12 @@ struct OnboardingFlow: View {
                         }
                 }
 
-                field("Your program") {
-                    ChoiceGrid(columns: 2, options: Preferences.Program.allCases,
-                               selection: $program) { $0.rawValue }
-                }
-
-                // Boards genuinely assess the same subject differently, so this
-                // is part of what the student studies, not a detail.
-                if !offeredBoards.isEmpty {
-                    field("Exam board") {
-                        CodeGrid(columns: 3,
-                                 options: offeredBoards.map { (value: $0, title: $0) },
-                                 selection: $board)
+                // One programme is not a question, so the control hides itself
+                // rather than presenting a list of length one.
+                if Preferences.Program.offered.count > 1 {
+                    field("Your program") {
+                        ChoiceGrid(columns: 2, options: Preferences.Program.offered,
+                                   selection: $program) { $0.rawValue }
                     }
                 }
 
@@ -364,7 +350,6 @@ struct OnboardingFlow: View {
         failure = nil
         preferences.name = name
         preferences.program = program
-        preferences.examBoard = board
         preferences.load = load
 
         if case .signedIn = session.state {

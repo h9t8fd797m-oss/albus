@@ -19,6 +19,11 @@ final class Preferences {
         case other = "Other"
         var id: String { rawValue }
 
+        /// Albus launches as an IB Diploma Programme product. Keep every case
+        /// decodable for existing installs, but offer only the programme the
+        /// current product is designed to support.
+        static let offered: [Program] = [.ib]
+
         /// The qualification in the bundled curriculum data, where there is one.
         /// This is the join between "what the student says they do" and "what
         /// Albus knows about how that is assessed".
