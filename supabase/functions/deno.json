@@ -1,9 +1,9 @@
 {
   "lock": false,
   "tasks": {
-    "check": "deno check breakdown/index.ts chat/index.ts grade/index.ts receipt/index.ts app-store-notifications/index.ts revenuecat-webhook/index.ts",
-    "test": "deno test _tests/",
-    "lint": "deno lint _shared/ breakdown/ grade/ chat/ receipt/ app-store-notifications/ revenuecat-webhook/"
+    "check": "deno check breakdown/index.ts chat/index.ts grade/index.ts revenuecat-webhook/index.ts",
+    "test": "deno test --allow-env _tests/",
+    "lint": "deno lint _shared/ breakdown/ grade/ chat/ revenuecat-webhook/"
   },
   "fmt": {
     "lineWidth": 100

@@ -1,0 +1,34 @@
+name: Database security
+
+# Database containers are useful but not free. Run this only when the database
+# security surface changes; an iOS-only pull request gets no value from pulling
+# Postgres images again.
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'supabase/migrations/**'
+      - 'supabase/tests/**'
+      - 'supabase/config.toml'
+      - 'scripts/security-concurrency-local.sh'
+      - '.github/workflows/database-security.yml'
+
+jobs:
+  adversarial-database:
+    name: RLS, quota and concurrency attacks
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+      - name: Rebuild every migration
+        run: supabase start
+      - name: Run policy and financial-safety assertions
+        run: supabase test db --local
+      - name: Race the last available slots
+        run: scripts/security-concurrency-local.sh
+      - name: Stop local services
+        if: always()
+        run: supabase stop --no-backup

@@ -53,9 +53,26 @@ let cachedPepper: Promise<CryptoKey> | null = null;
 function pepperKey(): Promise<CryptoKey> {
   if (cachedPepper) return cachedPepper;
   cachedPepper = (async () => {
-    const explicit = Deno.env.get("ALBUS_SIGNAL_PEPPER");
-    const fallback = Deno.env.get("ALBUS_SUPABASE_SECRET_KEY") ??
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
+    // Guarded. `Deno.env.get` *throws* without `--allow-env` rather than
+    // returning undefined, and an abuse-telemetry helper must never be the
+    // thing that raises out of a student's request. Without permission there is
+    // no pepper, and no pepper means no signal — `recordSignals` catches this
+    // and records nothing, which is the correct degradation. Falling back to a
+    // constant would be worse than useless: it would produce hashes anyone
+    // knowing the constant could reverse.
+    const env = (name: string): string | undefined => {
+      try {
+        return Deno.env.get(name);
+      } catch {
+        return undefined;
+      }
+    };
+    const explicit = env("ALBUS_SIGNAL_PEPPER");
+    const fallback = env("ALBUS_SUPABASE_SECRET_KEY") ??
+      env("SUPABASE_SERVICE_ROLE_KEY") ?? "";
+    if (!explicit && !fallback) {
+      throw new Error("no pepper material available; refusing to hash unpeppered");
+    }
     const material = explicit ?? `albus-signal-pepper|${fallback}`;
     return await crypto.subtle.importKey(
       "raw",
@@ -96,7 +113,10 @@ export function ipPrefix(req: Request): string | null {
     return hextets.length === 3 ? `v6:${hextets.join(":")}` : null;
   }
   const octets = addr.split(".");
-  if (octets.length !== 4 || octets.some((o) => !/^\d{1,3}$/.test(o))) return null;
+  if (
+    octets.length !== 4 ||
+    octets.some((o) => !/^\d{1,3}$/.test(o) || Number(o) > 255)
+  ) return null;
   return `v4:${octets.slice(0, 3).join(".")}`;
 }
 
@@ -108,7 +128,10 @@ export function deviceId(req: Request): string | null {
   // An IDFV is a UUID. Anything else is a client bug or someone probing, and
   // either way it is not worth hashing — an unbounded header must never become
   // an unbounded write.
-  return /^[0-9a-fA-F-]{36}$/.test(trimmed) ? trimmed.toLowerCase() : null;
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+      .test(trimmed)
+    ? trimmed.toLowerCase()
+    : null;
 }
 
 /**
@@ -135,12 +158,16 @@ export async function recordSignals(req: Request, userId: string): Promise<Signa
       const writes: PromiseLike<unknown>[] = [];
       if (deviceHash) {
         writes.push(admin.rpc("record_identity_link", {
-          p_user_id: userId, p_kind: "device", p_hash: deviceHash,
+          p_user_id: userId,
+          p_kind: "device",
+          p_hash: deviceHash,
         }));
       }
       if (ipPrefixHash) {
         writes.push(admin.rpc("record_identity_link", {
-          p_user_id: userId, p_kind: "ip_prefix", p_hash: ipPrefixHash,
+          p_user_id: userId,
+          p_kind: "ip_prefix",
+          p_hash: ipPrefixHash,
         }));
       }
       await Promise.all(writes);
@@ -200,7 +227,10 @@ const DENIAL_SEVERITY: Record<string, "info" | "warn" | "alert"> = {
   RUBRIC_PLAN_LIMIT: "info",
   RATE_LIMIT_HOURLY: "warn",
   RATE_LIMIT_DAILY: "warn",
+  API_RATE_LIMIT: "warn",
   GLOBAL_CAPACITY_REACHED: "alert",
+  AI_EMERGENCY_STOP: "alert",
+  FAIR_USE_REACHED: "warn",
   VERIFICATION_REQUIRED: "warn",
   ABUSE_SUSPECTED: "alert",
   RUBRIC_CEILING: "alert",
@@ -224,7 +254,8 @@ export function logDenial(
 
   const kind = code === "ABUSE_SUSPECTED" || code === "VERIFICATION_REQUIRED"
     ? "risk.blocked"
-    : code.startsWith("RATE_LIMIT") || code === "GLOBAL_CAPACITY_REACHED"
+    : code.startsWith("RATE_LIMIT") || code === "GLOBAL_CAPACITY_REACHED" ||
+        code === "AI_EMERGENCY_STOP"
     ? "ratelimit.hit"
     : "entitlement.denied";
 

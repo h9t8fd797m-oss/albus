@@ -1,14 +1,16 @@
 # Backend
 
-Three endpoints carry the product. Only `breakdown` is implemented; `chat` and
-`receipt` are scaffolds with the auth boundary enforced and a 501 body.
+Four Edge Functions carry the server product. The three student endpoints are
+implemented and require a verified user JWT. RevenueCat is the only public
+endpoint; it fails closed until its two webhook secrets and product allowlist
+are configured.
 
 | Endpoint | Auth | Job |
 |---|---|---|
 | `POST /breakdown` | user JWT | Assignment → rubric-grounded, startable steps, persisted atomically |
 | `POST /chat` | user JWT | Ask Albus, grounded in one assignment the caller owns |
-| `POST /receipt` | user JWT | Verifies a StoreKit 2 signed transaction; derives the entitlement |
-| `POST /app-store-notifications` | **none — Apple** | Renewals, cancellations, refunds. Signature is the only gate. |
+| `POST /grade` | user JWT | Work + owned rubric → persisted grading; blind reading when no rubric exists |
+| `POST /revenuecat-webhook` | RevenueCat auth + body HMAC | Purchase events → server entitlement |
 
 Almost everything else in the app runs on-device. Scheduling, re-planning,
 tool matching, notifications, progress and per-user calibration need no
@@ -22,12 +24,19 @@ Applying a rubric to a specific prompt is genuine reasoning and is the
 differentiator, so it gets the stronger model. "Read chapter 12" is
 decomposition, not reasoning, and is roughly two thirds of real volume.
 
-| Case | Model | Rate /MTok |
+| Case | Model | Safety-ledger rate /MTok |
 |---|---|---|
-| Has rubric criteria | `claude-sonnet-5` | $3 in / $15 out |
-| No rubric | `claude-haiku-4-5` | $1 in / $5 out |
+| Breakdown with rubric/criteria | `claude-sonnet-5` | $2 in / $10 out |
+| Generic breakdown | `claude-haiku-4-5` | $1 in / $5 out |
+| Ask Albus with rubric/retrieved reference | `claude-sonnet-5` | $2 in / $10 out |
+| Plain assignment question | `claude-haiku-4-5` | $1 in / $5 out |
+| Grader with a rubric | `claude-opus-5` | $5 in / $25 out |
+| Blind Grader reading | `claude-sonnet-5` | $2 in / $10 out |
 
-Routing lives in `selectModel()` in `_shared/prompt.ts` and is unit-tested.
+These are the uncached rates configured in `private.ai_model_prices`, used to
+derive cost from provider token counts. They are operational configuration and
+must be updated when provider pricing changes. Routing lives in the pure prompt
+modules and is unit-tested.
 
 **Measured latency** (integration run, 2026-08-21): Sonnet with an 8-step
 rubric plan ≈ **19s**; Haiku generic ≈ **3–5s**. Comfortably inside the
@@ -93,6 +102,7 @@ The two are different refusals, different screens and different sentences:
 | Not on this plan | `PLAN_UPGRADE_REQUIRED` | 402 | a price |
 | Bought and used up | `ALLOWANCE_WEEKLY` / `ALLOWANCE_MONTHLY` | 402 | a date |
 | Going too fast | `RATE_LIMIT_HOURLY` / `_DAILY` | 429 | "in a few minutes" |
+| Account cost backstop | `FAIR_USE_REACHED` | 402 | capacity returns gradually over 30 days |
 
 Collapsing the first two is how a paying student gets shown a paywall for
 something they already bought.
@@ -114,12 +124,12 @@ lock. Never in the Edge Function and never on the device.
 | Saved rubrics | `rubrics_limit` trigger |
 | Steps per plan | `subtasks_limit` trigger |
 
-**Triggers, not RPCs**, for everything that is a row count. `authenticated`
-holds INSERT on `assignments`, `rubrics` and `subtasks` — it has to, RLS is what
-scopes them — so a limit that lives only inside an RPC is bypassed by a client
-that simply does not call it. `assertCanGeneratePlan()` still runs as a
-pre-flight so we do not pay Anthropic for a generation we are about to reject,
-and it fails *open*, because the trigger is the authoritative check.
+The app has no raw INSERT/UPDATE grant on assignments, rubrics, courses or
+subtasks. It writes through three narrow `SECURITY DEFINER` RPCs that derive the
+owner from `auth.uid()`. Triggers independently enforce ownership and row-count
+limits, so a future server path cannot bypass a rule by forgetting to call the
+same helper. `assertCanGeneratePlan()` remains a cheap pre-flight so Albus does
+not pay Anthropic for a generation the insert transaction will reject.
 
 > **Two bypasses found by attacking the live database (migration 0036).**
 >
@@ -165,7 +175,7 @@ another course's rubric.
 
 ```bash
 cd supabase/functions
-deno task test     # 17 unit tests — pure logic, no network, no Docker
+deno task test     # pure logic, no network, no provider key
 deno task check    # type-check every entrypoint
 deno task lint
 ```
@@ -179,8 +189,10 @@ deno run --allow-net --allow-env _tests/integration_breakdown.ts
 It exercises the rubric path, the generic path, a 20-hour task due tomorrow,
 and a one-word title — and asserts the model never invents a criterion code.
 
-Database-side behaviour (RLS, quota, atomicity) is verified by
-`scripts/verify-rls.sql` and the probes in the PR description.
+Database-side behaviour is verified by `supabase test db --local` and
+`scripts/security-concurrency-local.sh`. The first tests grants, RLS, quota,
+risk, cost and subscription replay; the second opens real parallel Postgres
+connections and races the final task, rubric and grading slots.
 
 
 ---
@@ -188,9 +200,9 @@ Database-side behaviour (RLS, quota, atomicity) is verified by
 ## Ask Albus
 
 Grounded in exactly one assignment, loaded through the **caller-scoped** client
-so RLS decides what can enter the context window. A forged `assignment_id`
-finds nothing and the reply degrades to ungrounded planning advice — it never
-errors in a way that reveals whether the id exists.
+so RLS decides what can enter the context window. The id is mandatory. Missing,
+unknown and foreign assignments are refused before retrieval, quota reservation
+or Anthropic; unknown and foreign ids receive the same public response.
 
 Routing mirrors breakdown: rubric present → `claude-sonnet-5`, otherwise
 `claude-haiku-4-5`. `max_tokens` is held at 700; this answers questions about a
@@ -205,133 +217,70 @@ message.
 ## Payments
 
 Entitlement has exactly one source: the **RevenueCat webhook**. Nothing a
-client sends can make anyone Plus.
+client sends can make anyone Plus or Pro.
 
 ```
 RevenueCat  →  revenuecat-webhook  →  apply_subscription_state  →  entitlements
-                (shared secret)         (conflict + expiry logic)    (server-written)
+              (auth + body HMAC)      (allowlist/replay/expiry)     (server-written)
 ```
 
 **`revenuecat-webhook`** is public — RevenueCat cannot present a user JWT — so
-the shared secret in the `Authorization` header is the whole authentication.
-It is compared in **constant time**, checked **before the body is read**, and a
-**missing secret rejects rather than accepts**: an unconfigured deployment must
-never mean an open endpoint that grants entitlements.
+it requires both a constant-time checked Authorization secret and RevenueCat's
+HMAC over the exact raw body. The signed delivery timestamp has a five-minute
+window. Both secrets fail closed when absent, and oversized bodies are rejected
+before parsing.
 
-Three things this endpoint gets right that are easy to get wrong:
+The database independently enforces the important facts:
 
-* **Sandbox purchases grant nothing.** `apply_subscription_state` decides
-  "active" from expiry and revocation alone and never looks at environment, so
-  without an explicit check a sandbox subscription — free, and available to
-  anyone with a test account — would hand out Plus exactly like a paid one.
-  Override with `ALBUS_ALLOW_SANDBOX_PURCHASES=true` in a test project only.
-* **Environment casing is normalised.** RevenueCat sends `PRODUCTION`; the
-  column's check constraint predates it and accepts Apple's `Production`. Left
-  unmapped every real webhook violated the constraint and returned 500, which
-  RevenueCat retries forever — nobody would ever have become Plus. Found by
-  sending a real payload, not by reading the code.
-* **Cancellation is not revocation.** `CANCELLATION` means "will not renew";
-  the student keeps what they paid for until `expires_at`. Only `EXPIRATION`
-  and `SUBSCRIPTION_PAUSED` revoke immediately.
-
-`apply_subscription_state` is unchanged and provider-agnostic: it still refuses
-to reassign a subscription that already belongs to another account (`conflict`),
-still stores state for a subscription it cannot yet attribute (`unlinked`), and
-still drives the tier-based rate limits.
-
-### Verified against the deployed endpoint
-
-| Attack / case | Result |
-|---|---|
-| No / empty / guessed / truncated / `Bearer`-wrapped secret | **401** |
-| Publishable key as the secret | **401** |
-| `GET`, malformed JSON, 70 KB body | **405 / 400 / 413** |
-| Legitimate purchase | grants Plus to that user only |
-| Sandbox purchase | **ignored**, nothing granted |
-| Another user claiming the same subscription | **conflict**, nothing granted |
-| Expiration | tier drops to free |
-| Cancellation | stays Plus until expiry |
-| Same event replayed 5× | idempotent |
+- **Only configured Albus app ids are accepted.** A valid RevenueCat signature
+  from another app in the same provider project still grants nothing.
+- **Only allowlisted product ids grant a tier.** The mapping is server-only and
+  currently empty, so an unconfigured payment system grants nothing.
+- **Sandbox purchases grant nothing** in both the Edge Function and SQL unless
+  an explicit test-project switch is enabled.
+- **Event ids and times are persisted.** Replays and older events are ignored;
+  a subscription already linked to one user cannot be claimed by another.
+- **A missing expiry is inactive**, not lifetime access.
+- **Cancellation is not revocation.** `CANCELLATION` means "will not renew";
+  the student keeps what they paid for until `expires_at`.
+- **A scheduled pause is not revocation.** `SUBSCRIPTION_PAUSED` keeps access
+  through the paid period; the later `EXPIRATION` event revokes immediately.
 
 ### What still needs an account
 
-The client cannot purchase yet. `PaywallScreen` presents the offer and says so
-rather than pretending; wiring it up is `Purchases.shared.purchase(...)` in
-`PaywallScreen.purchase()` and nothing else in the app, because entitlement
-still arrives from the server.
+The client cannot purchase yet. Do not populate the production product map
+until all of these are complete together:
 
 1. App Store Connect: create the subscription products.
 2. RevenueCat: connect the app, set **`app_user_id` to the Supabase user id**
-   (this is what removes the "notification about a user we cannot identify"
-   case), add the SDK key.
+   and add the SDK/public app key. Set restore behaviour to **Transfer if there
+   are no active subscriptions**; Albus deliberately refuses to rebind an
+   active original transaction to another user.
 3. RevenueCat → Integrations → Webhooks: point at
-   `https://<project>.functions.supabase.co/revenuecat-webhook` and set the
-   Authorization header to the value of `REVENUECAT_WEBHOOK_SECRET`.
+   `https://<project>.functions.supabase.co/revenuecat-webhook`; configure both
+   `REVENUECAT_WEBHOOK_SECRET` and the signing secret, then set the exact
+   RevenueCat app id in `REVENUECAT_APP_IDS`.
+4. Insert the exact real product ids into `subscription_products` with their
+   Plus/Pro mapping.
+5. Verify purchase, renewal, cancellation, expiry, refund, replay, conflict, and
+   Sandbox rejection before enabling Production products.
 
----
-
-### Superseded: the direct-to-Apple path
-
-> **Superseded: payments will go through RevenueCat.**
->
-> RevenueCat's SDK handles the purchase and its servers verify with Apple, so
-> the direct JWS verification below is no longer the intended path. The two
-> Apple endpoints and `_shared/appstore.ts` (~320 lines) are inert but left in
-> place — the decision is recent, and they are a working fallback.
->
-> **`APPLE_ALLOW_SANDBOX` is now `false`**, which closes the only route by
-> which those endpoints could grant anything.
->
-> **What survives the switch, and is the reason this was not wasted work:**
-> `entitlements`, `subscription_transactions`, and `apply_subscription_state`
-> are provider-agnostic. RevenueCat's webhook carries the same facts under
-> different names, so integration means a new signature check feeding the same
-> function — the replay protection, expiry handling and tier-driven rate limits
-> all carry over unchanged.
->
-> **The one real difference:** RevenueCat authenticates its webhook with a
-> shared secret in an `Authorization` header, not a signature chain. That must
-> be compared in constant time, and the endpoint must reject everything else.
-> It also passes your Supabase user id as `app_user_id`, which removes the
-> "unlinked notification" case entirely.
-
-
-Two paths, one source of truth.
-
-**`receipt`** takes a StoreKit 2 signed transaction from the client and
-verifies it against Apple's root certificates, which ship embedded in
-`_shared/apple_roots.ts` rather than being fetched at runtime. Nothing about
-tier, price or expiry is read from the request body; only the fields inside the
-verified payload count.
-
-**`app-store-notifications`** receives Apple's server notifications. It is
-deployed `--no-verify-jwt` because Apple cannot present a user token — the JWS
-signature *is* the authentication, and every path refuses to act on anything
-that fails verification.
-
-Three properties worth stating explicitly:
-
-- **Replay is blocked by the primary key.** `subscription_transactions` is keyed
-  on `original_transaction_id`, and `apply_subscription_state` returns
-  `conflict` if a second user presents a receipt already bound to someone else.
-  A leaked receipt cannot be redeemed twice.
-- **Entitlements are written from exactly one function**, which is revoked from
-  every client role. There is no code path by which a client sets its own tier.
-- **Sandbox is gated.** `APPLE_ALLOW_SANDBOX` must be `true` for sandbox
-  receipts to be accepted. Leave it unset in production or a free sandbox
-  tester account becomes free Plus.
-
-Apple does not know our user ids, so a notification for an unknown subscription
-is stored as `unlinked` and grants nothing until a signed client call binds it
-to an account.
+The superseded direct Apple receipt and notification functions were removed.
+They must not be redeployed.
 
 ## Rate limiting and risk
 
-`check_and_record_ai_usage` takes a per-user advisory lock, then reserves a slot
-**before** the model is called, in the same transaction as the count. A failed
-generation is refunded on the way out; a reservation that bought nothing ages
-out of the count by itself after fifteen minutes, so an isolate torn down at the
-wall clock cannot charge a student forever (`ai_spend_count`).
+`check_and_record_ai_usage` takes the global advisory lock and then a per-user
+lock before reserving **ahead of the model call**. A failed result gives the
+student's allowance back but remains an attempt and a conservative cost
+reservation. That is what prevents deliberately malformed/rejected generations
+from becoming an unlimited provider bill. Finalization is one-way and token cost
+is derived from a server-owned model-price table.
+
+An outer request gate (30/minute, 180/hour) runs immediately after JWT
+verification, before body parsing and security telemetry. It also bounds callers
+who repeatedly request a feature their plan does not include and therefore never
+reach the AI reservation gate.
 
 Burst limits come from `public.plans`, and are **halved at `elevated` risk and
 quartered at `high`**:
@@ -343,6 +292,17 @@ quartered at `high`**:
 | grade | — | — | 3 | — | 3 | — |
 
 Separate budgets per kind, so exhausting chat does not block planning.
+
+A second, private rolling-cost backstop bounds the maximum loss from one
+compromised or farmed account. It uses measured server-priced token cost after
+completion and keeps the conservative reservation for unfinished/unknown work.
+The Anthropic client does not retry automatically: without provider-enforced
+idempotency, retrying a timed-out request could turn one reserved call into
+several billed generations. An explicit app retry receives a fresh reservation
+and therefore re-enters every entitlement, rate, risk, and monetary check.
+Launch ceilings are US$1 Free, US$5.50 Plus and US$12 Pro per rolling 30 days;
+the client cannot read or write them. Project-wide fuses remain US$2/hour and
+US$10/day of conservative reservations, plus an immediate emergency stop.
 
 ### Account risk
 
@@ -399,15 +359,12 @@ expected; none is an oversight.
   omission. For the two risk tables it is also the point: a student who could
   read `identity_links` would be able to enumerate which classmates share their
   school's network hash.
-- **`authenticated_security_definer_function_executable`** on
-  `check_and_record_ai_usage`, `record_ai_usage_tokens`, `my_plan` and
-  `my_tier` — these must be DEFINER, because `authenticated` holds no write
-  grant on `ai_usage` and no read grant on another user's entitlement. All four
-  derive the user from `auth.uid()`; **none of them takes a user id**, which is
-  what makes asking about somebody else structurally impossible rather than
-  merely forbidden. The functions that *do* take a uid — `effective_tier`,
-  `account_risk`, `ai_spend_count`, `record_identity_link`, `log_security_event`
-  — are revoked from `authenticated` and are not on this list.
+- **`authenticated_security_definer_function_executable`** on `my_plan`,
+  `my_tier`, and the three controlled write RPCs. These are the narrow client
+  API above tables whose raw grants are closed. They derive the owner only from
+  `auth.uid()`, schema-qualify their relations, and take no user-id parameter.
+  AI reservation/finalization and every internal function that *does* take a
+  uid are service-only; the obsolete client-callable forms were dropped.
 - **`auth_allow_anonymous_sign_ins`** — the entire product is anonymous-first.
   Every user holds the `authenticated` role via an anonymous session; this is
   the design, not a leak. `public.plans` appears here because it is readable by

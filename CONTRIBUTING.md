@@ -68,11 +68,13 @@ Naming: `NNNN_short_description.sql`, four digits, zero-padded.
 
 The PR template carries the full checklist. The three that matter most:
 
-1. New table? It needs `enable row level security`, four permissive policies
-   scoped to the owner, and one restrictive owner-only policy.
+1. New public table? It needs `enable row level security`, the minimum grants
+   the app actually uses, and allow-and-deny policy tests for every granted
+   operation. Server-owned ledgers should have no client table grants at all.
 2. New user-owned table? It needs an index on `user_id` — RLS filters on it
    for every single query.
-3. Run `scripts/verify-rls.sql`. Every row must show `pass = true`.
+3. Run `supabase test db --local` and
+   `scripts/security-concurrency-local.sh`. Both must pass.
 
 ## Applying migrations by hand
 

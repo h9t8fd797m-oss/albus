@@ -92,6 +92,9 @@ struct GradingService {
         case needsVerification
         /// Risk paused AI features on this account. Recovers on its own.
         case paused
+        /// A server-owned rolling cost ceiling. This is deliberately not a
+        /// paywall: buying the plan again would not remove an abuse safeguard.
+        case fairUseReached
         case tooLong(Int)
         /// Accepted, marked, and the answer ran past what the model could
         /// write in one go. Not the same as `tooLong`, which is refused before
@@ -119,6 +122,9 @@ struct GradingService {
                 "Sign in to carry on marking. It takes a moment and it's a one-off."
             case .paused:
                 "Albus has paused marking on this account. It comes back on its own."
+            case .fairUseReached:
+                "This account has reached its monthly AI safety limit. "
+                + "Capacity returns gradually over 30 days."
             case .tooLong(let max):
                 "That's longer than Albus can mark in one go (about \(max / 6) words)."
             case .tooLongToMark:
@@ -166,7 +172,7 @@ struct GradingService {
     /// Mirrors MAX_WORK_CHARS in the edge function. Used for a local warning
     /// only — the server rejects rather than truncates, so this being out of
     /// step costs a worse message, never a wrong grade.
-    static let maxWorkCharacters = 40_000
+    static let maxWorkCharacters = 20_000
     static let minWorkCharacters = 200
 
     private struct Request: Encodable {
@@ -254,6 +260,7 @@ struct GradingService {
         case "RATE_LIMIT_HOURLY", "RATE_LIMIT_DAILY":   return .tooFast
         case "VERIFICATION_REQUIRED":   return .needsVerification
         case "ABUSE_SUSPECTED":         return .paused
+        case "FAIR_USE_REACHED":        return .fairUseReached
         case "WORK_TOO_LONG":           return .tooLong(maxWorkCharacters)
         case "WORK_TOO_SHORT":          return .tooShort
         case "RUBRIC_NOT_FOUND":        return .noRubric

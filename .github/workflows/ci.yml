@@ -1,10 +1,21 @@
 name: CI
 
+# Pull requests only.
+#
+# This used to also run on every push to a non-main branch, which meant a commit
+# on an open PR matched *both* triggers and ran the entire suite twice — two
+# macOS jobs among them, billed at ten times the Linux rate. On a private repo
+# that is a metered allowance, and it went in about a day and a half. Every
+# check has been red-because-unstarted since 22 Aug 2026 as a result, which is
+# worse than having no CI at all: six days of meaningless red is how a real
+# failure gets ignored.
+#
+# Push events on a branch with no PR open are not interesting anyway — nothing
+# is being proposed for main yet, and `scripts/ci-local.sh` covers the loop
+# before you open one.
 on:
   pull_request:
     branches: [main]
-  push:
-    branches-ignore: [main]
 
 jobs:
   secrets-scan:
@@ -16,7 +27,7 @@ jobs:
         run: |
           set -euo pipefail
           # Real key shapes. .env.example uses xxxx placeholders and is exempt.
-          PATTERN='sb_secret_[A-Za-z0-9]{20,}|sk-ant-[A-Za-z0-9_-]{20,}|eyJ[A-Za-z0-9_-]{30,}\.[A-Za-z0-9_-]{30,}'
+          PATTERN='sb_secret_[A-Za-z0-9]{20,}|sbp_[A-Za-z0-9]{20,}|sk-ant-[A-Za-z0-9_-]{20,}|gh[pousr]_[A-Za-z0-9]{30,}|-----BEGIN (EC |RSA )?PRIVATE KEY-----|eyJ[A-Za-z0-9_-]{30,}\.[A-Za-z0-9_-]{30,}'
           if grep -rEn "$PATTERN" . \
                --exclude-dir=.git --exclude=.env.example --exclude=ci.yml; then
             echo "::error::A live credential appears to be committed. Rotate it, then remove it."
@@ -78,7 +89,11 @@ jobs:
 
   core-tests:
     name: Core logic tests
-    runs-on: macos-15
+    # Linux, not macOS. AlbusCore is pure Swift with no UIKit — it is the whole
+    # point of the package — so it needs no Apple toolchain, and a macOS runner
+    # costs ten times a Linux one for an identical result.
+    runs-on: ubuntu-latest
+    container: swift:6.0
     steps:
       - uses: actions/checkout@v4
       - name: swift test

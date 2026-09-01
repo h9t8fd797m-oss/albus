@@ -16,9 +16,15 @@
 //   * **The work is never stored.** Marks, feedback and a character count are
 //     written; the essay itself exists only for the length of the request.
 
-import { requireUser, adminClient } from "../_shared/auth.ts";
+import { adminClient, requireUser } from "../_shared/auth.ts";
+import { readJsonBody } from "../_shared/body.ts";
 import { errorResponse, HttpError, jsonResponse, mapPostgresError } from "../_shared/http.ts";
-import { recordTokensInBackground } from "../_shared/quota.ts";
+import {
+  assertAPIRequestRate,
+  finalizeAIUsage,
+  reserveAIUsage,
+  usageFailureCode,
+} from "../_shared/quota.ts";
 import { noteRefusal, recordSignals, type Signals } from "../_shared/signals.ts";
 import { loadPersonalRubric, resolveGradingRubric } from "../_shared/curriculum.ts";
 import { gradeWork } from "../_shared/anthropic.ts";
@@ -31,13 +37,12 @@ import {
   MAX_PRESENTATION_CHARS,
   MAX_WORK_CHARS,
   MIN_WORK_CHARS,
+  normaliseGrade,
   normaliseWork,
   sha256,
-  normaliseGrade,
 } from "../_shared/grade_prompt.ts";
 
-const UUID_RE =
-  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 interface RequestBody {
   assignment_id?: unknown;
@@ -51,8 +56,7 @@ interface RequestBody {
 const MAX_TITLE_CHARS = 80;
 
 function parseBody(body: RequestBody) {
-  const uuid = (v: unknown): string | null =>
-    typeof v === "string" && UUID_RE.test(v) ? v : null;
+  const uuid = (v: unknown): string | null => typeof v === "string" && UUID_RE.test(v) ? v : null;
 
   // Optional. When present it is what lets Albus find the right mark scheme
   // without asking — it carries the component and any attached rubric. When
@@ -67,15 +71,17 @@ function parseBody(body: RequestBody) {
   // work as the model will see it, and OCR output can be a fifth whitespace.
   const work = typeof body.work === "string" ? normaliseWork(body.work) : "";
 
-  // Rejected, not truncated. Silently marking the first 40,000 characters of a
+  // Rejected, not truncated. Silently marking the first 20,000 characters of a
   // longer essay would return a grade for work the student did not submit.
   if (work.length > MAX_WORK_CHARS) {
-    throw new HttpError(413, "WORK_TOO_LONG",
-      `That's longer than Albus can mark in one go (${MAX_WORK_CHARS.toLocaleString()} characters).`);
+    throw new HttpError(
+      413,
+      "WORK_TOO_LONG",
+      `That's longer than Albus can mark in one go (${MAX_WORK_CHARS.toLocaleString()} characters).`,
+    );
   }
   if (work.length < MIN_WORK_CHARS) {
-    throw new HttpError(422, "WORK_TOO_SHORT",
-      "There isn't enough here to mark yet.");
+    throw new HttpError(422, "WORK_TOO_SHORT", "There isn't enough here to mark yet.");
   }
 
   // Truncated rather than rejected, unlike the work. A preference that runs
@@ -106,16 +112,34 @@ Deno.serve(async (req) => {
 
     const caller = await requireUser(req);
     callerId = caller.id;
+    await assertAPIRequestRate(caller.id, "grade");
     // Hashed here and only here. What reaches Postgres is two digests.
     signals = await recordSignals(req, caller.id);
 
-    let body: RequestBody;
-    try {
-      body = await req.json();
-    } catch {
-      throw new HttpError(400, "INVALID_JSON");
-    }
+    const body = await readJsonBody<RequestBody>(req, 131_072);
     const input = parseBody(body);
+
+    // Bind an optional assignment to the verified caller before doing any
+    // rubric work, cache lookup, quota reservation, or provider call. The
+    // final grading write uses the service role, so RLS at the lookup is not
+    // enough by itself: a missing/foreign id must become a hard stop here.
+    let assignment: { title: string; task_type: string } | null = null;
+    if (input.assignmentId) {
+      const { data, error } = await caller.db
+        .from("assignments")
+        .select("title, task_type")
+        .eq("id", input.assignmentId)
+        .maybeSingle();
+      if (error) {
+        console.error("assignment ownership lookup failed:", error.message);
+        throw new HttpError(500, "INTERNAL_ERROR");
+      }
+      if (!data) {
+        // Unknown and foreign ids deliberately look identical.
+        throw new HttpError(404, "ASSIGNMENT_NOT_FOUND", "That assignment is unavailable.");
+      }
+      assignment = data as { title: string; task_type: string };
+    }
 
     // What are we marking against?
     //
@@ -133,8 +157,11 @@ Deno.serve(async (req) => {
     if (input.rubricId) {
       rubric = await loadPersonalRubric(caller.db, input.rubricId);
       if (!rubric) {
-        throw new HttpError(404, "RUBRIC_NOT_FOUND",
-          "That rubric isn't available. Try saving it again.");
+        throw new HttpError(
+          404,
+          "RUBRIC_NOT_FOUND",
+          "That rubric isn't available. Try saving it again.",
+        );
       }
       basis = "personal";
     } else if (input.assignmentId) {
@@ -150,16 +177,9 @@ Deno.serve(async (req) => {
     // that belongs to no assignment.
     let title = input.title || "Your work";
     let taskType = "other";
-    if (input.assignmentId) {
-      const { data: assignment } = await caller.db
-        .from("assignments")
-        .select("title, task_type")
-        .eq("id", input.assignmentId)
-        .maybeSingle();
-      if (assignment) {
-        title = (assignment.title as string) || title;
-        taskType = (assignment.task_type as string) ?? taskType;
-      }
+    if (assignment) {
+      title = assignment.title || title;
+      taskType = assignment.task_type ?? taskType;
     }
 
     // Have we already produced exactly this answer?
@@ -190,7 +210,9 @@ Deno.serve(async (req) => {
       // deno-fmt-ignore — one string literal on purpose: supabase-js infers the
       // row type from the literal, and splitting it widens to `string`, which
       // types every field of the result as an error.
-      .select("id, created_at, overall_marks, total_marks, grade_label, grade_note, work_title, breakdown, feedback, improvements, model, basis")
+      .select(
+        "id, created_at, overall_marks, total_marks, grade_label, grade_note, work_title, breakdown, feedback, improvements, model, basis",
+      )
       // RLS already scopes this; the explicit filter is here so a hash
       // collision cannot hand one student another student's marks even if RLS
       // were ever loosened.
@@ -227,38 +249,38 @@ Deno.serve(async (req) => {
 
     // Entitlement, rate limit and the usage slot, atomically. Everything below
     // this line costs money, and nothing above it does.
-    const { data: usageId, error: quotaError } = await caller.db.rpc(
-      "check_and_record_ai_usage",
-      { p_kind: "grade", p_model: model },
-    );
-    if (quotaError) throw mapPostgresError(quotaError.message);
+    const usageId = await reserveAIUsage(caller.id, "grade", model);
 
     // Everything from here can fail *after* a grading has been reserved, and a
     // student who gets no marks must not lose one of five for the week. The
-    // slot is handed back on any failure below.
-    //
-    // Deleting the usage row rather than adding a credit: the row is the
-    // accounting, and a failed call did not happen as far as the student is
-    // concerned. Service role, because `authenticated` has no DELETE here.
-    const refund = async () => {
-      if (!usageId) return;
-      const { error } = await adminClient()
-        .from("ai_usage").delete().eq("id", usageId as string);
-      if (error) console.error("could not refund grading slot:", error.message);
+    // slot is handed back on any failure below. The attempt itself is retained:
+    // it may have reached Anthropic, so deleting it would let a scripted client
+    // repeat expensive failures without hitting rate or project-cost limits.
+    let generated: Awaited<ReturnType<typeof gradeWork>> | null = null;
+    const refund = async (error: unknown) => {
+      await finalizeAIUsage(
+        usageId,
+        "failed",
+        generated?.inputTokens ?? null,
+        generated?.outputTokens ?? null,
+        usageFailureCode(error),
+      );
     };
 
-    let generated;
     try {
       generated = await gradeWork(
         buildGradeSystemPrompt(basis),
         buildGradeUserPrompt({
-          taskTitle: title, taskType, rubric,
-          work: input.work, presentation: input.presentation,
+          taskTitle: title,
+          taskType,
+          rubric,
+          work: input.work,
+          presentation: input.presentation,
         }),
         model,
       );
     } catch (e) {
-      await refund();
+      await refund(e);
       throw e;
     }
 
@@ -266,11 +288,14 @@ Deno.serve(async (req) => {
     try {
       grade = normaliseGrade(generated.raw, rubric);
     } catch (e) {
-      await refund();
+      await refund(e);
       if (e instanceof InvalidGradeError) {
         console.error("model produced an unusable grade:", e.message);
-        throw new HttpError(502, "MALFORMED_RESPONSE",
-          "Marking failed, and your grading has been given back.");
+        throw new HttpError(
+          502,
+          "MALFORMED_RESPONSE",
+          "Marking failed, and your grading has been given back.",
+        );
       }
       throw e;
     }
@@ -327,18 +352,17 @@ Deno.serve(async (req) => {
       .select("id, created_at")
       .single();
     if (writeError) {
-      await refund();
-      throw mapPostgresError(writeError.message);
+      const mapped = mapPostgresError(writeError.message);
+      await refund(mapped);
+      throw mapped;
     }
 
-    if (usageId) {
-      recordTokensInBackground(
-        caller.db,
-        usageId as string,
-        generated.inputTokens,
-        generated.outputTokens,
-      );
-    }
+    await finalizeAIUsage(
+      usageId,
+      "completed",
+      generated.inputTokens,
+      generated.outputTokens,
+    );
 
     return jsonResponse({
       id: saved.id,

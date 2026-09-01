@@ -12,7 +12,13 @@ function getClient(): Anthropic {
   if (client) return client;
   const apiKey = Deno.env.get("ANTHROPIC_API_KEY");
   if (!apiKey) throw new HttpError(500, "MISCONFIGURED", "ANTHROPIC_API_KEY is not set");
-  client = new Anthropic({ apiKey, maxRetries: 2 });
+  // One ledger reservation must map to at most one provider request. The
+  // Messages API does not currently expose a dependable idempotency guarantee
+  // for SDK retries, so a timeout after Anthropic accepted the request could
+  // otherwise turn one reserved grading into several billed generations. A
+  // student may retry from the app, but that new attempt must pass every rate,
+  // entitlement, risk and monetary gate again.
+  client = new Anthropic({ apiKey, maxRetries: 0 });
   return client;
 }
 

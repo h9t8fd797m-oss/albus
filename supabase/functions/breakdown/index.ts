@@ -4,8 +4,15 @@
 // atomically. The one endpoint that carries the product's differentiator.
 
 import { requireUser } from "../_shared/auth.ts";
+import { readJsonBody } from "../_shared/body.ts";
 import { errorResponse, HttpError, jsonResponse, mapPostgresError } from "../_shared/http.ts";
-import { assertCanGeneratePlan, recordTokensInBackground } from "../_shared/quota.ts";
+import {
+  assertAPIRequestRate,
+  assertCanGeneratePlan,
+  finalizeAIUsage,
+  reserveAIUsage,
+  usageFailureCode,
+} from "../_shared/quota.ts";
 import { noteRefusal, recordSignals, type Signals } from "../_shared/signals.ts";
 import { loadCurriculumComponent, loadPersonalRubric } from "../_shared/curriculum.ts";
 import { curriculumCode } from "../_shared/codes.ts";
@@ -18,8 +25,7 @@ import {
 } from "../_shared/prompt.ts";
 import { InvalidPlanError, validateAndNormalise } from "../_shared/breakdown_schema.ts";
 
-const UUID_RE =
-  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 const TASK_TYPES = new Set([
   "essay",
@@ -74,8 +80,7 @@ function parseBody(body: RequestBody) {
   // Real UUID shape. The previous /^[0-9a-f-]{36}$/i accepted 36 hyphens,
   // which Postgres then rejected as a cast error — a 500 for what is plainly
   // a malformed request.
-  const uuid = (v: unknown): string | null =>
-    typeof v === "string" && UUID_RE.test(v) ? v : null;
+  const uuid = (v: unknown): string | null => typeof v === "string" && UUID_RE.test(v) ? v : null;
 
   return {
     title,
@@ -98,9 +103,10 @@ function parseBody(body: RequestBody) {
     rubricId: uuid(body.rubric_id),
     // Normalised, not rejected: an unknown priority is a client bug and is not
     // worth refusing to plan the student's assignment over.
-    priority: (typeof body.priority === "string" && PRIORITIES.has(body.priority)
-      ? body.priority
-      : "normal") as "low" | "normal" | "high",
+    priority:
+      (typeof body.priority === "string" && PRIORITIES.has(body.priority)
+        ? body.priority
+        : "normal") as "low" | "normal" | "high",
   };
 }
 
@@ -115,34 +121,43 @@ Deno.serve(async (req) => {
     // Identity comes from the verified JWT. Anything in the body is a claim.
     const caller = await requireUser(req);
     callerId = caller.id;
+    await assertAPIRequestRate(caller.id, "breakdown");
     // Hashed here and only here. What reaches Postgres is two digests.
     signals = await recordSignals(req, caller.id);
 
-    let body: RequestBody;
-    try {
-      body = await req.json();
-    } catch {
-      throw new HttpError(400, "INVALID_JSON");
-    }
+    const body = await readJsonBody<RequestBody>(req, 16_384);
     const input = parseBody(body);
 
     // Cheap pre-check so we never pay for a generation we're going to reject.
     // The authoritative check lives in the RPC, inside the insert transaction.
     await assertCanGeneratePlan(caller);
 
-    // Resolve the component the client named, so the assignment records which
-    // paper it is even when the student also pasted their own rubric.
-    const component = await loadCurriculumComponent(
-      caller.db,
-      input.courseTemplateCode,
-      input.assessmentCode,
-    );
+    // Resolve independent context in parallel, but reject forged ownership
+    // links before a model call. The database trigger is authoritative; this
+    // early check exists so an attacker cannot deliberately buy a generation
+    // and make persistence fail afterwards by naming somebody else's ids.
+    const [component, personalRubric, ownedCourse] = await Promise.all([
+      loadCurriculumComponent(
+        caller.db,
+        input.courseTemplateCode,
+        input.assessmentCode,
+      ),
+      loadPersonalRubric(caller.db, input.rubricId),
+      input.courseId
+        ? caller.db.from("courses").select("id").eq("id", input.courseId).maybeSingle()
+        : Promise.resolve({ data: null, error: null }),
+    ]);
+
+    if (input.courseId && (ownedCourse.error || !ownedCourse.data)) {
+      throw new HttpError(403, "COURSE_NOT_YOURS", "That subject isn't available.");
+    }
+    if (input.rubricId && !personalRubric) {
+      throw new HttpError(404, "RUBRIC_NOT_FOUND", "That rubric isn't available.");
+    }
 
     // The student's own rubric wins over the curriculum default: they pasted it
     // off the sheet they are actually being marked against.
-    const rubric = (await loadPersonalRubric(caller.db, input.rubricId))
-      ?? component?.rubric
-      ?? null;
+    const rubric = personalRubric ?? component?.rubric ?? null;
 
     const promptInput: BreakdownInput = {
       title: input.title,
@@ -161,86 +176,94 @@ Deno.serve(async (req) => {
     // Reserve a usage slot atomically before spending anything. The active-plan
     // cap bounds how much work a user can have open; this bounds how fast they
     // can burn tokens, which is the axis that actually costs money.
-    const { data: usageId, error: rateError } = await caller.db.rpc(
-      "check_and_record_ai_usage",
-      { p_kind: "breakdown", p_model: model },
-    );
-    if (rateError) throw mapPostgresError(rateError.message);
-
-    const generated = await generateBreakdown(
-      model,
-      buildSystemPrompt(rubric),
-      buildUserPrompt(promptInput),
-    );
-
-    let plan;
+    const usageId = await reserveAIUsage(caller.id, "breakdown", model);
+    let generated: Awaited<ReturnType<typeof generateBreakdown>> | null = null;
     try {
-      plan = validateAndNormalise(
-        generated.raw, input.estimatedMinutes, input.dailyCapacityMinutes);
-    } catch (e) {
-      if (e instanceof InvalidPlanError) {
-        console.error("model produced an unusable plan:", e.message);
-        throw new HttpError(502, "MALFORMED_RESPONSE", "Plan generation failed.");
+      generated = await generateBreakdown(
+        model,
+        buildSystemPrompt(rubric),
+        buildUserPrompt(promptInput),
+      );
+
+      let plan;
+      try {
+        plan = validateAndNormalise(
+          generated.raw,
+          input.estimatedMinutes,
+          input.dailyCapacityMinutes,
+        );
+      } catch (e) {
+        if (e instanceof InvalidPlanError) {
+          console.error("model produced an unusable plan:", e.message);
+          throw new HttpError(502, "MALFORMED_RESPONSE", "Plan generation failed.");
+        }
+        throw e;
       }
-      throw e;
-    }
 
-    // Map criterion codes back to real ids. The model only ever sees codes,
-    // so it cannot fabricate a foreign key into another course's rubric.
-    //
-    // Only curriculum rubrics map: subtasks.rubric_criterion_id references the
-    // shared rubric_criteria table, and a personal rubric's criteria do not live
-    // there. Personal codes still reach the client on the response and are shown
-    // against the step — the link is by code, which is all any screen reads.
-    const codeToId = new Map(
-      rubric?.kind === "curriculum" ? rubric.criteria.map((c) => [c.code, c.id]) : [],
-    );
-    const subtasks = plan.steps.map((s) => ({
-      title: s.title,
-      guidance: s.guidance,
-      estimated_minutes: s.estimated_minutes,
-      rubric_criterion_id: s.rubric_criterion_code
-        ? codeToId.get(s.rubric_criterion_code) ?? null
-        : null,
-      // Already validated against the shared vocabulary; the column's check
-      // constraint is the second line of defence, not the first.
-      tool_need: s.tool_need,
-    }));
+      // Map criterion codes back to real ids. The model only ever sees codes,
+      // so it cannot fabricate a foreign key into another course's rubric.
+      //
+      // Only curriculum rubrics map: subtasks.rubric_criterion_id references the
+      // shared rubric_criteria table, and a personal rubric's criteria do not live
+      // there. Personal codes still reach the client on the response and are shown
+      // against the step — the link is by code, which is all any screen reads.
+      const codeToId = new Map(
+        rubric?.kind === "curriculum" ? rubric.criteria.map((c) => [c.code, c.id]) : [],
+      );
+      const subtasks = plan.steps.map((s) => ({
+        title: s.title,
+        guidance: s.guidance,
+        estimated_minutes: s.estimated_minutes,
+        rubric_criterion_id: s.rubric_criterion_code
+          ? codeToId.get(s.rubric_criterion_code) ?? null
+          : null,
+        // Already validated against the shared vocabulary; the column's check
+        // constraint is the second line of defence, not the first.
+        tool_need: s.tool_need,
+      }));
 
-    const { data: assignmentId, error } = await caller.db.rpc(
-      "create_assignment_with_plan",
-      {
-        p_title: input.title,
-        p_task_type: input.taskType,
-        p_deadline: input.deadlineISO,
-        p_estimated_minutes: input.estimatedMinutes,
-        p_subtasks: subtasks,
-        p_course_id: input.courseId,
-        p_assessment_type_id: component?.assessmentTypeId ?? null,
-        p_notes: input.notes,
-        p_rubric_id: input.rubricId,
-        p_priority: input.priority,
-      },
-    );
-    if (error) throw mapPostgresError(error.message);
+      const { data: assignmentId, error } = await caller.db.rpc(
+        "create_assignment_with_plan",
+        {
+          p_title: input.title,
+          p_task_type: input.taskType,
+          p_deadline: input.deadlineISO,
+          p_estimated_minutes: input.estimatedMinutes,
+          p_subtasks: subtasks,
+          p_course_id: input.courseId,
+          p_assessment_type_id: component?.assessmentTypeId ?? null,
+          p_notes: input.notes,
+          p_rubric_id: input.rubricId,
+          p_priority: input.priority,
+        },
+      );
+      if (error) throw mapPostgresError(error.message);
 
-    if (usageId) {
-      recordTokensInBackground(
-        caller.db,
-        usageId as string,
+      await finalizeAIUsage(
+        usageId,
+        "completed",
         generated.inputTokens,
         generated.outputTokens,
       );
-    }
 
-    return jsonResponse({
-      assignment_id: assignmentId,
-      model: generated.model,
-      rubric_grounded: rubric !== null,
-      rubric_source: rubric?.kind ?? null,
-      cache_read_tokens: generated.cacheReadTokens,
-      steps: plan.steps,
-    }, 201);
+      return jsonResponse({
+        assignment_id: assignmentId,
+        model: generated.model,
+        rubric_grounded: rubric !== null,
+        rubric_source: rubric?.kind ?? null,
+        cache_read_tokens: generated.cacheReadTokens,
+        steps: plan.steps,
+      }, 201);
+    } catch (e) {
+      await finalizeAIUsage(
+        usageId,
+        "failed",
+        generated?.inputTokens ?? null,
+        generated?.outputTokens ?? null,
+        usageFailureCode(e),
+      );
+      throw e;
+    }
   } catch (e) {
     noteRefusal(e, callerId, "breakdown", signals);
     return errorResponse(e);

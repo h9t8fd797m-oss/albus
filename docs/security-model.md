@@ -1,262 +1,236 @@
-# Security model
+# Albus security and financial-safety model
 
-Written against Supabase's current guidance (RLS, anonymous sign-ins,
-production checklist, publishable/secret keys). Re-read it before adding a
-table.
-
----
+This document describes the current system, not the intended one. The threat
+model is simple: **the iOS client is hostile**. A student can inspect it, patch
+it, replace every local entitlement value, replay requests, call Supabase
+directly, and send arbitrary ids and documents. Nothing on the device decides
+whether another person's data is visible or whether Albus pays for an AI call.
 
 ## 1. Identity
 
-Every Albus user is a real row in `auth.users`. The first launch calls
-`signInAnonymously()`, which issues a genuine JWT with a stable `sub`. There is
-no "no account" state — there is an *unlabelled* account.
+Every student is a real `auth.users` row. First launch creates an anonymous
+Supabase user and stores its rotating session in the iOS Keychain. Anonymous
+users hold the `authenticated` Postgres role; `anon` means no signed-in user and
+has no table grants at all.
 
-This matters for policy design: **anonymous users hold the `authenticated`
-Postgres role, exactly like permanent users.** They are not `anon`. The `anon`
-role belongs to unauthenticated requests carrying only the publishable key, and
-in this project `anon` can read nothing at all.
+The Keychain survives ordinary app deletion, so reinstalling does not normally
+mint a fresh allowance. It is not treated as proof of personhood: accounts can
+still be created outside the app, which is why rate, risk, and global financial
+controls exist underneath it.
 
-A JWT carries `is_anonymous`, so a policy can distinguish the two if it ever
-needs to. Today nothing does: every user owns their own work regardless of how
-they signed in. At purchase, the anonymous user is *linked* to Apple Sign-In
-rather than replaced, so no data migration happens and no row changes owner.
+`requireUser()` validates the bearer token with Supabase Auth. Identity always
+comes from that JWT's `sub`; no Edge Function accepts `user_id` from a body.
 
-The session lives in the iOS Keychain, which survives app deletion. That is
-deliberate: it stops "delete and reinstall" resetting the free-tier quota.
+## 2. Data isolation and the write surface
 
-## 2. Row Level Security
+Every `public` table has RLS enabled. User-owned SELECT/DELETE operations compare
+`(select auth.uid())` with the row owner, and restrictive owner policies remain
+an invariant underneath permissive policies. Reference data is read-only.
 
-Every table in `public` has RLS enabled. `anon` and `public` are revoked from
-all of them; `authenticated` is granted only the verbs it actually needs.
+Raw access is narrower than the policies:
 
-User-owned tables carry **five** policies:
+- `entitlements`, `ai_usage`, subscription, risk, and security-event tables have
+  no client grants in either direction.
+- assignments are readable and owner-deletable; creation goes through
+  `create_assignment_with_plan`.
+- rubrics are readable and owner-deletable; writes go through `upsert_rubric`.
+- courses are readable; creation goes through `create_course`.
+- remote subtasks are read-only. Remote plan sessions and completion logs are
+  outside the client surface because the current app schedules and estimates in
+  SwiftData, not those tables.
 
-```sql
--- four permissive, one per verb, each scoped to the owner
-create policy t_select_own on public.t for select to authenticated
-  using ((select auth.uid()) = user_id);
--- ... insert / update / delete ...
+The three write RPCs derive the owner from `auth.uid()` and run elevated only so
+their base-table grants can stay closed. Their bodies schema-qualify every
+relation. Triggers independently enforce course/rubric ownership, active-task
+limits, rubric limits, child limits, and high absolute abuse ceilings. Thus a
+future caller cannot bypass a rule by skipping the RPC.
 
--- one restrictive, the invariant
-create policy t_owner_only on public.t as restrictive for all to authenticated
-  using ((select auth.uid()) = user_id)
-  with check ((select auth.uid()) = user_id);
+`my_plan()` and `my_tier()` take no user argument. Internal functions which do
+take a user id are revoked from `authenticated`, preventing one-row-at-a-time
+subscription or usage enumeration.
+
+## 3. Keys and Edge Functions
+
+| Secret | Location | Property |
+|---|---|---|
+| Supabase publishable key | iOS app | public by design; RLS applies |
+| `ALBUS_SUPABASE_SECRET_KEY` | Edge secrets | bypasses RLS; never in client/repo |
+| `ANTHROPIC_API_KEY` | Edge secrets | pays for model calls |
+| RevenueCat webhook secrets | Edge secrets | authenticate and sign payment events |
+| `ALBUS_SIGNAL_PEPPER` | Edge secrets | makes stored signal hashes non-reversible |
+
+Student functions have gateway JWT verification enabled and call `requireUser`
+again. The RevenueCat webhook is the sole no-JWT function because RevenueCat is
+not an Albus user; it has two independent checks described below.
+
+Bodies are streamed through byte ceilings before JSON parsing: 16 KiB for plan
+generation, 32 KiB for chat, 128 KiB for grading, and 64 KiB for RevenueCat.
+Field-level limits then bound prompt content. A declared or streamed oversized
+body is cancelled before full allocation.
+
+User-owned ids are loaded through the caller-scoped client, so RLS decides what
+they resolve to. Breakdown additionally rejects a foreign course/rubric before
+calling Anthropic, avoiding a paid generation that is guaranteed to fail when
+saved. Prompt inputs are fenced and tag-like student text is stripped; output
+is schema-constrained and normalized before persistence.
+
+## 4. AI financial protection
+
+The order is intentional:
+
+1. verify JWT;
+2. enforce a compact per-account API request window (30/minute, 180/hour);
+3. parse and validate bounded input;
+4. load only caller-owned context;
+5. acquire the global then per-user database locks;
+6. check emergency stop, global calls, and conservative USD budgets;
+7. evaluate account risk and server-side plan entitlement;
+8. check delivered-result allowance and all-attempt rate limits;
+9. reserve a worst-case cost row;
+10. call Anthropic;
+11. finalize the reservation once with server-derived token cost.
+
+The app cannot execute reservation or finalization RPCs. The Edge Function uses
+the service role and passes the id obtained from the verified JWT.
+
+Automatic provider retries are disabled. The Messages API does not provide a
+dependable idempotency guarantee for SDK retries, so one database reservation
+maps to at most one Anthropic request. A user-initiated retry is a new attempt
+and must pass every gate above again.
+
+Allowance and financial exposure are deliberately different counters:
+
+- completed work and genuinely in-flight reservations consume the student's
+  purchased allowance;
+- failed work gives the allowance back;
+- every attempt, including failures, consumes the rate window;
+- every reservation, including an abandoned one, consumes conservative global
+  cost capacity for its hour/day.
+
+This prevents both failure farming and a runtime crash erasing cost evidence.
+Finalization is a one-way `reserved -> completed|failed` transition; replaying
+it cannot alter outcome, model, owner, or cost.
+
+Launch circuit breakers live in server-only `app_config`: 100 AI calls/hour,
+US$2/hour and US$10/day of worst-case reservations, plus an immediate emergency
+stop. These are intentionally low until real traffic establishes safe capacity.
+
+Each account also has a private rolling 30-day loss ceiling: US$1 Free,
+US$5.50 Plus and US$12 Pro. Completed calls count measured server-priced tokens;
+unfinished or unknown calls retain their worst-case reservation. A crashed Edge
+isolate therefore cannot erase cost, and one manipulated account cannot consume
+an unbounded share of the project budget. This backstop is separate from, and
+checked after, product entitlement so its refusal is never presented as a plan.
+
+Current paid allowances are server rows, not UI literals: Free gets no chat or
+grading; Plus gets two gradings per rolling seven days; Pro gets five and 300
+assignment-grounded Ask Albus turns per rolling 30 days. "Unlimited tasks" has
+a 500-active/2,000-total abuse ceiling that no honest student should encounter.
+
+## 5. Account farming and privacy
+
+The risk model combines account age, behavior, repeated account creation,
+privacy-preserving device correlation, and a coarse network prefix. A device or
+IP is never treated as a person:
+
+- no single signal can escalate beyond `elevated`;
+- `high`/`severe` requires at least two independent signal families;
+- paid accounts are capped at `elevated` because payment is the strongest
+  verification available;
+- bands age away automatically; existing data never becomes inaccessible.
+
+The app optionally sends iOS `identifierForVendor`, not an advertising id or
+hardware fingerprint. The Edge Function reduces IPs to IPv4 `/24` or IPv6
+`/48`, HMACs both values with the secret pepper, then discards the originals.
+Postgres receives only 64-character digests.
+
+Hostile telemetry is bounded: at most eight device and sixteen network hashes
+per user, and at most fifty security events per user/hour. Security events carry
+an endpoint and machine code, never a prompt, essay, message, raw IP, or raw
+device id. Deleting an anonymous account does not erase its device/network
+observations: the now-pseudonymous account UUID remains for the 90-day fraud
+window, while the auth row and all student content delete normally. The daily
+retention job then removes the observation.
+
+Anonymous signup is limited to ten per IP/hour. CAPTCHA/Turnstile remains a
+launch blocker because server-side CAPTCHA cannot be enabled until real
+Cloudflare keys are configured on both client and Supabase.
+
+## 6. RevenueCat and entitlements
+
+The client never writes entitlement state. RevenueCat calls a public webhook
+which requires:
+
+1. a constant-time checked Authorization secret; and
+2. RevenueCat's HMAC over `timestamp.raw_body`, with a five-minute delivery
+   replay window.
+
+The signed event id and event time are persisted. Replays and out-of-order
+events are ignored, and a subscription already linked to one user cannot move
+to another. Products grant nothing until explicitly mapped in the server-only
+`subscription_products` allowlist. A second allowlist restricts signed events
+to configured Albus RevenueCat app ids, because one RevenueCat project can
+deliver events for several apps. Unknown apps/products, null expiry, and
+Sandbox events fail closed. Sandbox is rejected independently in the Edge
+Function and the database.
+
+Cancellation keeps access until paid expiry. A `SUBSCRIPTION_PAUSED` event also
+keeps access until paid expiry because it schedules a pause; only the later
+`EXPIRATION` event revokes immediately. `PRODUCT_CHANGE` is informational and
+does not change entitlement before the provider reports the actual transaction
+state. A `TRANSFER` event never moves Albus entitlement state by itself: the
+database refuses to bind an existing original transaction to a different user.
+Production RevenueCat setup must use **Transfer if there are no active
+subscriptions**, so an active paid period cannot be walked through fresh Free
+accounts. This is verified again during the purchase launch checklist.
+
+The RevenueCat SDK, App Store products, webhook secrets, and real product map
+are not configured yet. Consequently the payment path is secure-by-closed but
+not commercially usable. The removed direct Apple receipt endpoints must not be
+redeployed.
+
+## 7. Retention and operations
+
+`prune-security-data` runs daily. It removes expired rate buckets after two
+hours, failed/abandoned AI attempts after 30 days, identity links after at least
+90 days, and security events after at least 180 days. Successful AI rows remain
+for cost reconciliation but contain counts and model names, not submitted work.
+The Grader stores result/feedback and a content hash; it never stores the essay.
+
+Production operators must keep Supabase/GitHub MFA enabled, rotate any exposed
+provider key, review security events and circuit-breaker usage, and test a kill
+switch before launch. Logs must never include request bodies or secrets.
+
+## 8. Verification
+
+After any schema or entitlement change:
+
+```bash
+supabase start
+supabase db reset --local --no-seed --yes
+supabase db lint --local --level warning
+supabase test db --local
+scripts/security-concurrency-local.sh
 ```
 
-Three deliberate choices in there:
+The pgTAP suite performs 79 privilege, RLS, plan, rate, risk, cost, replay, and
+cross-user checks in a rolled-back transaction. The shell test opens twelve
+real Postgres connections for one remaining grading/task/rubric and requires
+exactly one winner in each race. A one-connection test cannot prove locking.
 
-**`as restrictive`** — permissive policies combine with `OR`, so one careless
-policy added later can widen access to everything. Restrictive policies combine
-with `AND`. The owner-only policy is the invariant that survives future
-mistakes: on this table, `uid()` equals `user_id`, always.
+Also run Edge unit tests, Swift core tests, and iOS unit tests. CI runs database
+containers only when migrations/security tests change to keep GitHub cost low.
 
-**`to authenticated`** — a policy with no role applies to every role. Naming
-the role keeps `anon` out even if a grant is ever added by accident.
+## 9. Explicit blockers before production
 
-**`(select auth.uid())`** not `auth.uid()` — wrapping it in a subquery lets
-Postgres evaluate it once per statement instead of once per row. Supabase lints
-the unwrapped form as `0003_auth_rls_initplan`. On a table with thousands of
-sessions this is the difference between a fast query and a slow one.
-
-Reference tables (curriculum, rubrics, priors) are readable by any signed-in
-user and have **no** write policy for `authenticated`. An operation with no
-matching policy is denied — that is the enforcement, not an oversight.
-
-`entitlements` and `ai_usage` are read-only to their owner and written only by
-the service role. A user cannot grant themselves Plus; it is not a check in
-application code, it is the absence of a policy.
-
-## 3. Keys
-
-| Key | Where it lives | Bypasses RLS |
-|---|---|---|
-| `sb_publishable_...` | inside the iOS app | no |
-| `sb_secret_...` | Edge Function secrets only | **yes** |
-| `ANTHROPIC_API_KEY` | Edge Function secrets only | n/a |
-
-We use the new publishable/secret keys rather than legacy `anon`/`service_role`
-because they rotate independently — one leak forces one rotation, not a
-project-wide JWT secret change. Secret keys also return 401 if used from a
-browser.
-
-The publishable key is designed to be public; RLS is what protects data. It is
-still kept out of git so it can be rotated without a code change.
-
-## 4. Edge Functions
-
-`_shared/auth.ts` enforces the rule that matters: **identity comes from the
-verified JWT, never from the request body.** `requireUser()` ignores the body
-entirely. A payload claiming `{"user_id": "..."}` is an untrusted claim.
-
-Functions get a caller-scoped client by default, so RLS still applies inside
-the function — a bug in function logic cannot read another user's rows. The
-admin client is reached for explicitly and only for writes the user must not
-control.
-
-## 5. SECURITY DEFINER
-
-Two functions run elevated: `handle_new_user` (creates a profile before the
-user has rights on the table) and `reap_abandoned_anonymous_users`.
-
-Both pin `set search_path = ''` and schema-qualify every reference. Without
-that, a caller who controls `search_path` can shadow a table name and redirect
-the function's writes. `EXECUTE` is revoked from `public`, `anon` and
-`authenticated` on both.
-
-## 6. Abuse
-
-**Account farming is bounded by a global fuse.** Per-user limits cap what one
-account can spend; nothing capped what a thousand accounts could. Anonymous
-sign-up is the entire onboarding, so it cannot be removed, and CAPTCHA cannot
-be enabled until the client can present a challenge — Supabase rejects every
-sign-up without a token the moment it is switched on.
-
-`check_and_record_ai_usage` therefore checks a **global ceiling before the
-per-user ones**: total AI calls across every account in the last hour, read
-from `app_config` so it can be raised without a migration. A flood of fresh
-accounts, each individually within its allowance, still stops at a known
-number. It is a fuse, not a quota — it should never fire in normal operation.
-
-Per-IP anonymous sign-ups were also lowered from 30/hour to 10. A genuine
-student needs one; a shared school NAT might need a handful.
-
-### Account risk (migration 0035)
-
-The fuse bounds the damage; it does not notice the farm. `account_risk(uid)`
-does, and its whole design is shaped by what it must **not** do.
-
-**A device is not a person and an IP is not a household.** A sixth-form college
-hands out shared iPads. A family runs four students off one router. A carrier
-can put a city behind a handful of addresses. Blocking on either signal alone
-does not catch a farm; it catches a class.
-
-Six signals in four families — device sharing, network, behaviour, account age —
-each contributing a graduated score, never a verdict. Three rules are enforced
-in the function rather than merely intended:
-
-1. **No single signal can escalate past `elevated`.** Two independent families
-   are required. Account age is deliberately excluded from that count: every
-   real student is minutes old exactly once, and being new is not evidence.
-2. **A paid account is never escalated past `elevated`.** Somebody who completed
-   a payment has passed the strongest identity check this system has. Rate
-   limits still apply — a stolen account must not run away — but they are never
-   asked to prove themselves again.
-3. **Escalation buys friction, not a door.** `elevated` halves burst limits.
-   `high` quarters them and asks for a real sign-in — but only once there is one
-   to ask for, because a door with no key is a wall (`risk_verification_available`
-   is 0 until Turnstile or Apple Sign-In is switched on). Only `severe` refuses,
-   and only model calls: every screen, every saved plan and every rubric the
-   student has already written stays reachable at every band.
-
-Every band recovers without us. The signals age out of their own windows, so a
-score falls on its own — there is no list to be on and nothing to appeal to.
-
-Verified against the live database, through the real signup and HTTP path:
-
-| scenario | score | band | outcome |
-|---|---|---|---|
-| 30 fresh accounts, one school network, 30 devices | 40 | `elevated` | tightened, not blocked |
-| 6 accounts, one device, one afternoon | 90 | `severe` | refused at account 5 |
-| the same six signals on a paying account | — | `elevated` | allowed |
-| the same farm, 25 hours later | 40 | `elevated` | recovered by itself |
-
-### What the risk layer stores
-
-**Hashes, and nothing else.** The Edge Function computes
-`HMAC-SHA256(value, pepper)` and sends only the digest, so no raw IP address and
-no device identifier ever reaches Postgres — not in a column, not in a query
-log, not in a backup. The pepper lives in function secrets; rotating it retires
-the entire correlation set by design.
-
-- **The device identifier is iOS `identifierForVendor`** — per-vendor, reset
-  when the user deletes every app of ours, and not a hardware serial. It is the
-  weakest identifier that answers the question, which is the correct one to
-  pick. The client may withhold it and everything still works.
-- **The IP is reduced to a prefix first** — /24 for IPv4, /48 for IPv6. Less
-  identifying, and the right granularity: consumer addresses rotate and carriers
-  hand one address to thousands of people, so scoring the full address would be
-  simultaneously more invasive and less useful.
-- **`x-forwarded-for` is read from the last entry, not the first.** The first is
-  the conventional "original client" and is exactly the entry a client can
-  forge. A signal the attacker chooses is worse than no signal, because it looks
-  like evidence.
-- **`security_events` records the code and the endpoint** — never a request
-  body, never the work, never a message. It is written from the Edge Function
-  rather than from the gate because a raised exception rolls back its own
-  transaction: a log line written next to the `raise` would be discarded exactly
-  when it mattered.
-
-`prune_security_data()` drops links at 90 days and events at 180 — both longer
-than any window the model reads, so pruning cannot change a live score. It is
-written but **not scheduled**, the same position `reap_abandoned_anonymous_users`
-is in and for the same reason.
-
-**Before launch:** turn on CAPTCHA for anonymous sign-ins
-(`[auth.captcha]` in `config.toml`), and set `risk_verification_available` to 1
-in the same change.
-
-## 7. Entitlements
-
-Three tiers — Free, Plus, Pro — and **every limit is a row in `public.plans`**,
-read by the gate, the meter and the paywall alike. The client is never trusted
-to decide access; `EntitlementService` exists to show the right screen, and a
-tampered value there buys a nicer paywall and nothing else.
-
-The chain, in order: **authentication → authorization → entitlement → usage →
-rate limit → abuse detection.** Each layer assumes the one above it may have
-failed.
-
-- **`entitlements` is server-written.** Clients hold SELECT and nothing else. A
-  user cannot grant themselves Pro; that is not a check in application code, it
-  is the absence of a policy. A foreign key to `plans` and a CHECK constraint
-  mean a bad webhook cannot write a tier that silently compares false everywhere.
-- **`plans` is readable and not writable.** It is a price list. A student who
-  reads it learns what Plus costs, which is what the paywall tells them anyway.
-- **Functions that take a uid stay internal.** `effective_tier(uuid)`,
-  `account_risk(uuid)` and `ai_spend_count(uuid, …)` are revoked from
-  `authenticated`; any one of them made callable turns "cannot read another
-  user's data" into "can, one row at a time". The client-facing `my_plan()` and
-  `my_tier()` take **no arguments**, which makes asking about somebody else
-  structurally impossible rather than merely forbidden.
-- **Row-count limits are triggers, not RPCs.** `authenticated` holds INSERT on
-  `assignments`, `rubrics` and `subtasks`, so a limit living only inside an RPC
-  is bypassed by a client that does not call it — which was a live bypass until
-  migration 0036.
-- **Counting is serialised per user.** `pg_advisory_xact_lock` keyed on the
-  caller, because reserve-then-spend races under READ COMMITTED and did.
-
-`scripts/verify-entitlements.sql` attacks all of this with real accounts: 46
-checks covering plan spoofing, cross-account reads, usage tampering, every tier
-boundary, the direct-insert bypasses, and the risk model's two headline
-scenarios. Every row must return `pass = true`.
-
-**It cannot test concurrency.** One connection cannot demonstrate a race, and
-worse, it will report a race-prone gate as clean — which is exactly what
-happened. That check has to go over HTTP with real sockets; the recipe is in the
-script's header.
-
-## 8. Deliberately not done yet
-
-Honest list, so none of these are mistaken for oversights:
-
-- **CAPTCHA is off.** Needed before launch, not before the first build.
-- **Apple Sign-In is off.** Needs the Apple Developer account configured.
-- **`force row level security` is not set.** It would apply RLS to the table
-  owner too, which locks the dashboard SQL editor out of its own tables. The
-  service role bypasses RLS by role attribute regardless, so FORCE buys little
-  here and costs real debugging time.
-- **No SSL enforcement / network restrictions.** Free-plan project; revisit at
-  launch per the Supabase production checklist.
-- **No custom SMTP.** Not needed — the app sends no email.
-- **MFA on the Supabase account** is a dashboard setting only you can enable.
-  Do it: that account is the root of everything here.
-
-## 9. After any schema change
-
-Run **both** harnesses. `scripts/verify-rls.sql` audits the policy surface and
-tries to read, forge and update across the boundary.
-`scripts/verify-entitlements.sql` assumes the policies are right and tries to
-get past them anyway. Every row of both must return `pass = true`.
-
-Then run the Supabase Security Advisor and confirm it is empty.
+- Rotate the previously exposed Anthropic key and set the dedicated signal
+  pepper.
+- Configure Turnstile and enable CAPTCHA in client and Supabase together.
+- Enable Apple Sign-In/account linking before taking payment.
+- Configure RevenueCat products, SDK, dual webhook secrets, and product map;
+  verify purchase, renewal, cancellation, expiry, refund, replay, and conflict
+  in Sandbox before enabling Production products.
+- Enable MFA on Supabase, GitHub, Apple, Anthropic, and RevenueCat accounts.
+- Remove temporary Pro grants and old deployed Apple Edge Functions.
+- Apply migrations/functions to production, run the live RLS/advisor audit, and
+  test the AI emergency stop and budget alerts.

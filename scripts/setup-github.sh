@@ -25,11 +25,8 @@ echo "==> Protecting main"
 # cannot approve your own PR; the PR + status checks are the gate.
 # Server-side protection needs GitHub Pro on a private repo. If it 403s we
 # fall back to the pre-push hook, which is already committed in .githooks/.
-gh api -X PUT "repos/$OWNER/$REPO_NAME/branches/main/protection" \
-  -H "Accept: application/vnd.github+json" --input - <<'JSON' || {
-  echo "!! Branch protection unavailable (private repo on the Free plan)."
-  echo "   Local pre-push hook is enforcing it instead: git config core.hooksPath .githooks"
-}
+if ! gh api -X PUT "repos/$OWNER/$REPO_NAME/branches/main/protection" \
+  -H "Accept: application/vnd.github+json" --input - <<'JSON'
 {
   "required_status_checks": {
     "strict": true,
@@ -51,6 +48,10 @@ gh api -X PUT "repos/$OWNER/$REPO_NAME/branches/main/protection" \
   "required_conversation_resolution": true
 }
 JSON
+then
+  echo "!! Branch protection unavailable (private repo on the Free plan)."
+  echo "   Local pre-push hook is enforcing it instead: git config core.hooksPath .githooks"
+fi
 
 echo "==> Opening the first PR"
 gh pr create --base main --head "$BRANCH" \
@@ -59,7 +60,7 @@ gh pr create --base main --head "$BRANCH" \
 
 See \`docs/security-model.md\` for the security rationale and \`docs/database.md\` for the schema.
 
-Verified: Supabase Security Advisor returns zero findings; \`scripts/verify-rls.sql\` passes all seven isolation checks."
+Verified: Supabase Security Advisor returns zero findings; \`supabase test db --local\` and \`scripts/security-concurrency-local.sh\` pass."
 
 echo ""
 echo "Done. main is protected — direct pushes and force-pushes are now rejected."

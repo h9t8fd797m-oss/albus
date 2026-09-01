@@ -70,3 +70,19 @@ token_refresh = 150
 [edge_runtime]
 enabled = true
 policy = "per_worker"
+
+# Explicit deployment policy. Student endpoints are checked by the Supabase
+# gateway and then verify the user again in requireUser(). RevenueCat cannot
+# present a user JWT; it authenticates with an Authorization secret plus an
+# HMAC signature over the exact raw body.
+[functions.breakdown]
+verify_jwt = true
+
+[functions.chat]
+verify_jwt = true
+
+[functions.grade]
+verify_jwt = true
+
+[functions.revenuecat-webhook]
+verify_jwt = false

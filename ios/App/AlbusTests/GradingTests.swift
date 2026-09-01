@@ -216,6 +216,8 @@ struct RefusalTests {
         #expect(ChatService.Failure.rateLimited.isAnswerableByUpgrading == false)
         #expect(GradingService.Failure.offline.isAnswerableByUpgrading == false)
         #expect(GradingService.Failure.unavailable.isAnswerableByUpgrading == false)
+        #expect(GradingService.Failure.fairUseReached.isAnswerableByUpgrading == false)
+        #expect(ChatService.Failure.fairUseReached.isAnswerableByUpgrading == false)
     }
 
     /// Neither is a thing a purchase resolves, and both must stay reachable as
@@ -233,8 +235,8 @@ struct RefusalTests {
         let cases: [GradingService.Failure] = [
             .notOnPlan, .allowanceUsed(resetsAt: nil),
             .allowanceUsed(resetsAt: .now.addingTimeInterval(86_400)),
-            .tooFast, .needsVerification, .paused, .tooShort, .noRubric,
-            .offline, .unavailable, .tooLongToMark, .tooLong(40_000),
+            .tooFast, .needsVerification, .paused, .fairUseReached, .tooShort, .noRubric,
+            .offline, .unavailable, .tooLongToMark, .tooLong(20_000),
         ]
         for failure in cases {
             let text = failure.errorDescription ?? ""

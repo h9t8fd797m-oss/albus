@@ -81,6 +81,13 @@ export function mapPostgresError(message: string): HttpError {
       "That's this month's messages used.",
     );
   }
+  if (message.includes("FAIR_USE_REACHED")) {
+    return new HttpError(
+      402,
+      "FAIR_USE_REACHED",
+      "This account has reached its monthly AI safety limit. Capacity returns gradually over 30 days.",
+    );
+  }
 
   // ── Going too fast ────────────────────────────────────────────────────────
   if (message.includes("RATE_LIMIT_HOURLY")) {
@@ -95,6 +102,13 @@ export function mapPostgresError(message: string): HttpError {
       429,
       "RATE_LIMIT_DAILY",
       "You have reached today's limit. It resets tomorrow.",
+    );
+  }
+  if (message.includes("API_RATE_LIMIT")) {
+    return new HttpError(
+      429,
+      "RATE_LIMIT_HOURLY",
+      "Too many requests. Wait a moment and try again.",
     );
   }
 
@@ -121,20 +135,35 @@ export function mapPostgresError(message: string): HttpError {
   }
 
   // ── Ownership and shape ───────────────────────────────────────────────────
-  if (message.includes("RUBRIC_NOT_YOURS")
-      || message.includes("rubric does not belong to this user")) {
+  if (
+    message.includes("RUBRIC_NOT_YOURS") ||
+    message.includes("rubric does not belong to this user")
+  ) {
     return new HttpError(403, "RUBRIC_NOT_YOURS", "That rubric isn't yours.");
   }
   if (message.includes("TOO_MANY_CRITERIA")) {
     return new HttpError(422, "TOO_MANY_CRITERIA", "That's more criteria than a rubric can hold.");
   }
+  if (message.includes("COURSE_NOT_YOURS") || message.includes("ASSIGNMENT_NOT_YOURS")) {
+    return new HttpError(403, "NOT_YOURS", "That item isn't yours.");
+  }
+  if (message.includes("ASSIGNMENT_REQUIRED")) {
+    return new HttpError(422, "ASSIGNMENT_REQUIRED", "Open an assignment first.");
+  }
+  if (message.includes("ASSIGNMENT_NOT_FOUND")) {
+    return new HttpError(404, "ASSIGNMENT_NOT_FOUND", "That assignment is unavailable.");
+  }
   if (message.includes("RUBRIC_NAME_REQUIRED") || message.includes("RUBRIC_ID_REQUIRED")) {
     return new HttpError(422, "INVALID_RUBRIC", "That rubric is missing a name.");
   }
-  if (message.includes("RUBRIC_CEILING")
-      || message.includes("rubric limit reached")
-      || message.includes("rubric criterion limit reached")) {
-    return new HttpError(422, "RUBRIC_LIMIT", "That's as many rubrics as Albus can hold.");
+  if (
+    message.includes("RUBRIC_CEILING") ||
+    message.includes("COURSE_CEILING") ||
+    message.includes("ASSIGNMENT_CEILING") ||
+    message.includes("rubric limit reached") ||
+    message.includes("rubric criterion limit reached")
+  ) {
+    return new HttpError(422, "STORAGE_LIMIT", "That's more than Albus can safely hold.");
   }
   if (message.includes("NOT_AUTHENTICATED")) {
     return new HttpError(401, "NOT_AUTHENTICATED");
@@ -148,7 +177,10 @@ export function mapPostgresError(message: string): HttpError {
   // The global spend fuse (migration 0013). Without this case it fell through
   // to the branch below and reached the client as a 500, so the app could not
   // tell "we are at capacity, retry later" from "we are broken".
-  if (message.includes("GLOBAL_CAPACITY_REACHED")) {
+  if (
+    message.includes("GLOBAL_CAPACITY_REACHED") ||
+    message.includes("AI_EMERGENCY_STOP")
+  ) {
     return new HttpError(
       503,
       "GLOBAL_CAPACITY_REACHED",
@@ -161,6 +193,10 @@ export function mapPostgresError(message: string): HttpError {
   if (message.includes("PLAN_UNKNOWN")) {
     console.error("entitlement names a tier with no plan row");
     return new HttpError(500, "INTERNAL_ERROR");
+  }
+  if (message.includes("AI_BUDGET_UNKNOWN")) {
+    console.error("entitlement has no AI financial-safety budget");
+    return new HttpError(503, "GLOBAL_CAPACITY_REACHED", "Albus is at capacity right now.");
   }
 
   // Anything unmapped is a bug on our side. The message is a raw Postgres
