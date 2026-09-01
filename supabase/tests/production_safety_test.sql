@@ -122,7 +122,7 @@ select ok(has_function_privilege(
   'authenticated', 'public.upsert_rubric(uuid,text,text,text,integer,jsonb)', 'EXECUTE'),
   'the controlled rubric RPC remains callable');
 select ok(has_function_privilege(
-  'authenticated', 'public.create_course(text,text,text)', 'EXECUTE'),
+  'authenticated', 'public.create_course(text,text,text,text,smallint)', 'EXECUTE'),
   'the controlled course RPC remains callable');
 
 select is(

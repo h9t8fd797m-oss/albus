@@ -104,9 +104,12 @@ targets:
       - path: App/AlbusUITests
     dependencies:
       - target: Albus
-    settings:
-      base:
-        GENERATE_INFOPLIST_FILE: YES
+    # The local-only onboarding proof reads this from its test bundle. The
+    # value stays empty unless a deliberate xcodebuild invocation supplies it.
+    info:
+      path: App/AlbusUITests/Info.plist
+      properties:
+        ALBUS_LOCAL_CONTEXT_TEST: $(ALBUS_LOCAL_CONTEXT_TEST)
 
 schemes:
   Albus:

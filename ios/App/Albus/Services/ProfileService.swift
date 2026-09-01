@@ -12,6 +12,11 @@ import AlbusCore
 /// in this app, and they were three round trips away the whole time.
 struct ProfileService {
 
+    struct IBContextSnapshot: Equatable, Sendable {
+        let examSession: ExamSession?
+        let targetPoints: Int?
+    }
+
     private let client: SupabaseClient?
 
     init(client: SupabaseClient? = Backend.shared) {
@@ -117,6 +122,39 @@ struct ProfileService {
         }
     }
 
+    /// Reads only the caller's profile context. The explicit id filter keeps
+    /// the query single-row even before RLS; the owner policy remains the
+    /// authorization boundary if a modified client changes that filter.
+    func ibContext() async -> IBContextSnapshot? {
+        guard let client, let userID = currentUserID(client) else { return nil }
+
+        struct Row: Decodable {
+            let examSession: String?
+            let targetPoints: Int?
+
+            enum CodingKeys: String, CodingKey {
+                case examSession = "exam_session"
+                case targetPoints = "target_points"
+            }
+        }
+
+        do {
+            let row: Row = try await client.from("profiles")
+                .select("exam_session,target_points")
+                .eq("id", value: userID.uuidString.lowercased())
+                .single()
+                .execute()
+                .value
+            return IBContextSnapshot(
+                examSession: row.examSession.flatMap(ExamSession.init(rawValue:)),
+                targetPoints: row.targetPoints
+            )
+        } catch {
+            print("[Albus] IB context read failed: \(error)")
+            return nil
+        }
+    }
+
     /// Record which examination session the student is sitting, and what they
     /// are aiming for overall.
     ///
@@ -125,7 +163,9 @@ struct ProfileService {
     /// derives the year from this whenever it needs one.
     @discardableResult
     func setIBContext(examSession: ExamSession? = nil,
-                      targetPoints: Int? = nil) async -> Bool {
+                      targetPoints: Int? = nil,
+                      clearExamSession: Bool = false,
+                      clearTargetPoints: Bool = false) async -> Bool {
         guard let client else { return false }
 
         struct Params: Encodable {
@@ -140,8 +180,8 @@ struct ProfileService {
                 "set_ib_context",
                 params: Params(p_exam_session: examSession?.rawValue,
                                p_target_points: targetPoints,
-                               p_clear_exam_session: false,
-                               p_clear_target_points: false)
+                               p_clear_exam_session: clearExamSession,
+                               p_clear_target_points: clearTargetPoints)
             )
             .execute()
             .value

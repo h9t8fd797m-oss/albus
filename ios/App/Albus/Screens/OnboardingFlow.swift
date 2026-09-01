@@ -22,9 +22,12 @@ struct OnboardingFlow: View {
     @State private var name = ""
     @State private var program: Preferences.Program = .ib
     @State private var load: Preferences.StudyLoad = .standard
+    @State private var diplomaYear: DiplomaYearChoice = .dp2
+    @State private var targetPointsText = ""
 
     // Screen 2 — only shown when Albus has verified data for the programme.
     @State private var selectedSubjectCodes: Set<String> = []
+    @State private var subjectLevels: [String: CourseLevel] = [:]
 
     // Screen 3
     @State private var taskTitle = ""
@@ -111,6 +114,33 @@ struct OnboardingFlow: View {
                     }
                 }
 
+                field("Which year are you in?") {
+                    ChoiceGrid(columns: 2, options: DiplomaYearChoice.allCases,
+                               selection: $diplomaYear) { $0.title }
+                }
+
+                field("Target points · optional") {
+                    VStack(alignment: .leading, spacing: Tokens.Spacing.xs) {
+                        TextField("Out of 45", text: $targetPointsText)
+                            .keyboardType(.numberPad)
+                            .padding(Tokens.Spacing.m)
+                            .background(Tokens.Glass.fill,
+                                        in: RoundedRectangle(cornerRadius: Tokens.Radius.control,
+                                                             style: .continuous))
+                            .overlay {
+                                RoundedRectangle(cornerRadius: Tokens.Radius.control,
+                                                 style: .continuous)
+                                    .strokeBorder(Tokens.Palette.hairline, lineWidth: 0.5)
+                            }
+
+                        if !TargetPointsInput.isValidOrEmpty(targetPointsText) {
+                            Text("Use a number from 1 to 45, or leave it empty.")
+                                .font(Tokens.Typography.micro)
+                                .foregroundStyle(Tokens.Palette.danger)
+                        }
+                    }
+                }
+
                 field("Daily study hours") {
                     ChoiceGrid(columns: 3, options: Preferences.StudyLoad.allCases,
                                selection: $load) { $0.title }
@@ -141,11 +171,41 @@ struct OnboardingFlow: View {
                     options: offeredSubjects.map { (value: $0.code, title: $0.shortName) },
                     selection: $selectedSubjectCodes
                 )
+
+                if !selectedLevelSubjects.isEmpty {
+                    VStack(alignment: .leading, spacing: Tokens.Spacing.s) {
+                        Text("LEVEL · OPTIONAL")
+                            .font(Tokens.Typography.overline)
+                            .tracking(Tokens.Tracking.overline)
+                            .foregroundStyle(Tokens.Palette.inkMuted)
+
+                        ForEach(selectedLevelSubjects) { subject in
+                            HStack(alignment: .center, spacing: Tokens.Spacing.m) {
+                                Text(subject.shortName)
+                                    .font(Tokens.Typography.body)
+                                    .foregroundStyle(Tokens.Palette.ink)
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+                                CourseLevelSelector(
+                                    selection: levelBinding(for: subject.code),
+                                    accessibilityPrefix: "onboardingLevel.\(subject.code)"
+                                )
+                            }
+                            .padding(Tokens.Spacing.m)
+                            .background(Tokens.Glass.fill,
+                                        in: RoundedRectangle(cornerRadius: Tokens.Radius.control,
+                                                             style: .continuous))
+                        }
+                    }
+                }
+
                 Text("You can add any other subject later, whether or not Albus knows it.")
                     .font(Tokens.Typography.micro)
                     .foregroundStyle(Tokens.Palette.inkMuted)
                     .fixedSize(horizontal: false, vertical: true)
             }
+        }
+        .onChange(of: selectedSubjectCodes) { selected in
+            subjectLevels = subjectLevels.filter { selected.contains($0.key) }
         }
     }
 
@@ -158,6 +218,17 @@ struct OnboardingFlow: View {
 
     private var chosenSubject: CurriculumSubject? {
         chosenSubjects.first { $0.code == subjectCode }
+    }
+
+    private var selectedLevelSubjects: [CurriculumSubject] {
+        chosenSubjects.filter { CourseLevel.applies(to: $0.code) }
+    }
+
+    private func levelBinding(for code: String) -> Binding<CourseLevel?> {
+        Binding(
+            get: { subjectLevels[code] },
+            set: { level in subjectLevels[code] = level }
+        )
     }
 
     private var deadlineStep: some View {
@@ -390,11 +461,16 @@ struct OnboardingFlow: View {
         // Now that there is an account, tell the server what the student is
         // studying. Best-effort: a failed sync costs slightly less specific
         // answers from Albus, never the assignment they are here to create.
-        await ProfileService().syncCurriculum(preferences.curriculumCode)
+        let profiles = ProfileService()
+        await profiles.syncCurriculum(preferences.curriculumCode)
+        await profiles.setIBContext(
+            examSession: diplomaYear.examSession(),
+            targetPoints: TargetPointsInput.value(from: targetPointsText)
+        )
 
         // Subjects are created here rather than when they were picked: a flow
         // abandoned on the deadline screen should leave nothing behind.
-        let course = await createChosenSubjects()
+        let course = await createChosenSubjects(using: profiles)
 
         await coordinator.addAssignment(
             NewAssignment(
@@ -421,16 +497,18 @@ struct OnboardingFlow: View {
     /// breakdown that runs immediately after this needs them to attach the
     /// assignment to a course, and the whole step costs a handful of small
     /// inserts against a call that already takes seconds.
-    private func createChosenSubjects() async -> Course? {
+    private func createChosenSubjects(using profiles: ProfileService) async -> Course? {
         guard !chosenSubjects.isEmpty else { return nil }
 
         let palette = Tokens.SubjectColor.allCases
         var created: [(subject: CurriculumSubject, course: Course)] = []
 
         for (index, subject) in chosenSubjects.enumerated() {
+            let level = CourseLevel.applies(to: subject.code) ? subjectLevels[subject.code] : nil
             let course = Course(displayName: subject.shortName,
                                 colorKey: palette[index % palette.count],
-                                curriculumSubjectCode: subject.code)
+                                curriculumSubjectCode: subject.code,
+                                level: level)
             context.insert(course)
             created.append((subject, course))
         }
@@ -438,12 +516,13 @@ struct OnboardingFlow: View {
 
         // Best-effort, exactly as everywhere else: a subject that did not sync
         // is still a working subject on the device, just not yet on the server.
-        let profiles = ProfileService()
         for (subject, course) in created {
             if let remote = await profiles.createCourse(
                 displayName: course.displayName,
                 colorKey: course.colorKey,
-                curriculumSubjectCode: subject.code
+                curriculumSubjectCode: subject.code,
+                level: course.level,
+                targetGrade: course.targetGrade
             ) {
                 course.remoteID = remote
             }
