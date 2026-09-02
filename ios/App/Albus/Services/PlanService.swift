@@ -52,6 +52,7 @@ struct PlanService {
         case rateLimited
         case fairUseReached
         case offline
+        case unusableResponse
         case unavailable
         case rejected(String)
 
@@ -71,6 +72,8 @@ struct PlanService {
                 + "Existing tasks still work, and capacity returns gradually over 30 days."
             case .offline:
                 "No connection — Albus will plan this when you're back online."
+            case .unusableResponse:
+                ModelResponseFailure.retryableDescription
             case .unavailable:
                 "Albus can't plan right now. Your assignment is saved."
             case .rejected(let why):
@@ -151,7 +154,7 @@ struct PlanService {
     /// The server returns a machine-readable code; surface the ones a student
     /// can act on and collapse the rest into "unavailable". Leaking internal
     /// error text to a UI is how implementation details end up on screen.
-    private static func translate(_ error: FunctionsError) -> Failure {
+    static func translate(_ error: FunctionsError) -> Failure {
         guard case .httpError(let code, let data) = error else { return .unavailable }
 
         let body = try? JSONDecoder().decode(ErrorBody.self, from: data)
@@ -163,6 +166,7 @@ struct PlanService {
         case "RATE_LIMIT_HOURLY", "RATE_LIMIT_DAILY":   return .rateLimited
         case "FAIR_USE_REACHED":                        return .fairUseReached
         case "GLOBAL_CAPACITY_REACHED":                 return .unavailable
+        case "EMPTY_RESPONSE", "MALFORMED_RESPONSE":    return .unusableResponse
         default: break
         }
 

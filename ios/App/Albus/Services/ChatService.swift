@@ -40,6 +40,7 @@ struct ChatService {
         case rateLimited
         case fairUseReached
         case offline
+        case unusableResponse
         case unavailable
         case rejected(String)
 
@@ -61,6 +62,8 @@ struct ChatService {
                 + "Capacity returns gradually over 30 days."
             case .offline:
                 "No connection — Albus needs one to answer."
+            case .unusableResponse:
+                ModelResponseFailure.retryableDescription
             case .unavailable:
                 "Albus can't answer right now."
             case .rejected(let why):
@@ -129,7 +132,7 @@ struct ChatService {
         }
     }
 
-    private static func translate(_ error: FunctionsError) -> Failure {
+    static func translate(_ error: FunctionsError) -> Failure {
         guard case .httpError(let code, let data) = error else { return .unavailable }
 
         let body = try? JSONDecoder().decode(ErrorBody.self, from: data)
@@ -144,6 +147,7 @@ struct ChatService {
             return .rejected(body?.message ?? "Albus can't answer right now.")
         case "GLOBAL_CAPACITY_REACHED":               return .unavailable
         case "MESSAGE_TOO_LONG":                      return .rejected("That message is too long.")
+        case "EMPTY_RESPONSE", "MALFORMED_RESPONSE":  return .unusableResponse
         default: break
         }
 
