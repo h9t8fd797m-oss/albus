@@ -122,7 +122,7 @@ struct ChatService {
 
         do {
             return try await client.functions.invoke(
-                "chat", options: .init(headers: DeviceSignal.headers(), body: body))
+                "chat", options: .init(headers: await DeviceSignal.headers(), body: body))
         } catch let error as FunctionsError {
             throw Self.translate(error)
         } catch let error as URLError {

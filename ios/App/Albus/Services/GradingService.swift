@@ -235,7 +235,7 @@ struct GradingService {
             // student then sees a failure for work that was in fact marked, and
             // has spent a grading to see it.
             return try await client.functions.invoke(
-                "grade", options: .init(headers: DeviceSignal.headers(), body: body))
+                "grade", options: .init(headers: await DeviceSignal.headers(), body: body))
         } catch let error as FunctionsError {
             throw Self.translate(error)
         } catch let error as URLError {

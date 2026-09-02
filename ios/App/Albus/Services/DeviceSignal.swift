@@ -28,12 +28,22 @@ enum DeviceSignal {
     /// The header the Edge Functions read. Nil when iOS declines to answer,
     /// which it legitimately does — briefly after a restart, before the device
     /// is first unlocked.
+    ///
+    /// `UIDevice` is main-actor isolated, but the callers below are the
+    /// deliberately-nonisolated network readers (see `PlanReader`'s own note
+    /// on why) — they may run off the main thread. One hop through
+    /// `MainActor.run` reads the value safely from wherever the caller is,
+    /// rather than assuming an isolation the caller does not have.
     static var headerValue: String? {
-        #if canImport(UIKit)
-        UIDevice.current.identifierForVendor?.uuidString
-        #else
-        nil
-        #endif
+        get async {
+            #if canImport(UIKit)
+            await MainActor.run {
+                UIDevice.current.identifierForVendor?.uuidString
+            }
+            #else
+            nil
+            #endif
+        }
     }
 
     static let headerName = "x-albus-device"
@@ -41,8 +51,8 @@ enum DeviceSignal {
     /// Merged into a function invocation's headers. Returns the caller's own
     /// headers untouched when there is nothing to add, so a call site never has
     /// to branch on availability.
-    static func headers(adding existing: [String: String] = [:]) -> [String: String] {
-        guard let headerValue else { return existing }
+    static func headers(adding existing: [String: String] = [:]) async -> [String: String] {
+        guard let headerValue = await headerValue else { return existing }
         var merged = existing
         merged[headerName] = headerValue
         return merged
