@@ -103,6 +103,7 @@ struct GradingService {
         case tooShort
         case noRubric
         case offline
+        case unusableResponse
         case unavailable
         case rejected(String)
 
@@ -136,6 +137,8 @@ struct GradingService {
                 "Pick a rubric to mark this against."
             case .offline:
                 "No connection — marking needs one."
+            case .unusableResponse:
+                ModelResponseFailure.retryableDescription
             case .unavailable:
                 // Never "nothing was charged" — the client cannot know that. A
                 // grading is reserved before the model runs, so a failure here
@@ -242,7 +245,7 @@ struct GradingService {
         }
     }
 
-    private static func translate(_ error: FunctionsError) -> Failure {
+    static func translate(_ error: FunctionsError) -> Failure {
         guard case .httpError(let code, let data) = error else { return .unavailable }
 
         let body = try? JSONDecoder().decode(ErrorBody.self, from: data)
@@ -265,6 +268,8 @@ struct GradingService {
         case "WORK_TOO_SHORT":          return .tooShort
         case "RUBRIC_NOT_FOUND":        return .noRubric
         case "GLOBAL_CAPACITY_REACHED": return .unavailable
+        case "EMPTY_RESPONSE", "MALFORMED_RESPONSE":
+            return .unusableResponse
         // Marking ran past the output cap. Distinct from an ordinary failure
         // because retrying identical work will truncate identically — the
         // student needs to know to send less, not to try again.
