@@ -127,6 +127,9 @@ final class EntitlementService {
     private(set) var plan: Plan = .freeFallback
     private(set) var lastCheckedAt: Date?
     private(set) var isLoading = false
+    /// True when the server could not confirm the plan currently on screen.
+    /// The previous plan remains visible, but callers must label it as stale.
+    private(set) var refreshFailed = false
 
     var tier: Tier { plan.tier }
 
@@ -139,9 +142,9 @@ final class EntitlementService {
         return expiresAt > .now
     }
 
-    private let reader: PlanReader
+    private let reader: any PlanReading
 
-    init(reader: PlanReader = PlanReader()) {
+    init(reader: any PlanReading = PlanReader()) {
         self.reader = reader
     }
 
@@ -157,11 +160,25 @@ final class EntitlementService {
             if let fetched = try await reader.fetch() {
                 plan = fetched
                 lastCheckedAt = .now
+                refreshFailed = false
             }
         } catch {
+            refreshFailed = true
             print("[Albus] plan refresh failed: \(error.localizedDescription)")
         }
     }
+
+    /// Hides the stale-data notice until another refresh fails. This never
+    /// changes the plan or any entitlement; it dismisses presentation only.
+    func dismissRefreshFailure() {
+        refreshFailed = false
+    }
+}
+
+/// Small seam around the network reader so failure state can be proved without
+/// teaching tests how to manufacture a Supabase transport error.
+protocol PlanReading: Sendable {
+    func fetch() async throws -> EntitlementService.Plan?
 }
 
 /// The network half, deliberately outside the MainActor class.
@@ -171,7 +188,7 @@ final class EntitlementService {
 /// isolation boundary — which Xcode 16.4 rejects and Xcode 26 allows. Keeping
 /// the request in a plain nonisolated type means only the decoded, Sendable
 /// value ever crosses. Same shape as PlanService, for the same reason.
-struct PlanReader: Sendable {
+struct PlanReader: PlanReading, Sendable {
 
     /// The wire shape of `my_plan()`. Flat, because a Postgres function
     /// returning a table returns one flat row.
@@ -230,6 +247,13 @@ struct PlanReader: Sendable {
     /// impossible here rather than merely unauthorised.
     func fetch() async throws -> EntitlementService.Plan? {
         guard let client else { return nil }
+#if DEBUG
+        // Simulator-only proof hook. Release builds cannot force this path,
+        // and the server remains the source of truth either way.
+        if ProcessInfo.processInfo.arguments.contains("-albus.debug.failEntitlementRefresh") {
+            throw URLError(.cannotConnectToHost)
+        }
+#endif
         let rows: [Row] = try await client.rpc("my_plan").execute().value
         guard let row = rows.first else { return nil }
 

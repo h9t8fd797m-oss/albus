@@ -130,6 +130,12 @@ struct PaywallScreen: View {
                         .padding(.horizontal, heroInset)
                         .padding(.top, heroTop)
 
+                    if entitlements.refreshFailed {
+                        EntitlementRefreshNotice()
+                            .padding(.horizontal, heroInset)
+                            .padding(.top, 12)
+                    }
+
                     // **The picker comes before the detail.**
                     //
                     // It was the other way round, inherited from a two-plan

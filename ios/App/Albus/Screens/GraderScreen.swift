@@ -192,6 +192,10 @@ struct GraderScreen: View {
     // MARK: - 0 · Start
 
     @ViewBuilder private var startStage: some View {
+        if entitlements.refreshFailed {
+            EntitlementRefreshNotice()
+        }
+
         card(rail: Tokens.Palette.accent) {
             // No model named here on purpose. Which model marks depends on
             // whether a rubric turns up, and nothing has been chosen yet — the

@@ -8,7 +8,17 @@ import AlbusCore
 /// once. Content scrolls *under* the bar, which means the bottom inset is set
 /// in exactly one place and no screen adds padding of its own.
 struct AppShell: View {
-    @State private var tab: Tab = .home
+    @State private var tab: Tab
+
+    init() {
+#if DEBUG
+        let initial: Tab = ProcessInfo.processInfo.arguments
+            .contains("-albus.debug.openSettings") ? .settings : .home
+#else
+        let initial: Tab = .home
+#endif
+        _tab = State(initialValue: initial)
+    }
 
     /// Four destinations.
     ///
