@@ -32,3 +32,20 @@ TURNSTILE_ORIGIN = https:/$()/albus.app
 // level without the entitlement is *ignored* by iOS rather than rejected, so
 // leaving this NO costs nothing and claims nothing.
 ALBUS_SIGNED_BUILD = NO
+
+// ── Apple Team ID ────────────────────────────────────────────────────────
+// The 10-character team identifier. Leave EMPTY to build and test in the
+// simulator; that is the whole of what an unsigned build costs you.
+//
+// A real value is needed only to run on a device, use TestFlight, or upload
+// to App Store Connect. Find it in Xcode → your project → Signing &
+// Capabilities → Team, in parentheses after the team name; or, once a team
+// has been selected there once, with:
+//
+//     grep DEVELOPMENT_TEAM ios/Albus.xcodeproj/project.pbxproj
+//
+// It lives here rather than in project.yml because this repo is public and a
+// team identifier names a real developer account. It is not a secret — every
+// distributed app carries it inside its provisioning profile — but there is
+// no reason to publish somebody's account identifier in a spec file.
+DEVELOPMENT_TEAM =

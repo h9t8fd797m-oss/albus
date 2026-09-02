@@ -4,9 +4,10 @@
 # that file is machine-written, merges badly, and hides real changes in noise.
 # This is the source of truth — regenerate after editing.
 #
-# SIGNING IS DELIBERATELY UNSET. The app builds and runs in the simulator as
-# is. To run on a device or ship, set DEVELOPMENT_TEAM to the Apple Team ID
-# (10 characters, under Membership in the developer account).
+# Signing: the Apple Team ID lives in ios/App/Config.xcconfig, which is
+# gitignored — this repo is public, and the team identifies a real developer
+# account. Copy Config.example.xcconfig and fill in DEVELOPMENT_TEAM to build
+# for a device. Without it the app still builds and tests in the simulator.
 name: Albus
 options:
   bundleIdPrefix: com.felipegutierrez
@@ -28,22 +29,24 @@ settings:
   base:
     SWIFT_VERSION: "6.0"
     ENABLE_USER_SCRIPT_SANDBOXING: YES
-    # No team set on purpose — see the note above.
     CODE_SIGN_STYLE: Automatic
-    # Signing stays off until there is a real Apple Team ID.
+    # Read from Config.xcconfig, which is gitignored. Empty in a fresh clone,
+    # which means unsigned — fine for the simulator, and the only thing that
+    # needs a real value is a device build or an upload.
+    DEVELOPMENT_TEAM: $(DEVELOPMENT_TEAM)
     #
     # App/Albus/Albus.entitlements declares the Keychain access group the auth
-    # session needs. Enabling it here (ad-hoc signing) was tried and rejected:
-    # it produced an application-identifier the simulator container did not
-    # match, and SwiftData then failed with "Sandbox access to file-write-create
-    # denied" — a working app traded for an unverifiable entitlement.
+    # session needs. An earlier attempt at ad-hoc signing (no team) was tried
+    # and rejected: it produced an application-identifier the simulator
+    # container did not match, and SwiftData then failed with "Sandbox access
+    # to file-write-create denied" — a working app traded for an unverifiable
+    # entitlement. A real team avoids that failure mode.
     #
-    # Consequence, documented rather than hidden: on the SIMULATOR the session
-    # is not persisted, so each fresh install signs in as a new anonymous user.
-    # On a signed device build the entitlement applies and the session survives.
-    # Quota enforcement does not depend on this — see the global spend fuse in
-    # migration 0013, which bounds abuse regardless of how many accounts exist.
-    CODE_SIGNING_ALLOWED: NO
+    # Whether the simulator now also persists the session with a real team
+    # set has not been re-verified since this changed on 2 Sep 2026 — check
+    # empirically before relying on it either way. Quota enforcement does not
+    # depend on this regardless — see the global spend fuse in migration
+    # 0013, which bounds abuse no matter how many accounts exist.
 
 targets:
   Albus:
