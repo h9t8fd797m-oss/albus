@@ -141,7 +141,7 @@ struct PlanService {
 
         do {
             return try await client.functions.invoke(
-                "breakdown", options: .init(headers: DeviceSignal.headers(), body: body))
+                "breakdown", options: .init(headers: await DeviceSignal.headers(), body: body))
         } catch let error as FunctionsError {
             throw Self.translate(error)
         } catch let error as URLError {
