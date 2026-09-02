@@ -244,6 +244,11 @@ struct OnboardingFlow: View {
                 field("Task name") {
                     TextField("e.g. History term paper", text: $taskTitle)
                         .textInputAutocapitalization(.sentences)
+                        .onChange(of: taskTitle) {
+                            if taskTitle.count > NewAssignment.maxTitleCharacters {
+                                taskTitle = String(taskTitle.prefix(NewAssignment.maxTitleCharacters))
+                            }
+                        }
                         .padding(Tokens.Spacing.m)
                         .background(Tokens.Glass.fill,
                                     in: RoundedRectangle(cornerRadius: Tokens.Radius.control,

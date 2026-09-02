@@ -480,6 +480,10 @@ struct NewAssignment {
     /// accepts, so a note that saves is a note that syncs.
     var notes: String?
 
+    /// Mirrors the breakdown endpoint and `assignments.title` constraint. Keep
+    /// this beside the notes limit so every task-entry surface uses one client
+    /// boundary rather than learning about a 422 after a network round trip.
+    static let maxTitleCharacters = 200
     static let maxNoteCharacters = 2000
 }
 

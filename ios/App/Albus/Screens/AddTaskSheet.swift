@@ -74,6 +74,11 @@ struct AddTaskSheet: View {
             SheetField(label: "Assignment") {
                 TextField("What is it?", text: $title)
                     .textInputAutocapitalization(.sentences)
+                    .onChange(of: title) {
+                        if title.count > NewAssignment.maxTitleCharacters {
+                            title = String(title.prefix(NewAssignment.maxTitleCharacters))
+                        }
+                    }
             }
 
             SheetPicker(label: "Type", options: Self.types.map { (value: $0.id, title: $0.label) },
