@@ -174,6 +174,71 @@ struct StabilityTests {
     }
 }
 
+@Suite("Deadline edits revalidate placed work")
+struct DeadlineEditTests {
+
+    private func moving(_ item: ScheduleItem, deadline: Date) -> ScheduleItem {
+        ScheduleItem(
+            id: item.id,
+            assignmentID: item.assignmentID,
+            ordinal: item.ordinal,
+            minutes: Int(item.duration / 60),
+            deadline: deadline,
+            priority: item.priority
+        )
+    }
+
+    @Test("moving a deadline earlier removes every placement now beyond it")
+    func earlierDeadline() {
+        let original = (0..<4).map { item(60, dueDay: 25, ordinal: $0) }
+        let first = sched.schedule(items: original, now: now)
+        let earlier = at(20, 18)
+        #expect(first.sessions.contains { $0.end > earlier },
+                "fixture did not place anything beyond the edited deadline")
+
+        let edited = original.map { moving($0, deadline: earlier) }
+        let second = sched.schedule(items: edited, existing: first.sessions, now: now)
+
+        #expect(second.sessions.allSatisfy { $0.end <= earlier })
+        #expect(second.sessions.count + second.unplaceable.count == edited.count,
+                "work vanished after its deadline moved earlier")
+        #expect(second.unplaceable.count == 2)
+        print("deadline earlier: \(first.sessions.count) placed -> "
+              + "\(second.sessions.count) placed, \(second.unplaceable.count) unplaceable")
+    }
+
+    @Test("moving a deadline later leaves an already-valid placement alone")
+    func laterDeadline() {
+        let original = item(60, dueDay: 21)
+        let first = sched.schedule(items: [original], now: now)
+        let placed = try! #require(first.sessions.first)
+
+        let edited = moving(original, deadline: at(30, 23))
+        let second = sched.schedule(items: [edited], existing: first.sessions, now: now)
+        let kept = try! #require(second.sessions.first)
+
+        #expect(kept.id == placed.id)
+        #expect(kept.start == placed.start)
+        #expect(second.movedCount == 0)
+        #expect(second.unplaceable.isEmpty)
+        print("deadline later: placement stayed at \(kept.start)")
+    }
+
+    @Test("moving a deadline into the past removes the invalid future placement")
+    func pastDeadlineAfterPlacement() {
+        let original = item(60, dueDay: 25)
+        let first = sched.schedule(items: [original], now: now)
+        #expect(first.sessions.count == 1)
+
+        let edited = moving(original, deadline: at(19, 23))
+        let second = sched.schedule(items: [edited], existing: first.sessions, now: now)
+
+        #expect(second.sessions.isEmpty)
+        #expect(second.unplaceable == [edited])
+        print("deadline past: future placement removed and work reported unplaceable")
+    }
+}
+
 @Suite("Overload")
 struct OverloadTests {
 
