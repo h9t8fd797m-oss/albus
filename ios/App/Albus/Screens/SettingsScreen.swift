@@ -73,6 +73,10 @@ struct SettingsScreen: View {
         VStack(alignment: .leading, spacing: Tokens.Spacing.m) {
             SectionHeader(label: "Your plan") { EmptyView() }
 
+            if entitlements.refreshFailed {
+                EntitlementRefreshNotice()
+            }
+
             GlassCard(isProminent: entitlements.isPaid) {
                 VStack(alignment: .leading, spacing: Tokens.Spacing.m) {
                     HStack(alignment: .firstTextBaseline) {

@@ -46,6 +46,20 @@ final class SessionService {
     /// silently at launch, as this used to, is precisely what makes account
     /// farming a one-line script.
     func start() async {
+#if DEBUG
+        // UI tests that exercise post-onboarding screens must not create a real
+        // account (or spend a real AI call merely to reach the tab bar). This
+        // switch is compiled out of Release and grants no server credential:
+        // it changes presentation state only, while every backend still
+        // requires its own authenticated session.
+        if ProcessInfo.processInfo.arguments.contains("-albus.debug.assumeSignedIn") {
+            state = .signedIn(
+                userID: UUID(uuidString: "00000000-0000-0000-0000-000000000001")!,
+                isAnonymous: true
+            )
+            return
+        }
+#endif
         guard let client else {
             state = .failed("Not configured")
             return
