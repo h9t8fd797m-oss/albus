@@ -26,6 +26,15 @@ final class Course {
     /// its own copy, so a modified client can pick a different subject's
     /// structure but can never invent one.
     var curriculumSubjectCode: String?
+    /// `CourseLevel.rawValue`, kept optional because TOK, the Extended Essay,
+    /// and a subject whose level is not known genuinely have no value here.
+    ///
+    /// Defaulted in the declaration so SwiftData can lightweight-migrate rows
+    /// written by builds that predate IB context.
+    var levelRawValue: String? = nil
+    /// The student's subject target, 1–7. Not collected by the current UI yet,
+    /// but stored alongside the server column so later sync cannot lose it.
+    var targetGrade: Int? = nil
     var createdAt: Date
 
     @Relationship(deleteRule: .cascade, inverse: \Assignment.course)
@@ -33,13 +42,16 @@ final class Course {
 
     init(id: UUID = UUID(), remoteID: UUID? = nil, displayName: String,
          colorKey: Tokens.SubjectColor = .violet, courseTemplateID: UUID? = nil,
-         curriculumSubjectCode: String? = nil, createdAt: Date = .now) {
+         curriculumSubjectCode: String? = nil, level: CourseLevel? = nil,
+         targetGrade: Int? = nil, createdAt: Date = .now) {
         self.id = id
         self.remoteID = remoteID
         self.displayName = displayName
         self.colorKey = colorKey.rawValue
         self.courseTemplateID = courseTemplateID
         self.curriculumSubjectCode = curriculumSubjectCode
+        self.levelRawValue = level?.rawValue
+        self.targetGrade = targetGrade
         self.createdAt = createdAt
     }
 
@@ -53,6 +65,13 @@ final class Course {
     /// it. Views read this and never pick a colour themselves.
     var subjectColor: Tokens.SubjectColor {
         Tokens.SubjectColor(rawValue: colorKey) ?? .violet
+    }
+
+    /// The closed-set view of the stored raw value. An unknown value from a
+    /// newer server is treated as unknown rather than reaching a prompt.
+    var level: CourseLevel? {
+        get { levelRawValue.flatMap(CourseLevel.init(rawValue:)) }
+        set { levelRawValue = newValue?.rawValue }
     }
 }
 
