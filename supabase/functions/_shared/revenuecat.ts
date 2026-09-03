@@ -88,3 +88,52 @@ export async function verifyRevenueCatSignature(
   const expected = [...digest].map((b) => b.toString(16).padStart(2, "0")).join("");
   return constantTimeEqual(provided, expected);
 }
+
+/** How the webhook should answer one `apply_subscription_state` outcome. */
+export interface SubscriptionOutcome {
+  /**
+   * Ask RevenueCat to redeliver. Reserve this for states a later attempt can
+   * actually resolve — a malformed payload retried is still malformed, and a
+   * permanent 5xx would only bury the useful signal in noise.
+   */
+  retry: boolean;
+  /** What an operator should see. `none` is the ordinary path. */
+  severity: "none" | "warn" | "error";
+}
+
+/**
+ * Classify what the database decided, so the transport does not have to.
+ *
+ * **The case this exists for is `unknown_product`.** It means the purchase was
+ * real, the signature verified, and no `subscription_products` row mapped the
+ * identifier to a tier — so nothing was granted while Apple had already taken
+ * the money. It used to return 200 with no log, which told RevenueCat the event
+ * was handled and left no trace anywhere a human would look.
+ *
+ * It is retryable on purpose: the fix is a row in a table, and once that row
+ * exists RevenueCat's own backoff redelivers the purchase and grants it without
+ * anyone replaying anything by hand.
+ */
+export function classifySubscriptionResult(result: string | null): SubscriptionOutcome {
+  switch (result) {
+    // Paid, verified, and granted nothing. Recoverable by seeding the mapping.
+    case "unknown_product":
+      return { retry: true, severity: "error" };
+    // This subscription already belongs to another account. Not recoverable by
+    // retrying — a person has to look at it.
+    case "conflict":
+    // Bad identity or an environment we do not accept. The payload will not
+    // improve on redelivery.
+    case "invalid":
+      return { retry: false, severity: "error" };
+    // Legitimately transient: RevenueCat can deliver a purchase before it has
+    // identified the buyer, and a later event links it.
+    case "unlinked":
+      return { retry: false, severity: "warn" };
+    // `stale` is duplicate or out-of-order delivery, which the idempotency
+    // guard is supposed to absorb; `sandbox_ignored` is the configured
+    // behaviour. Both are working as intended.
+    default:
+      return { retry: false, severity: "none" };
+  }
+}
