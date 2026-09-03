@@ -27,7 +27,11 @@ import { InvalidPlanError, validateAndNormalise } from "../_shared/breakdown_sch
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
+// Must agree with `assignments_task_type_check` in Postgres and with `TaskType`
+// in the iOS app. A value the client can send that is missing here is a 422 the
+// student can do nothing about.
 const TASK_TYPES = new Set([
+  // The generic shapes.
   "essay",
   "problem_set",
   "lab_report",
@@ -36,6 +40,15 @@ const TASK_TYPES = new Set([
   "project",
   "presentation",
   "other",
+  // IB assessments. Each decomposes differently — an internal assessment is
+  // criteria-marked and runs for months; a mock produces no deliverable at all
+  // — so the distinction has to survive as far as the prompt.
+  "internal_assessment",
+  "extended_essay",
+  "tok_essay",
+  "tok_exhibition",
+  "mock_exam",
+  "final_exam",
 ]);
 
 interface RequestBody {
