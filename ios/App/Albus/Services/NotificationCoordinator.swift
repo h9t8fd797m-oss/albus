@@ -163,7 +163,11 @@ final class NotificationCoordinator {
             // requests are skipped rather than torn down and rebuilt — which
             // would open a window where nothing is pending.
             guard existing[notification.id] != notification.fingerprint else { continue }
-            await client.add(request(for: notification))
+            // Resolved here and passed in, because rendering the cactus is the
+            // one part of building a request that needs the main actor. Handing
+            // `request` a plain file URL is what keeps it `nonisolated`.
+            let artwork = CactusAttachment.shared.masterURL(for: notification.mood)
+            await client.add(request(for: notification, artwork: artwork))
         }
     }
 
@@ -171,7 +175,17 @@ final class NotificationCoordinator {
     /// isolation and `UNNotificationRequest` is not `Sendable`. It is built
     /// fresh here and never retained, so handing over sole ownership is exactly
     /// what happens — the annotation just lets the compiler see it.
-    private func request(for notification: PlannedNotification) -> sending UNNotificationRequest {
+    ///
+    /// **`nonisolated`, and that is what makes the annotation true.** On a
+    /// `@MainActor` class every member is main-actor isolated by default, so a
+    /// value built here would belong to the main actor's region and could not
+    /// be sent anywhere — which is exactly what Swift 6.1 rejects and what
+    /// 6.3's wider region analysis happens to let through. Building in no
+    /// isolation domain makes the value disconnected on both. Everything this
+    /// touches is either a plain enum or an argument; `artwork` arrives as a
+    /// `URL` precisely so the one main-actor dependency stays outside.
+    private nonisolated func request(for notification: PlannedNotification,
+                                     artwork: URL?) -> sending UNNotificationRequest {
         let content = UNMutableNotificationContent()
         content.title = notification.title
         content.body = notification.body
@@ -186,7 +200,8 @@ final class NotificationCoordinator {
         content.relevanceScore = notification.kind.tier == 1 ? 1.0 : 0.5
         content.interruptionLevel = NotificationCapabilities.level(for: notification.kind)
 
-        if let attachment = CactusAttachment.shared.attachment(for: notification.mood) {
+        if let attachment = CactusAttachment.attachment(copyingMaster: artwork,
+                                                        mood: notification.mood) {
             content.attachments = [attachment]
         }
 
