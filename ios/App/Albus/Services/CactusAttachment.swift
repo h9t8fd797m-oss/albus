@@ -25,13 +25,28 @@ final class CactusAttachment {
 
     private init() {}
 
-    /// An attachment for this mood, or nil.
+    /// The rendered PNG for this mood, or nil.
+    ///
+    /// **Split from building the attachment on purpose.** Rendering is the only
+    /// part of this that needs the main actor — `ImageRenderer` is SwiftUI —
+    /// and a `URL` is `Sendable` where a `UNNotificationAttachment` is not. A
+    /// caller assembling a notification request outside any isolation domain
+    /// resolves the file here, then calls `attachment(copyingMaster:mood:)`,
+    /// and nothing actor-isolated ever enters the request it is building.
     ///
     /// Nil is a perfectly good outcome — the notification is still delivered,
     /// just without artwork. Nothing about rendering an image is worth losing a
     /// deadline warning over.
-    func attachment(for mood: WorkloadState) -> UNNotificationAttachment? {
-        guard let master = master(for: mood) else { return nil }
+    func masterURL(for mood: WorkloadState) -> URL? { master(for: mood) }
+
+    /// Wraps a rendered master, in no isolation domain at all.
+    ///
+    /// Every attachment gets its own copy because `UNNotificationAttachment`
+    /// moves the file it is handed — see the type comment. Nothing here touches
+    /// SwiftUI or the cache, which is what lets it be `nonisolated`.
+    nonisolated static func attachment(copyingMaster master: URL?,
+                                       mood: WorkloadState) -> UNNotificationAttachment? {
+        guard let master else { return nil }
 
         let copy = FileManager.default.temporaryDirectory
             .appendingPathComponent("albus-cactus-\(mood.rawValue)-\(UUID().uuidString).png")

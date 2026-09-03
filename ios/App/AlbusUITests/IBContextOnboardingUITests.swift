@@ -9,9 +9,10 @@ import XCTest
 final class IBContextOnboardingUITests: XCTestCase {
     private let app = XCUIApplication()
 
+    // Nonisolated because it overrides `XCTestCase`, which is not `@MainActor`
+    // — so it cannot touch `app`. See `CurriculumOnboardingUITests`.
     override func setUp() {
         continueAfterFailure = false
-        app.launchArguments = ["-albus.profile.onboarded", "NO"]
     }
 
     func testDP2BiologyHLAndMathsAASLReachTheServer() throws {
@@ -21,6 +22,9 @@ final class IBContextOnboardingUITests: XCTestCase {
             throw XCTSkip("Runs only against the isolated local Supabase stack")
         }
 
+        // After the skip guard: no reason to configure a launch that will not
+        // happen.
+        app.launchArguments = ["-albus.profile.onboarded", "NO"]
         app.launch()
         XCTAssertTrue(app.staticTexts["A few things first."].waitForExistence(timeout: 30))
         XCTAssertTrue(app.buttons["DP2"].isSelected, "DP2 is not the onboarding default")

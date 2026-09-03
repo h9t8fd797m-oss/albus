@@ -10,15 +10,20 @@ final class CurriculumOnboardingUITests: XCTestCase {
 
     private let app = XCUIApplication()
 
+    // `setUp()` overrides a method on `XCTestCase`, which is not `@MainActor`,
+    // so the override is nonisolated no matter what this class is annotated
+    // with — and `app` belongs to the main actor. Configure the launch inside
+    // the test, where isolation is unambiguous, as `EntitlementRefreshUITests`
+    // already does. Swift 6.1 rejects the other arrangement outright.
     override func setUp() {
         continueAfterFailure = false
+    }
+
+    func testIBIsTheOnlyProgrammeAndReachesItsComponents() throws {
         // Forces onboarding regardless of what a previous test left behind.
         // `-key value` writes the argument domain, which outranks anything
         // stored — so this needs no test-only code in the app itself.
         app.launchArguments = ["-albus.profile.onboarded", "NO"]
-    }
-
-    func testIBIsTheOnlyProgrammeAndReachesItsComponents() throws {
         app.launch()
 
         XCTAssertTrue(app.staticTexts["A few things first."].waitForExistence(timeout: 30),

@@ -1,17 +1,31 @@
 import Foundation
 import UserNotifications
+import AlbusCore
 
 /// The parts of `UNUserNotificationCenter` Albus uses.
 ///
 /// A protocol so tests can watch what was scheduled without a notification
 /// daemon. In the simulator `UNUserNotificationCenter.current()` talks to a real
 /// system service that a unit test has no business waking, and which can hang.
+/// **Only `Sendable` types cross this boundary, deliberately.**
+///
+/// It used to take a built `UNNotificationRequest`, marked `sending` to hand
+/// over sole ownership. That is legal Swift and it type-checked here, but it
+/// made every implementation responsible for receiving a non-`Sendable` value:
+/// an `actor` conforming to it is rejected outright by Swift 6.1, which is what
+/// kept CI red. Passing the plan and letting the implementation phrase the
+/// request removes the problem rather than annotating around it — and it puts
+/// the phrasing next to the daemon that consumes it.
 protocol NotificationCenterClient: Sendable {
-    func add(_ request: sending UNNotificationRequest) async
+    /// `artwork` is the rendered cactus, resolved by the caller because
+    /// rendering needs the main actor and a `URL` is `Sendable`.
+    func add(_ notification: PlannedNotification, artwork: URL?) async
     func pendingIdentifiers() async -> [String: String]
     func remove(identifiers: [String]) async
     func authorizationStatus() async -> UNAuthorizationStatus
-    func setCategories(_ categories: sending Set<UNNotificationCategory>) async
+    /// No parameter: the categories are a compile-time constant, so passing
+    /// them only moved a non-`Sendable` `Set` across for no decision.
+    func setCategories() async
 }
 
 /// Tells the student when a focus session has finished, and delivers everything
@@ -101,8 +115,8 @@ struct NotificationScheduler: Sendable, NotificationCenterClient {
 
     // MARK: - NotificationCenterClient
 
-    func add(_ request: sending UNNotificationRequest) async {
-        try? await center.add(request)
+    func add(_ notification: PlannedNotification, artwork: URL?) async {
+        try? await center.add(Self.request(for: notification, artwork: artwork))
     }
 
     /// Pending plan notifications, as id → content fingerprint.
@@ -123,7 +137,52 @@ struct NotificationScheduler: Sendable, NotificationCenterClient {
         center.removePendingNotificationRequests(withIdentifiers: identifiers)
     }
 
-    func setCategories(_ categories: sending Set<UNNotificationCategory>) async {
-        center.setNotificationCategories(categories)
+    func setCategories() async {
+        center.setNotificationCategories(NotificationActions.categories)
+    }
+
+    /// Phrases a planned notification as something `UNUserNotificationCenter`
+    /// accepts.
+    ///
+    /// `static` and free of any isolation, so what it returns belongs to no
+    /// actor's region and a test can check the mapping without a daemon. It
+    /// lives here rather than in `NotificationCoordinator` because the
+    /// coordinator decides *what* to say and this decides how to say it to iOS.
+    static func request(for notification: PlannedNotification,
+                        artwork: URL?) -> UNNotificationRequest {
+        let content = UNMutableNotificationContent()
+        content.title = notification.title
+        content.body = notification.body
+        content.sound = .default
+        // The fingerprint rides in `userInfo` because `pendingIdentifiers()`
+        // reads it back out to diff against — the pending set has to be
+        // self-describing.
+        content.userInfo = ["fp": notification.fingerprint,
+                            "kind": notification.kind.rawValue]
+        if let thread = notification.threadID { content.threadIdentifier = thread }
+        content.categoryIdentifier = NotificationActions.category(for: notification.kind)
+
+        // Tier 1 is a consequence rather than a nudge, so it sorts above the
+        // rest inside a Scheduled Summary.
+        content.relevanceScore = notification.kind.tier == 1 ? 1.0 : 0.5
+        content.interruptionLevel = NotificationCapabilities.level(for: notification.kind)
+
+        if let attachment = CactusAttachment.attachment(copyingMaster: artwork,
+                                                        mood: notification.mood) {
+            content.attachments = [attachment]
+        }
+
+        // Calendar components rather than a time interval, deliberately.
+        // "Seconds until 07:30" computed today fires an hour off once the
+        // clocks change; wall-clock components stay correct across DST and
+        // across a student flying somewhere.
+        var parts = Calendar.current.dateComponents(
+            [.year, .month, .day, .hour, .minute], from: notification.fireDate
+        )
+        parts.timeZone = .current
+        let trigger = UNCalendarNotificationTrigger(dateMatching: parts, repeats: false)
+
+        return UNNotificationRequest(identifier: notification.id,
+                                     content: content, trigger: trigger)
     }
 }

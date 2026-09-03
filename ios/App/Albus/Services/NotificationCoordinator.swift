@@ -40,7 +40,7 @@ final class NotificationCoordinator {
 
     /// Registers the action buttons. Once per launch is enough.
     func registerCategories() async {
-        await client.setCategories(NotificationActions.categories)
+        await client.setCategories()
     }
 
     /// The app came to the front.
@@ -163,45 +163,12 @@ final class NotificationCoordinator {
             // requests are skipped rather than torn down and rebuilt — which
             // would open a window where nothing is pending.
             guard existing[notification.id] != notification.fingerprint else { continue }
-            await client.add(request(for: notification))
+            // Resolved here and passed in, because rendering the cactus is the
+            // one part of building a request that needs the main actor. Handing
+            // `request` a plain file URL is what keeps it `nonisolated`.
+            let artwork = CactusAttachment.shared.masterURL(for: notification.mood)
+            await client.add(notification, artwork: artwork)
         }
-    }
-
-    /// `sending` because the request crosses to the notification centre's
-    /// isolation and `UNNotificationRequest` is not `Sendable`. It is built
-    /// fresh here and never retained, so handing over sole ownership is exactly
-    /// what happens — the annotation just lets the compiler see it.
-    private func request(for notification: PlannedNotification) -> sending UNNotificationRequest {
-        let content = UNMutableNotificationContent()
-        content.title = notification.title
-        content.body = notification.body
-        content.sound = .default
-        content.userInfo = ["fp": notification.fingerprint,
-                            "kind": notification.kind.rawValue]
-        if let thread = notification.threadID { content.threadIdentifier = thread }
-        content.categoryIdentifier = NotificationActions.category(for: notification.kind)
-
-        // Tier 1 is a consequence rather than a nudge, so it sorts above the
-        // rest inside a Scheduled Summary.
-        content.relevanceScore = notification.kind.tier == 1 ? 1.0 : 0.5
-        content.interruptionLevel = NotificationCapabilities.level(for: notification.kind)
-
-        if let attachment = CactusAttachment.shared.attachment(for: notification.mood) {
-            content.attachments = [attachment]
-        }
-
-        // Calendar components rather than a time interval, deliberately.
-        // "Seconds until 07:30" computed today fires an hour off once the
-        // clocks change; wall-clock components stay correct across DST and
-        // across a student flying somewhere.
-        var parts = Calendar.current.dateComponents(
-            [.year, .month, .day, .hour, .minute], from: notification.fireDate
-        )
-        parts.timeZone = .current
-        let trigger = UNCalendarNotificationTrigger(dateMatching: parts, repeats: false)
-
-        return UNNotificationRequest(identifier: notification.id,
-                                     content: content, trigger: trigger)
     }
 
     // MARK: - Gathering
