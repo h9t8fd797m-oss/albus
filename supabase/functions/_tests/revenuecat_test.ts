@@ -1,5 +1,6 @@
 import { assertEquals } from "jsr:@std/assert@1";
 import {
+  classifySubscriptionResult,
   constantTimeEqual,
   isoFromMilliseconds,
   normaliseRevenueCatEnvironment,
@@ -104,4 +105,33 @@ Deno.test("RevenueCat events must belong to an explicitly allowed app", () => {
   assertEquals(revenueCatAppIsAllowed("app_other", "app_albus_ios"), false);
   assertEquals(revenueCatAppIsAllowed("app_albus_ios", ""), false);
   assertEquals(revenueCatAppIsAllowed(null, "app_albus_ios"), false);
+});
+
+Deno.test("an unmapped product is loud and retryable, not a silent 200", () => {
+  // The case that matters: the purchase was real and the signature verified,
+  // but no `subscription_products` row mapped it to a tier. Apple has taken the
+  // money. Acknowledging that with 200 is how it stayed invisible.
+  const unmapped = classifySubscriptionResult("unknown_product");
+  assertEquals(unmapped.retry, true);
+  assertEquals(unmapped.severity, "error");
+});
+
+Deno.test("outcomes a retry cannot fix are never retried", () => {
+  // `conflict` needs a person; `invalid` will not improve on redelivery.
+  for (const result of ["conflict", "invalid"]) {
+    assertEquals(classifySubscriptionResult(result).retry, false, result);
+    assertEquals(classifySubscriptionResult(result).severity, "error", result);
+  }
+});
+
+Deno.test("ordinary outcomes stay quiet so the loud ones keep meaning something", () => {
+  for (const result of ["active_pro", "active_plus", "inactive", "stale", "sandbox_ignored"]) {
+    assertEquals(classifySubscriptionResult(result), { retry: false, severity: "none" }, result);
+  }
+  // A transaction RevenueCat has not yet attached to a buyer is normal and
+  // resolves itself on a later event — visible, not alarming.
+  assertEquals(classifySubscriptionResult("unlinked"), { retry: false, severity: "warn" });
+  // An unrecognised or absent result must not accidentally become retryable.
+  assertEquals(classifySubscriptionResult(null), { retry: false, severity: "none" });
+  assertEquals(classifySubscriptionResult("something_new"), { retry: false, severity: "none" });
 });

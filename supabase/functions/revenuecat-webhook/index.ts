@@ -19,6 +19,7 @@ import { adminClient } from "../_shared/auth.ts";
 import { readRawBody } from "../_shared/body.ts";
 import { errorResponse, HttpError, jsonResponse } from "../_shared/http.ts";
 import {
+  classifySubscriptionResult,
   constantTimeEqual,
   isoFromMilliseconds,
   normaliseRevenueCatEnvironment,
@@ -211,10 +212,24 @@ Deno.serve(async (req) => {
       throw new HttpError(500, "INTERNAL_ERROR");
     }
 
-    // `conflict` means this subscription already belongs to a different
-    // account. Nothing was granted; log it loudly so a human can look.
-    if (data === "conflict") {
-      console.error("subscription conflict", { originalID, userID, type });
+    // What the database decided is classified in one place, so this function
+    // only has to carry it out. See `classifySubscriptionResult`.
+    const outcome = classifySubscriptionResult(data ?? null);
+    if (outcome.severity === "error") {
+      console.error("subscription event not granted", {
+        result: data, originalID, userID, type,
+        productID: asString(event.product_id),
+      });
+    } else if (outcome.severity === "warn") {
+      console.warn("subscription event needs watching", { result: data, originalID, type });
+    }
+
+    // 503 so RevenueCat retries with backoff and marks the integration
+    // unhealthy. The only retryable outcome is `unknown_product`, where the fix
+    // is a row in `subscription_products` and redelivery then grants the
+    // purchase on its own.
+    if (outcome.retry) {
+      throw new HttpError(503, "PRODUCT_NOT_MAPPED", "Product mapping unavailable.");
     }
 
     return jsonResponse({ ok: true, result: data ?? "unknown" });
