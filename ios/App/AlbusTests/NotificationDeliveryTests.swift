@@ -22,9 +22,9 @@ actor SpyCenter: NotificationCenterClient {
 
     init(status: UNAuthorizationStatus = .authorized) { self.status = status }
 
-    func add(_ request: sending UNNotificationRequest) async {
-        added.append(request.identifier)
-        pending[request.identifier] = request.content.userInfo["fp"] as? String ?? ""
+    func add(_ notification: PlannedNotification, artwork: URL?) async {
+        added.append(notification.id)
+        pending[notification.id] = notification.fingerprint
     }
 
     func pendingIdentifiers() async -> [String: String] { pending }
@@ -35,11 +35,73 @@ actor SpyCenter: NotificationCenterClient {
     }
 
     func authorizationStatus() async -> UNAuthorizationStatus { status }
-    func setCategories(_ categories: sending Set<UNNotificationCategory>) async {}
+    func setCategories() async {}
 
     /// A focus-session request, which the plan rebuild must never touch.
     func seedSessionAlert() { pending["albus.session.complete"] = "session" }
     func resetCounters() { added = []; removed = [] }
+}
+
+/// What `pendingIdentifiers()` reads back out has to be what `add` put in.
+///
+/// `SpyCenter` no longer sees a built `UNNotificationRequest` — the protocol
+/// carries only `Sendable` values now — so the id/fingerprint mapping it used
+/// to prove incidentally is checked here instead, against the real builder.
+@Suite("Notification request phrasing")
+struct NotificationRequestTests {
+
+    private static func planned(id: String = "albus.plan.test") -> PlannedNotification {
+        PlannedNotification(
+            id: id,
+            kind: .deadline24,
+            fireDate: Date(timeIntervalSince1970: 1_770_000_000),
+            title: "Biology IA",
+            body: "Two steps left.",
+            mood: .busy
+        )
+    }
+
+    @Test("The fingerprint rides in userInfo, which is what the diff reads back")
+    func fingerprintRoundTrips() {
+        let notification = Self.planned()
+        let request = NotificationScheduler.request(for: notification, artwork: nil)
+
+        #expect(request.identifier == "albus.plan.test")
+        // Not a literal: `fingerprint` is computed from the rendered content, so
+        // comparing against the source is what proves the diff can match.
+        #expect(request.content.userInfo["fp"] as? String == notification.fingerprint)
+        #expect(request.content.userInfo["kind"] as? String
+                    == NotificationKind.deadline24.rawValue)
+    }
+
+    @Test("No artwork is not a failure — the notification still goes out")
+    func missingArtworkStillSchedules() {
+        let request = NotificationScheduler.request(for: Self.planned(), artwork: nil)
+
+        #expect(request.content.attachments.isEmpty)
+        #expect(request.content.title == "Biology IA")
+        #expect(request.content.body == "Two steps left.")
+    }
+
+    /// `.handInToday` is tier 1 and `.momentum` is tier 3. Note that
+    /// `.deadline24` — the default above — is tier 2, so it scores the same 0.5
+    /// as a nudge; only tier 1 is lifted.
+    @Test("A tier-1 notification outranks a nudge in a Scheduled Summary")
+    func tierOneSortsAbove() {
+        func request(_ kind: NotificationKind) -> UNNotificationRequest {
+            NotificationScheduler.request(
+                for: PlannedNotification(id: "albus.plan.\(kind.rawValue)",
+                                         kind: kind,
+                                         fireDate: Date(timeIntervalSince1970: 1_770_000_000),
+                                         title: "Biology IA",
+                                         body: "Two steps left."),
+                artwork: nil
+            )
+        }
+
+        #expect(request(.handInToday).content.relevanceScore
+                    > request(.momentum).content.relevanceScore)
+    }
 }
 
 @MainActor

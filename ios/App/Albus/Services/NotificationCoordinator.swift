@@ -40,7 +40,7 @@ final class NotificationCoordinator {
 
     /// Registers the action buttons. Once per launch is enough.
     func registerCategories() async {
-        await client.setCategories(NotificationActions.categories)
+        await client.setCategories()
     }
 
     /// The app came to the front.
@@ -167,56 +167,8 @@ final class NotificationCoordinator {
             // one part of building a request that needs the main actor. Handing
             // `request` a plain file URL is what keeps it `nonisolated`.
             let artwork = CactusAttachment.shared.masterURL(for: notification.mood)
-            await client.add(request(for: notification, artwork: artwork))
+            await client.add(notification, artwork: artwork)
         }
-    }
-
-    /// `sending` because the request crosses to the notification centre's
-    /// isolation and `UNNotificationRequest` is not `Sendable`. It is built
-    /// fresh here and never retained, so handing over sole ownership is exactly
-    /// what happens — the annotation just lets the compiler see it.
-    ///
-    /// **`nonisolated`, and that is what makes the annotation true.** On a
-    /// `@MainActor` class every member is main-actor isolated by default, so a
-    /// value built here would belong to the main actor's region and could not
-    /// be sent anywhere — which is exactly what Swift 6.1 rejects and what
-    /// 6.3's wider region analysis happens to let through. Building in no
-    /// isolation domain makes the value disconnected on both. Everything this
-    /// touches is either a plain enum or an argument; `artwork` arrives as a
-    /// `URL` precisely so the one main-actor dependency stays outside.
-    private nonisolated func request(for notification: PlannedNotification,
-                                     artwork: URL?) -> sending UNNotificationRequest {
-        let content = UNMutableNotificationContent()
-        content.title = notification.title
-        content.body = notification.body
-        content.sound = .default
-        content.userInfo = ["fp": notification.fingerprint,
-                            "kind": notification.kind.rawValue]
-        if let thread = notification.threadID { content.threadIdentifier = thread }
-        content.categoryIdentifier = NotificationActions.category(for: notification.kind)
-
-        // Tier 1 is a consequence rather than a nudge, so it sorts above the
-        // rest inside a Scheduled Summary.
-        content.relevanceScore = notification.kind.tier == 1 ? 1.0 : 0.5
-        content.interruptionLevel = NotificationCapabilities.level(for: notification.kind)
-
-        if let attachment = CactusAttachment.attachment(copyingMaster: artwork,
-                                                        mood: notification.mood) {
-            content.attachments = [attachment]
-        }
-
-        // Calendar components rather than a time interval, deliberately.
-        // "Seconds until 07:30" computed today fires an hour off once the
-        // clocks change; wall-clock components stay correct across DST and
-        // across a student flying somewhere.
-        var parts = Calendar.current.dateComponents(
-            [.year, .month, .day, .hour, .minute], from: notification.fireDate
-        )
-        parts.timeZone = .current
-        let trigger = UNCalendarNotificationTrigger(dateMatching: parts, repeats: false)
-
-        return UNNotificationRequest(identifier: notification.id,
-                                     content: content, trigger: trigger)
     }
 
     // MARK: - Gathering
