@@ -260,9 +260,9 @@ struct OnboardingFlow: View {
                 }
 
                 field("What kind of work") {
-                    ChoiceGrid(columns: 3, options: TaskKind.allCases,
+                    ChoiceGrid(columns: 3, options: TaskType.offered,
                                selection: Binding(
-                                get: { TaskKind(rawValue: taskType) ?? .essay },
+                                get: { TaskType(storedValue: taskType) },
                                 set: { taskType = $0.rawValue })) { $0.title }
                 }
 
@@ -321,11 +321,9 @@ struct OnboardingFlow: View {
         .onChange(of: subjectCode) { componentCode = "" }
     }
 
-    private enum TaskKind: String, CaseIterable, Identifiable {
-        case essay, problem_set, reading, revision, lab_report, project
-        var id: String { rawValue }
-        var title: String { rawValue.replacingOccurrences(of: "_", with: " ").capitalized }
-    }
+    // `TaskKind` used to be declared here with six cases, while AddTaskSheet
+    // had its own eight-entry list — so a student could pick a type when adding
+    // a task that onboarding would not offer them. Both now read `TaskType`.
 
     // MARK: - 3. Building
 

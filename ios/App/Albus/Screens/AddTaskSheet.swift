@@ -33,16 +33,9 @@ struct AddTaskSheet: View {
 
     /// The vocabulary the server's check constraint accepts. Kept here rather
     /// than as free text so a typo is a compile error, not a 422.
-    private static let types: [(id: String, label: String)] = [
-        ("essay", "Essay"),
-        ("problem_set", "Problem set"),
-        ("lab_report", "Lab report"),
-        ("reading", "Reading"),
-        ("revision", "Revision"),
-        ("project", "Project"),
-        ("presentation", "Presentation"),
-        ("other", "Other")
-    ]
+    // The list lives in `TaskType` now. It used to be written out here and
+    // again in OnboardingFlow, and the two had already drifted — onboarding was
+    // missing `presentation` and `other`.
 
     private var selectedCourse: Course? { courses.first { $0.id == courseID } }
     private var selectedRubric: Rubric? { rubrics.first { $0.id == rubricID } }
@@ -81,8 +74,9 @@ struct AddTaskSheet: View {
                     }
             }
 
-            SheetPicker(label: "Type", options: Self.types.map { (value: $0.id, title: $0.label) },
-                       selection: $taskType)
+            SheetPicker(label: "Type",
+                        options: TaskType.offered.map { (value: $0.rawValue, title: $0.title) },
+                        selection: $taskType)
 
             VStack(alignment: .leading, spacing: Tokens.Spacing.s) {
                 SheetPicker(

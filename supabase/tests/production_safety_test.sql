@@ -125,6 +125,26 @@ select ok(has_function_privilege(
   'authenticated', 'public.create_course(text,text,text,text,smallint)', 'EXECUTE'),
   'the controlled course RPC remains callable');
 
+-- The task-type list is written in three places: this constraint, TASK_TYPES
+-- in the breakdown Edge Function, and TaskType in the iOS app. They have
+-- drifted before. This is the only one of the three that can be checked
+-- against the real database, so it is where the full expected set is pinned.
+select ok(
+  (select bool_and(pg_get_constraintdef(con.oid) like '%' || t.name || '%')
+     from pg_constraint con
+     join pg_class c on c.oid = con.conrelid
+     cross join (values
+       ('essay'),('problem_set'),('lab_report'),('reading'),
+       ('revision'),('project'),('presentation'),('other'),
+       ('internal_assessment'),('extended_essay'),
+       ('tok_essay'),('tok_exhibition'),
+       ('mock_exam'),('final_exam')
+     ) as t(name)
+    where c.relname = 'assignments'
+      and con.conname = 'assignments_task_type_check'),
+  'assignments.task_type accepts all fourteen known types'
+);
+
 select is(
   (select count(*)::integer from pg_proc p
     where p.pronamespace = 'public'::regnamespace
