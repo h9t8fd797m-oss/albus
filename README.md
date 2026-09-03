@@ -85,9 +85,16 @@ git push -u origin feat/what-it-does
 gh pr create --fill
 ```
 
-Merging to `main` deploys migrations, which is the one class of mistake that is
-genuinely hard to undo. A local `pre-push` hook blocks direct pushes as a
-backstop. See `CONTRIBUTING.md`.
+Merging to `main` is the only sanctioned route to production, and migrations are
+the one class of mistake that is genuinely hard to undo. A local `pre-push` hook
+blocks direct pushes as a backstop. See `CONTRIBUTING.md`.
+
+**Merging does not currently apply anything, though.** The `Deploy migrations`
+workflow has failed on every run since it was added, because the three
+repository secrets it needs have never been set. Migrations are applied by hand,
+which means production matches this repo only because somebody checked — see
+`CONTRIBUTING.md` § "Applying migrations by hand" for what that has already
+cost.
 
 ## Where the security actually lives
 
