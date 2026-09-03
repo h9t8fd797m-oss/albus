@@ -742,14 +742,7 @@ private extension View {
     }
 }
 
-private extension Color {
-    /// The design is authored in hex; keeping it in hex is how a colour stays
-    /// checkable against the source rather than becoming a guess.
-    init(hex: UInt32) {
-        self.init(.sRGB,
-                  red: Double((hex >> 16) & 0xFF) / 255,
-                  green: Double((hex >> 8) & 0xFF) / 255,
-                  blue: Double(hex & 0xFF) / 255,
-                  opacity: 1)
-    }
-}
+// `Color(hex:)` lives in Tokens.swift. This file used to carry its own copy
+// because Tokens was in AlbusCore, a different module, so the two could not
+// collide. Tokens is in this target now, and two identical inits in one module
+// are a redeclaration — so the local copy is gone and the shared one is used.
