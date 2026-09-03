@@ -651,5 +651,38 @@ select is(public.apply_subscription_state(
 select is(public.effective_tier('10000000-0000-4000-8000-000000000003'), 'free',
           'a missing expiry leaves the account Free');
 
+-- Deleting an account must not erase what it cost.
+--
+-- `docs/security-model.md` § 7 promises successful AI rows survive for cost
+-- reconciliation. That promise was false while the foreign key cascaded, and a
+-- cascade is a one-character change away from coming back — so assert the
+-- delete rule itself rather than the paragraph.
+select is(
+  (select case con.confdeltype when 'n' then 'SET NULL' when 'c' then 'CASCADE'
+                               when 'a' then 'NO ACTION' when 'r' then 'RESTRICT'
+                               when 'd' then 'SET DEFAULT' end
+     from pg_constraint con
+    where con.conrelid = 'public.ai_usage'::regclass
+      and con.contype = 'f'
+      and con.conname = 'ai_usage_user_id_fkey'),
+  'SET NULL',
+  'deleting a user anonymises its AI cost rows rather than deleting them');
+
+-- SET NULL on a NOT NULL column raises instead of anonymising, which would turn
+-- account deletion into an error rather than the silent data loss it replaces.
+select ok(
+  not (select attnotnull from pg_attribute
+        where attrelid = 'public.ai_usage'::regclass and attname = 'user_id'),
+  'ai_usage.user_id is nullable, so SET NULL can actually fire');
+
+-- The orphaned row must be invisible through the API. Both policies compare
+-- `auth.uid() = user_id`, and NULL = uid is NULL rather than true.
+select is(
+  (select count(*)::int from pg_policy
+    where polrelid = 'public.ai_usage'::regclass
+      and pg_get_expr(polqual, polrelid) not like '%user_id%'),
+  0,
+  'every ai_usage policy still scopes by user_id, so a null row belongs to nobody');
+
 select * from finish();
 rollback;

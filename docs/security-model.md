@@ -213,7 +213,7 @@ supabase test db --local
 scripts/security-concurrency-local.sh
 ```
 
-The pgTAP suite performs 93 privilege, RLS, plan, rate, risk, cost, replay, and
+The pgTAP suite performs 96 privilege, RLS, plan, rate, risk, cost, replay, and
 cross-user checks in a rolled-back transaction. The shell test opens twelve
 real Postgres connections for one remaining grading/task/rubric and requires
 exactly one winner in each race. A one-connection test cannot prove locking.
