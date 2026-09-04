@@ -436,6 +436,14 @@ begin
   returning id into v_template;
 
   delete from public.assessment_objectives where course_template_id = v_template;
+  insert into public.assessment_objectives (course_template_id, code, name, weighting_min, weighting_max, ordinal)
+  values (v_template, 'AO1', 'Knowledge and understanding of specified content', null, null, 0);
+  insert into public.assessment_objectives (course_template_id, code, name, weighting_min, weighting_max, ordinal)
+  values (v_template, 'AO2', 'Application and analysis of knowledge and understanding', null, null, 1);
+  insert into public.assessment_objectives (course_template_id, code, name, weighting_min, weighting_max, ordinal)
+  values (v_template, 'AO3', 'Synthesis and evaluation', null, null, 2);
+  insert into public.assessment_objectives (course_template_id, code, name, weighting_min, weighting_max, ordinal)
+  values (v_template, 'AO4', 'Selection, use and application of a variety of appropriate skills and techniques', null, null, 3);
 
   insert into public.assessment_types (course_template_id, code, name, typical_minutes)
   values (v_template, 'IA_SL', 'Fieldwork report (SL)', 1200)

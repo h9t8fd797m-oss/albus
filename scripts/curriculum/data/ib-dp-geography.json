@@ -5,8 +5,33 @@
   "specVersion": "First assessment 2019",
   "source": "https://www.ibo.org/programmes/diploma-programme/curriculum/",
   "retrievedAt": "2026-09-04",
-  "verifiedPages": "knowledge base 7.8",
-  "objectives": [],
+  "verifiedPages": "knowledge base 7.8; official IB subject brief (Individuals and societies: Geography, first assessments 2019)",
+  "objectives": [
+    {
+      "code": "AO1",
+      "name": "Knowledge and understanding of specified content",
+      "weightingMin": null,
+      "weightingMax": null
+    },
+    {
+      "code": "AO2",
+      "name": "Application and analysis of knowledge and understanding",
+      "weightingMin": null,
+      "weightingMax": null
+    },
+    {
+      "code": "AO3",
+      "name": "Synthesis and evaluation",
+      "weightingMin": null,
+      "weightingMax": null
+    },
+    {
+      "code": "AO4",
+      "name": "Selection, use and application of a variety of appropriate skills and techniques",
+      "weightingMin": null,
+      "weightingMax": null
+    }
+  ],
   "components": [
     {
       "code": "IA_SL",
@@ -129,7 +154,8 @@
     "Maximum 2,500 words; exceeding it particularly damages the later criteria, because moderators are advised to stop reading.",
     "Six criteria A-F totalling 25 marks. The per-criterion split is NOT verified — criteria are published by name only, with no marks.",
     "Appendices should hold representative examples only, never every questionnaire and never secondary information.",
-    "Superseded 2011 guide used 30 marks across seven criteria A-G; sources describing that split do not apply."
+    "Superseded 2011 guide used 30 marks across seven criteria A-G; sources describing that split do not apply.",
+    "Assessment objectives added from the official IB subject brief (no per-AO weighting is published there, so weightingMin/Max are left null; only Paper-level weightings are given and are already recorded above)."
   ],
   "firstAssessment": 2019,
   "lastAssessment": null,
