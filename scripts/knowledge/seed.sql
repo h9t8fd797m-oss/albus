@@ -965,6 +965,8 @@ values ('IB_DP', '7.6', 'Economics: the portfolio', '7. INTERNAL ASSESSMENT: MAS
 - 30% at SL, 20% at HL. Approximately 20 hours.
 - Marked using a **best-fit** model; it is not necessary to meet every point in a descriptor.
 
+[UNCERTAIN] **The split of the 14 marks across the five criteria is disputed and must not be quoted.** Secondary sources give at least two incompatible versions — A3/B2/C4/D0/E5 and A3/B2/C3/D3/E3 — and both sum to 14, so arithmetic cannot settle it. A key-concept criterion worth zero contradicts the 2022 guide''s requirement that each commentary use a different key concept. The criterion **names** (Diagrams, Terminology, Application and analysis, Key concept, Evaluation) are corroborated; the marks are not.
+
 [STRATEGY] Where Economics IA marks go:
 
 - **Diagrams are load-bearing.** An accurately drawn, correctly labelled, and explicitly **referred-to** diagram is the backbone of the analysis criterion. A diagram that appears and is not discussed earns little.
@@ -993,13 +995,28 @@ values ('IB_DP', '7.7', 'Business management: the research project', '7. INTERNA
 
 [STRATEGY] The two decisive early choices are the organisation and the concept. An organisation with thin public information starves the supporting documents criterion. A concept chosen for convenience rather than fit produces a lens that is mentioned and then abandoned, which is where most of the concept marks are lost. Supporting documents should be recent, varied in perspective, reliable and detailed enough to sustain analysis.', 'business management IA research project supporting documents', false, 68);
 insert into public.knowledge_sections (corpus, section, title, parent_title, body, keywords, always_include, ordinal)
-values ('IB_DP', '7.8', 'Geography: the fieldwork report', '7. INTERNAL ASSESSMENT: MASTER REFERENCE', '[OFFICIAL]
+values ('IB_DP', '7.8', 'Geography: the fieldwork report', '7. INTERNAL ASSESSMENT: MASTER REFERENCE', 'Source: Geography guide, first assessment 2019.
+
+[OFFICIAL]
 
 - Written report based on a fieldwork question derived from any suitable syllabus topic, involving collection and analysis of primary data at a local scale.
 - **Maximum 2,500 words.** Excluded: title page, acknowledgments, contents page, titles and subtitles, references, footnotes up to 15 words each, map legends and keys, labels of 10 words or fewer, tables of statistical or numerical data or category names, calculations, and appendices containing only raw data and calculations.
 - **25 marks**, six criteria A to F. 25% at SL, 20% at HL. Approximately 20 hours.
 - Where the work exceeds the limit, teachers and moderators are advised to stop reading, which particularly damages the later criteria.
 - Appendices should contain only representative examples of materials used, not every completed questionnaire, and not secondary information.
+
+[CORROBORATED] The six criteria, by name. Two independent sources agree (ibsolved.com; sites.google.com/yis.ac.jp, citing Geography guide p.72). **The per-criterion mark split is not corroborated and must not be quoted.**
+
+| Criterion | Name |
+| --- | --- |
+| A | Fieldwork question and geographic context |
+| B | Method(s) of investigation |
+| C | Quality and treatment of information collected |
+| D | Written analysis |
+| E | Conclusion |
+| F | Evaluation |
+
+[UNCERTAIN] The superseded 2011 guide used **30 marks across seven criteria A to G**. Sources describing that structure do not apply to a current candidate, and it is the commonest way to be wrong about this subject.
 
 [STRATEGY] Recurring moderator complaints: no clear geographic theory linking the question to the syllabus; convenience sampling used without acknowledging it; figures without titles, units or scales; graphs presented without interpretation; and evaluation that ignores obvious confounds such as weather, time of day or sample size. The fix for the last three is mechanical and cheap.', 'geography IA fieldwork report data collection', false, 69);
 insert into public.knowledge_sections (corpus, section, title, parent_title, body, keywords, always_include, ordinal)
@@ -1011,6 +1028,15 @@ values ('IB_DP', '7.9', 'Language A: the individual oral', '7. INTERNAL ASSESSME
 - Internally assessed, externally moderated. 40 marks. **30% at SL, 20% at HL.**
 - In Language and literature the student prepares **two extracts, one literary and one non-literary**, connected by a **global issue** of their choosing. In Literature, two literary works are used.
 - Four criteria A to D: knowledge/understanding/interpretation; analysis and evaluation; focus and organisation; language.
+
+[CORROBORATED] **Each of the four criteria is worth 10 marks, totalling 40.** Agreed independently by revisiondojo.com, hackyourcourse.com and savemyexams.com, and consistent with the 40-mark total above.
+
+| Criterion | Name | Marks |
+| --- | --- | --- |
+| A | Knowledge, understanding and interpretation | 10 |
+| B | Analysis and evaluation | 10 |
+| C | Focus and organization | 10 |
+| D | Language | 10 |
 
 [OFFICIAL] A global issue must meet three tests: significance on a wide scale, transnational reach, and impact felt in everyday local contexts.
 
@@ -1029,6 +1055,16 @@ values ('IB_DP', '7.10', 'Language B: the individual oral', '7. INTERNAL ASSESSM
 - Assessment criteria are more demanding at HL.
 - The five prescribed themes are common to both levels: identities; experiences; human ingenuity; social organisation; sharing the planet.
 - Paper 1 assesses productive writing against three criteria: **language, message, conceptual understanding**. SL writes 250 to 400 words; HL writes 450 to 600. Paper 2 has separate listening and reading sections.
+
+[CORROBORATED] The individual oral itself is marked out of **30 across three criteria**. Agreed independently by revisiondojo.com, thinkib.net and published HL IO rubrics. Note this is the *oral*; the three criteria listed above are paper 1''s and are a different instrument.
+
+| Criterion | Name | Marks |
+| --- | --- | --- |
+| A | Language | 12 |
+| B | Message | 12 |
+| C | Interactive skills: communication | 6 |
+
+Criterion B is reported in two parts at HL (B1 literary extract, B2 conversation) within the same 12 marks.
 
 [OFFICIAL] A critical and frequently missed rule: **a response that ignores context, purpose and audience may receive zero for the message and conceptual understanding criteria even if it scores highly on language.** Choosing an inappropriate text type is therefore not a small error; it is potentially a two-thirds loss on paper 1.
 

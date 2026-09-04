@@ -4,8 +4,8 @@
   "subject": "Language B",
   "specVersion": "First assessment 2020",
   "source": "https://www.ibo.org/programmes/diploma-programme/curriculum/",
-  "retrievedAt": "2026-08-25",
-  "verifiedPages": "knowledge base 7.2, 7.10",
+  "retrievedAt": "2026-09-04",
+  "verifiedPages": "knowledge base 7.10",
   "objectives": [],
   "components": [
     {
@@ -16,7 +16,29 @@
       "marks": 30,
       "weighting": 25,
       "level": "SL",
-      "criteria": []
+      "criteria": [
+        {
+          "code": "A",
+          "name": "Language",
+          "marks": 12,
+          "guidance": "Accuracy and fluency: grammar, vocabulary, pronunciation and coherence across the whole oral."
+        },
+        {
+          "code": "B",
+          "name": "Message",
+          "marks": 12,
+          "guidance": "Ideas that actually engage the stimulus or extract, developed rather than listed."
+        },
+        {
+          "code": "C",
+          "name": "Interactive skills: communication",
+          "marks": 6,
+          "guidance": "Move the conversation forward yourself. Answering only what you are asked caps this."
+        }
+      ],
+      "criteriaConfidence": "corroborated",
+      "criteriaSource": "corroborated: revisiondojo.com, thinkib.net (DP English B) and published HL IO rubrics agree on Language 12 / Message 12 / Interactive skills 6, total 30 (Language B guide, first assessment 2020)",
+      "externallyModerated": true
     },
     {
       "code": "EXTERNAL_SL",
@@ -33,7 +55,29 @@
       "marks": 30,
       "weighting": 20,
       "level": "HL",
-      "criteria": []
+      "criteria": [
+        {
+          "code": "A",
+          "name": "Language",
+          "marks": 12,
+          "guidance": "Accuracy and fluency: grammar, vocabulary, pronunciation and coherence across the whole oral."
+        },
+        {
+          "code": "B",
+          "name": "Message",
+          "marks": 12,
+          "guidance": "Ideas that actually engage the stimulus or extract, developed rather than listed."
+        },
+        {
+          "code": "C",
+          "name": "Interactive skills: communication",
+          "marks": 6,
+          "guidance": "Move the conversation forward yourself. Answering only what you are asked caps this."
+        }
+      ],
+      "criteriaConfidence": "corroborated",
+      "criteriaSource": "corroborated: revisiondojo.com, thinkib.net (DP English B) and published HL IO rubrics agree on Language 12 / Message 12 / Interactive skills 6, total 30 (Language B guide, first assessment 2020)",
+      "externallyModerated": true
     },
     {
       "code": "EXTERNAL_HL",
@@ -44,9 +88,14 @@
     }
   ],
   "notes": [
-    "SL works from a visual stimulus; HL from an extract of a studied literary work.",
-    "Ignoring context, purpose and audience can score zero for message and conceptual understanding even with strong language.",
-    "Language-improvement software is not permitted in language acquisition subjects.",
-    "Figures taken from the Albus IB knowledge base v1.0 (compiled August 2026), which paraphrases the official IB subject guides rather than reproducing them. Verify against the current guide before quoting marks to a student."
-  ]
+    "SL: presentation on a visual stimulus tied to a prescribed theme. HL: presentation on an extract from a studied literary work.",
+    "Three criteria: Language 12, Message 12, Interactive skills 6 — total 30.",
+    "On paper 1, ignoring context, purpose and audience can score zero for message and conceptual understanding even with strong language.",
+    "Language acquisition is the exception to IB's general position on spelling and grammar; language-improvement software is not permitted."
+  ],
+  "firstAssessment": 2020,
+  "lastAssessment": null,
+  "guideStatus": "current",
+  "supersededBy": null,
+  "group": "Language acquisition"
 }

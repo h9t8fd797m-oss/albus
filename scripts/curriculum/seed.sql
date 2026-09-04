@@ -322,6 +322,17 @@ begin
   on conflict (course_template_id, code) do update
     set name = excluded.name, typical_minutes = excluded.typical_minutes
   returning id into v_assessment;
+  delete from public.rubric_criteria where assessment_type_id = v_assessment;
+  insert into public.rubric_criteria (assessment_type_id, code, name, marks, guidance, ordinal)
+  values (v_assessment, 'A', 'Diagrams', null, 'Accurate, labelled, and actually referred to in the text. A diagram nobody discusses earns little.', 0);
+  insert into public.rubric_criteria (assessment_type_id, code, name, marks, guidance, ordinal)
+  values (v_assessment, 'B', 'Terminology', null, 'Use the economic terms the article calls for, consistently, not once in the introduction.', 1);
+  insert into public.rubric_criteria (assessment_type_id, code, name, marks, guidance, ordinal)
+  values (v_assessment, 'C', 'Application and analysis', null, 'Explain the economics of this specific situation. Summarising the article is not application.', 2);
+  insert into public.rubric_criteria (assessment_type_id, code, name, marks, guidance, ordinal)
+  values (v_assessment, 'D', 'Key concept', null, 'One concept per commentary, integrated throughout — naming it and moving on forfeits the marks.', 3);
+  insert into public.rubric_criteria (assessment_type_id, code, name, marks, guidance, ordinal)
+  values (v_assessment, 'E', 'Evaluation', null, 'Stakeholders, short run versus long run, and assumptions. One-sided evaluation caps the mark.', 4);
 
   insert into public.assessment_types (course_template_id, code, name, typical_minutes)
   values (v_template, 'EXTERNAL_SL', 'Examinations (SL)', null)
@@ -334,6 +345,17 @@ begin
   on conflict (course_template_id, code) do update
     set name = excluded.name, typical_minutes = excluded.typical_minutes
   returning id into v_assessment;
+  delete from public.rubric_criteria where assessment_type_id = v_assessment;
+  insert into public.rubric_criteria (assessment_type_id, code, name, marks, guidance, ordinal)
+  values (v_assessment, 'A', 'Diagrams', null, 'Accurate, labelled, and actually referred to in the text. A diagram nobody discusses earns little.', 0);
+  insert into public.rubric_criteria (assessment_type_id, code, name, marks, guidance, ordinal)
+  values (v_assessment, 'B', 'Terminology', null, 'Use the economic terms the article calls for, consistently, not once in the introduction.', 1);
+  insert into public.rubric_criteria (assessment_type_id, code, name, marks, guidance, ordinal)
+  values (v_assessment, 'C', 'Application and analysis', null, 'Explain the economics of this specific situation. Summarising the article is not application.', 2);
+  insert into public.rubric_criteria (assessment_type_id, code, name, marks, guidance, ordinal)
+  values (v_assessment, 'D', 'Key concept', null, 'One concept per commentary, integrated throughout — naming it and moving on forfeits the marks.', 3);
+  insert into public.rubric_criteria (assessment_type_id, code, name, marks, guidance, ordinal)
+  values (v_assessment, 'E', 'Evaluation', null, 'Stakeholders, short run versus long run, and assumptions. One-sided evaluation caps the mark.', 4);
 
   insert into public.assessment_types (course_template_id, code, name, typical_minutes)
   values (v_template, 'EXTERNAL_HL', 'Examinations (HL)', null)
@@ -414,12 +436,33 @@ begin
   returning id into v_template;
 
   delete from public.assessment_objectives where course_template_id = v_template;
+  insert into public.assessment_objectives (course_template_id, code, name, weighting_min, weighting_max, ordinal)
+  values (v_template, 'AO1', 'Knowledge and understanding of specified content', null, null, 0);
+  insert into public.assessment_objectives (course_template_id, code, name, weighting_min, weighting_max, ordinal)
+  values (v_template, 'AO2', 'Application and analysis of knowledge and understanding', null, null, 1);
+  insert into public.assessment_objectives (course_template_id, code, name, weighting_min, weighting_max, ordinal)
+  values (v_template, 'AO3', 'Synthesis and evaluation', null, null, 2);
+  insert into public.assessment_objectives (course_template_id, code, name, weighting_min, weighting_max, ordinal)
+  values (v_template, 'AO4', 'Selection, use and application of a variety of appropriate skills and techniques', null, null, 3);
 
   insert into public.assessment_types (course_template_id, code, name, typical_minutes)
   values (v_template, 'IA_SL', 'Fieldwork report (SL)', 1200)
   on conflict (course_template_id, code) do update
     set name = excluded.name, typical_minutes = excluded.typical_minutes
   returning id into v_assessment;
+  delete from public.rubric_criteria where assessment_type_id = v_assessment;
+  insert into public.rubric_criteria (assessment_type_id, code, name, marks, guidance, ordinal)
+  values (v_assessment, 'A', 'Fieldwork question and geographic context', null, 'Name the question, the place, and the syllabus theory it comes from — a question with no theory behind it caps this.', 0);
+  insert into public.rubric_criteria (assessment_type_id, code, name, marks, guidance, ordinal)
+  values (v_assessment, 'B', 'Method(s) of investigation', null, 'Say what you did and why that method suited the question, including how you sampled.', 1);
+  insert into public.rubric_criteria (assessment_type_id, code, name, marks, guidance, ordinal)
+  values (v_assessment, 'C', 'Quality and treatment of information collected', null, 'Every figure needs a title, units and a scale. Present data so it can be read, not just shown.', 2);
+  insert into public.rubric_criteria (assessment_type_id, code, name, marks, guidance, ordinal)
+  values (v_assessment, 'D', 'Written analysis', null, 'Interpret the graphs rather than describing them, and tie each finding back to the question.', 3);
+  insert into public.rubric_criteria (assessment_type_id, code, name, marks, guidance, ordinal)
+  values (v_assessment, 'E', 'Conclusion', null, 'Answer your own question directly, and only as far as the data supports.', 4);
+  insert into public.rubric_criteria (assessment_type_id, code, name, marks, guidance, ordinal)
+  values (v_assessment, 'F', 'Evaluation', null, 'Name the confounds that actually mattered — weather, time of day, sample size — and what you would change.', 5);
 
   insert into public.assessment_types (course_template_id, code, name, typical_minutes)
   values (v_template, 'EXTERNAL_SL', 'Examinations (SL)', null)
@@ -432,6 +475,19 @@ begin
   on conflict (course_template_id, code) do update
     set name = excluded.name, typical_minutes = excluded.typical_minutes
   returning id into v_assessment;
+  delete from public.rubric_criteria where assessment_type_id = v_assessment;
+  insert into public.rubric_criteria (assessment_type_id, code, name, marks, guidance, ordinal)
+  values (v_assessment, 'A', 'Fieldwork question and geographic context', null, 'Name the question, the place, and the syllabus theory it comes from — a question with no theory behind it caps this.', 0);
+  insert into public.rubric_criteria (assessment_type_id, code, name, marks, guidance, ordinal)
+  values (v_assessment, 'B', 'Method(s) of investigation', null, 'Say what you did and why that method suited the question, including how you sampled.', 1);
+  insert into public.rubric_criteria (assessment_type_id, code, name, marks, guidance, ordinal)
+  values (v_assessment, 'C', 'Quality and treatment of information collected', null, 'Every figure needs a title, units and a scale. Present data so it can be read, not just shown.', 2);
+  insert into public.rubric_criteria (assessment_type_id, code, name, marks, guidance, ordinal)
+  values (v_assessment, 'D', 'Written analysis', null, 'Interpret the graphs rather than describing them, and tie each finding back to the question.', 3);
+  insert into public.rubric_criteria (assessment_type_id, code, name, marks, guidance, ordinal)
+  values (v_assessment, 'E', 'Conclusion', null, 'Answer your own question directly, and only as far as the data supports.', 4);
+  insert into public.rubric_criteria (assessment_type_id, code, name, marks, guidance, ordinal)
+  values (v_assessment, 'F', 'Evaluation', null, 'Name the confounds that actually mattered — weather, time of day, sample size — and what you would change.', 5);
 
   insert into public.assessment_types (course_template_id, code, name, typical_minutes)
   values (v_template, 'EXTERNAL_HL', 'Examinations (HL)', null)
@@ -504,6 +560,15 @@ begin
   on conflict (course_template_id, code) do update
     set name = excluded.name, typical_minutes = excluded.typical_minutes
   returning id into v_assessment;
+  delete from public.rubric_criteria where assessment_type_id = v_assessment;
+  insert into public.rubric_criteria (assessment_type_id, code, name, marks, guidance, ordinal)
+  values (v_assessment, 'A', 'Knowledge, understanding and interpretation', 10, 'Show what the extracts mean and what they imply about your global issue — not what happens in them.', 0);
+  insert into public.rubric_criteria (assessment_type_id, code, name, marks, guidance, ordinal)
+  values (v_assessment, 'B', 'Analysis and evaluation', 10, 'Explain how the author''s choices build the global issue. Naming a device without its effect earns nothing.', 1);
+  insert into public.rubric_criteria (assessment_type_id, code, name, marks, guidance, ordinal)
+  values (v_assessment, 'C', 'Focus and organization', 10, 'The global issue is the through-line, not a label. It should decide what you include and what you cut.', 2);
+  insert into public.rubric_criteria (assessment_type_id, code, name, marks, guidance, ordinal)
+  values (v_assessment, 'D', 'Language', 10, 'Accurate, precise and appropriately formal. Delivery counts — a recited script reads as flat.', 3);
 
   insert into public.assessment_types (course_template_id, code, name, typical_minutes)
   values (v_template, 'EXTERNAL_SL', 'Examinations (SL)', null)
@@ -516,6 +581,15 @@ begin
   on conflict (course_template_id, code) do update
     set name = excluded.name, typical_minutes = excluded.typical_minutes
   returning id into v_assessment;
+  delete from public.rubric_criteria where assessment_type_id = v_assessment;
+  insert into public.rubric_criteria (assessment_type_id, code, name, marks, guidance, ordinal)
+  values (v_assessment, 'A', 'Knowledge, understanding and interpretation', 10, 'Show what the extracts mean and what they imply about your global issue — not what happens in them.', 0);
+  insert into public.rubric_criteria (assessment_type_id, code, name, marks, guidance, ordinal)
+  values (v_assessment, 'B', 'Analysis and evaluation', 10, 'Explain how the author''s choices build the global issue. Naming a device without its effect earns nothing.', 1);
+  insert into public.rubric_criteria (assessment_type_id, code, name, marks, guidance, ordinal)
+  values (v_assessment, 'C', 'Focus and organization', 10, 'The global issue is the through-line, not a label. It should decide what you include and what you cut.', 2);
+  insert into public.rubric_criteria (assessment_type_id, code, name, marks, guidance, ordinal)
+  values (v_assessment, 'D', 'Language', 10, 'Accurate, precise and appropriately formal. Delivery counts — a recited script reads as flat.', 3);
 
   insert into public.assessment_types (course_template_id, code, name, typical_minutes)
   values (v_template, 'EXTERNAL_HL', 'Examinations (HL)', null)
@@ -539,6 +613,15 @@ begin
   on conflict (course_template_id, code) do update
     set name = excluded.name, typical_minutes = excluded.typical_minutes
   returning id into v_assessment;
+  delete from public.rubric_criteria where assessment_type_id = v_assessment;
+  insert into public.rubric_criteria (assessment_type_id, code, name, marks, guidance, ordinal)
+  values (v_assessment, 'A', 'Knowledge, understanding and interpretation', 10, 'Show what the extracts mean and what they imply about your global issue — not what happens in them.', 0);
+  insert into public.rubric_criteria (assessment_type_id, code, name, marks, guidance, ordinal)
+  values (v_assessment, 'B', 'Analysis and evaluation', 10, 'Explain how the author''s choices build the global issue. Naming a device without its effect earns nothing.', 1);
+  insert into public.rubric_criteria (assessment_type_id, code, name, marks, guidance, ordinal)
+  values (v_assessment, 'C', 'Focus and organization', 10, 'The global issue is the through-line, not a label. It should decide what you include and what you cut.', 2);
+  insert into public.rubric_criteria (assessment_type_id, code, name, marks, guidance, ordinal)
+  values (v_assessment, 'D', 'Language', 10, 'Accurate, precise and appropriately formal. Delivery counts — a recited script reads as flat.', 3);
 
   insert into public.assessment_types (course_template_id, code, name, typical_minutes)
   values (v_template, 'EXTERNAL_SL', 'Examinations (SL)', null)
@@ -551,6 +634,15 @@ begin
   on conflict (course_template_id, code) do update
     set name = excluded.name, typical_minutes = excluded.typical_minutes
   returning id into v_assessment;
+  delete from public.rubric_criteria where assessment_type_id = v_assessment;
+  insert into public.rubric_criteria (assessment_type_id, code, name, marks, guidance, ordinal)
+  values (v_assessment, 'A', 'Knowledge, understanding and interpretation', 10, 'Show what the extracts mean and what they imply about your global issue — not what happens in them.', 0);
+  insert into public.rubric_criteria (assessment_type_id, code, name, marks, guidance, ordinal)
+  values (v_assessment, 'B', 'Analysis and evaluation', 10, 'Explain how the author''s choices build the global issue. Naming a device without its effect earns nothing.', 1);
+  insert into public.rubric_criteria (assessment_type_id, code, name, marks, guidance, ordinal)
+  values (v_assessment, 'C', 'Focus and organization', 10, 'The global issue is the through-line, not a label. It should decide what you include and what you cut.', 2);
+  insert into public.rubric_criteria (assessment_type_id, code, name, marks, guidance, ordinal)
+  values (v_assessment, 'D', 'Language', 10, 'Accurate, precise and appropriately formal. Delivery counts — a recited script reads as flat.', 3);
 
   insert into public.assessment_types (course_template_id, code, name, typical_minutes)
   values (v_template, 'EXTERNAL_HL', 'Examinations (HL)', null)
@@ -574,6 +666,13 @@ begin
   on conflict (course_template_id, code) do update
     set name = excluded.name, typical_minutes = excluded.typical_minutes
   returning id into v_assessment;
+  delete from public.rubric_criteria where assessment_type_id = v_assessment;
+  insert into public.rubric_criteria (assessment_type_id, code, name, marks, guidance, ordinal)
+  values (v_assessment, 'A', 'Language', 12, 'Accuracy and fluency: grammar, vocabulary, pronunciation and coherence across the whole oral.', 0);
+  insert into public.rubric_criteria (assessment_type_id, code, name, marks, guidance, ordinal)
+  values (v_assessment, 'B', 'Message', 12, 'Ideas that actually engage the stimulus or extract, developed rather than listed.', 1);
+  insert into public.rubric_criteria (assessment_type_id, code, name, marks, guidance, ordinal)
+  values (v_assessment, 'C', 'Interactive skills: communication', 6, 'Move the conversation forward yourself. Answering only what you are asked caps this.', 2);
 
   insert into public.assessment_types (course_template_id, code, name, typical_minutes)
   values (v_template, 'EXTERNAL_SL', 'Examinations (SL)', null)
@@ -586,6 +685,13 @@ begin
   on conflict (course_template_id, code) do update
     set name = excluded.name, typical_minutes = excluded.typical_minutes
   returning id into v_assessment;
+  delete from public.rubric_criteria where assessment_type_id = v_assessment;
+  insert into public.rubric_criteria (assessment_type_id, code, name, marks, guidance, ordinal)
+  values (v_assessment, 'A', 'Language', 12, 'Accuracy and fluency: grammar, vocabulary, pronunciation and coherence across the whole oral.', 0);
+  insert into public.rubric_criteria (assessment_type_id, code, name, marks, guidance, ordinal)
+  values (v_assessment, 'B', 'Message', 12, 'Ideas that actually engage the stimulus or extract, developed rather than listed.', 1);
+  insert into public.rubric_criteria (assessment_type_id, code, name, marks, guidance, ordinal)
+  values (v_assessment, 'C', 'Interactive skills: communication', 6, 'Move the conversation forward yourself. Answering only what you are asked caps this.', 2);
 
   insert into public.assessment_types (course_template_id, code, name, typical_minutes)
   values (v_template, 'EXTERNAL_HL', 'Examinations (HL)', null)
@@ -776,10 +882,16 @@ begin
   on conflict (course_template_id, code) do update
     set name = excluded.name, typical_minutes = excluded.typical_minutes
   returning id into v_assessment;
+  delete from public.rubric_criteria where assessment_type_id = v_assessment;
+  insert into public.rubric_criteria (assessment_type_id, code, name, marks, guidance, ordinal)
+  values (v_assessment, 'GLOBAL', 'Clear, coherent and critical exploration of the title', 10, 'Argue about how knowledge is made, not about the topic. Specific, named, dated examples beat general ones.', 0);
 
   insert into public.assessment_types (course_template_id, code, name, typical_minutes)
   values (v_template, 'EXHIBITION', 'TOK exhibition', 900)
   on conflict (course_template_id, code) do update
     set name = excluded.name, typical_minutes = excluded.typical_minutes
   returning id into v_assessment;
+  delete from public.rubric_criteria where assessment_type_id = v_assessment;
+  insert into public.rubric_criteria (assessment_type_id, code, name, marks, guidance, ordinal)
+  values (v_assessment, 'GLOBAL', 'How TOK manifests in the world around us', 10, 'Three specific objects, each with its own real-world context, each tied explicitly to the prompt.', 0);
 end $$;

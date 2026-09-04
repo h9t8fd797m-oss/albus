@@ -684,5 +684,32 @@ select is(
   0,
   'every ai_usage policy still scopes by user_id, so a null row belongs to nobody');
 
+-- A rubric must not mix marked and unmarked criteria.
+--
+-- The prompt renders a criterion's marks only when it has them, so a component
+-- where A is "6 marks" and B is bare reads as though B is worth nothing. Where
+-- the split is unverified we publish every criterion unmarked — names ground the
+-- plan, and no mark is claimed. This asserts that all-or-nothing rule, because
+-- the failure it prevents is a student optimising away from an uncosted
+-- criterion.
+select is(
+  (select count(*)::int from (
+     select rc.assessment_type_id
+       from public.rubric_criteria rc
+      group by rc.assessment_type_id
+     having count(rc.marks) > 0 and count(rc.marks) < count(*)
+   ) mixed),
+  0,
+  'no assessment type mixes criteria that have marks with criteria that do not');
+
+-- Where marks are published at all, every criterion carries one, so the sum of
+-- a component's criteria is a number a student can actually be told.
+select ok(
+  not exists (
+    select 1 from public.rubric_criteria rc
+     where rc.marks is not null and rc.marks <= 0
+  ),
+  'a published criterion mark is always positive');
+
 select * from finish();
 rollback;

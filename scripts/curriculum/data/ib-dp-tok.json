@@ -4,8 +4,8 @@
   "subject": "Theory of knowledge",
   "specVersion": "First assessment 2022",
   "source": "https://www.ibo.org/programmes/diploma-programme/curriculum/",
-  "retrievedAt": "2026-08-25",
-  "verifiedPages": "knowledge base 6.2.1",
+  "retrievedAt": "2026-09-04",
+  "verifiedPages": "knowledge base 6.2.1, 6.2.2, 6.2.3",
   "objectives": [],
   "components": [
     {
@@ -15,7 +15,19 @@
       "minutes": 1200,
       "marks": 10,
       "weighting": 66.67,
-      "format": "1,600 words on a prescribed title, externally assessed; counted twice in the aggregate"
+      "format": "1,600 words on a prescribed title, externally assessed; counted twice in the aggregate",
+      "criteriaConfidence": "official",
+      "criteriaSource": "Albus IB knowledge base 6.2.2 and 6.2.3 [OFFICIAL] — TOK guide, first assessment 2022",
+      "externallyModerated": false,
+      "wordLimit": 1600,
+      "criteria": [
+        {
+          "code": "GLOBAL",
+          "name": "Clear, coherent and critical exploration of the title",
+          "marks": 10,
+          "guidance": "Argue about how knowledge is made, not about the topic. Specific, named, dated examples beat general ones."
+        }
+      ]
     },
     {
       "code": "EXHIBITION",
@@ -24,13 +36,31 @@
       "minutes": 900,
       "marks": 10,
       "weighting": 33.33,
-      "format": "950 words on three objects, internally assessed and externally moderated"
+      "format": "950 words on three objects, internally assessed and externally moderated",
+      "criteriaConfidence": "official",
+      "criteriaSource": "Albus IB knowledge base 6.2.2 and 6.2.3 [OFFICIAL] — TOK guide, first assessment 2022",
+      "externallyModerated": true,
+      "wordLimit": 950,
+      "criteria": [
+        {
+          "code": "GLOBAL",
+          "name": "How TOK manifests in the world around us",
+          "marks": 10,
+          "guidance": "Three specific objects, each with its own real-world context, each tied explicitly to the prompt."
+        }
+      ]
     }
   ],
   "notes": [
-    "The essay is worth exactly twice the exhibition.",
-    "The exhibition draws on the core and optional themes; the essay emphasises areas of knowledge.",
-    "An E in TOK is a failing condition for the diploma regardless of total points.",
-    "Figures taken from the Albus IB knowledge base v1.0 (compiled August 2026), which paraphrases the official IB subject guides rather than reproducing them. Verify against the current guide before quoting marks to a student."
-  ]
+    "Both tasks are assessed against a SINGLE global instrument with five holistic levels — not lettered criteria. Modelled as one criterion each on purpose.",
+    "Essay 1,600 words, exhibition 950; examiners stop reading at the limit.",
+    "An exhibition not based on one of the 35 prescribed prompts scores zero.",
+    "The essay counts twice in the aggregate, so it is worth exactly twice the exhibition.",
+    "An E in TOK is a failing condition for the diploma regardless of total points."
+  ],
+  "firstAssessment": 2022,
+  "lastAssessment": null,
+  "guideStatus": "current",
+  "supersededBy": null,
+  "group": "Core"
 }

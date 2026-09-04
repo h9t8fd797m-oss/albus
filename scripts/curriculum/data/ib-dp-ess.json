@@ -4,8 +4,8 @@
   "subject": "Environmental systems and societies",
   "specVersion": "First assessment 2026",
   "source": "https://www.ibo.org/programmes/diploma-programme/curriculum/",
-  "retrievedAt": "2026-08-25",
-  "verifiedPages": "knowledge base 7.2, 7.11",
+  "retrievedAt": "2026-09-04",
+  "verifiedPages": "knowledge base 7.11",
   "objectives": [],
   "components": [
     {
@@ -16,7 +16,11 @@
       "marks": 30,
       "weighting": 25,
       "level": "SL",
-      "criteria": []
+      "criteria": [],
+      "criteriaConfidence": "unverified",
+      "criteriaSource": null,
+      "externallyModerated": true,
+      "wordLimit": 3000
     },
     {
       "code": "EXTERNAL_SL",
@@ -33,7 +37,11 @@
       "marks": 30,
       "weighting": 20,
       "level": "HL",
-      "criteria": []
+      "criteria": [],
+      "criteriaConfidence": "unverified",
+      "criteriaSource": null,
+      "externallyModerated": true,
+      "wordLimit": 3000
     },
     {
       "code": "EXTERNAL_HL",
@@ -44,9 +52,15 @@
     }
   ],
   "notes": [
-    "Maximum 3,000 words, up from 2,250 under the previous guide.",
-    "Common criteria at SL and HL, including a criterion on strategy and the tensions in environmental issues.",
-    "ESS may satisfy either the group 3 or the group 4 requirement, but not both.",
-    "Figures taken from the Albus IB knowledge base v1.0 (compiled August 2026), which paraphrases the official IB subject guides rather than reproducing them. Verify against the current guide before quoting marks to a student."
-  ]
+    "3,000 words maximum, up from 2,250 under the previous guide. 30 marks, common criteria at SL and HL. Ten hours.",
+    "The 2026 guide adds a criterion on strategy and the tensions inherent in environmental issues — it has no legacy exemplars.",
+    "Criterion split NOT published. Secondary sources overwhelmingly describe the superseded guide (five criteria of 6), which would be wrong here.",
+    "Treating this as a Biology IA with an environmental topic forfeits the strategy criterion entirely.",
+    "Group collaboration is permitted if variables differ and each student's data is their own."
+  ],
+  "firstAssessment": 2026,
+  "lastAssessment": null,
+  "guideStatus": "current",
+  "supersededBy": null,
+  "group": "Sciences / Individuals and societies"
 }

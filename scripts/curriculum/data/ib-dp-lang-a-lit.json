@@ -4,8 +4,8 @@
   "subject": "Language A: literature",
   "specVersion": "First assessment 2021",
   "source": "https://www.ibo.org/programmes/diploma-programme/curriculum/",
-  "retrievedAt": "2026-08-25",
-  "verifiedPages": "knowledge base 7.2, 7.9",
+  "retrievedAt": "2026-09-04",
+  "verifiedPages": "knowledge base 7.9",
   "objectives": [],
   "components": [
     {
@@ -16,7 +16,35 @@
       "marks": 40,
       "weighting": 30,
       "level": "SL",
-      "criteria": []
+      "criteria": [
+        {
+          "code": "A",
+          "name": "Knowledge, understanding and interpretation",
+          "marks": 10,
+          "guidance": "Show what the extracts mean and what they imply about your global issue — not what happens in them."
+        },
+        {
+          "code": "B",
+          "name": "Analysis and evaluation",
+          "marks": 10,
+          "guidance": "Explain how the author's choices build the global issue. Naming a device without its effect earns nothing."
+        },
+        {
+          "code": "C",
+          "name": "Focus and organization",
+          "marks": 10,
+          "guidance": "The global issue is the through-line, not a label. It should decide what you include and what you cut."
+        },
+        {
+          "code": "D",
+          "name": "Language",
+          "marks": 10,
+          "guidance": "Accurate, precise and appropriately formal. Delivery counts — a recited script reads as flat."
+        }
+      ],
+      "criteriaConfidence": "corroborated",
+      "criteriaSource": "corroborated: revisiondojo.com, hackyourcourse.com and savemyexams.com independently state four criteria A-D at 10 marks each, total 40, for the Language A individual oral (first assessment 2021); consistent with knowledge base 7.9 [OFFICIAL] which gives the same four criterion names and the 40-mark total",
+      "externallyModerated": true
     },
     {
       "code": "EXTERNAL_SL",
@@ -33,7 +61,35 @@
       "marks": 40,
       "weighting": 20,
       "level": "HL",
-      "criteria": []
+      "criteria": [
+        {
+          "code": "A",
+          "name": "Knowledge, understanding and interpretation",
+          "marks": 10,
+          "guidance": "Show what the extracts mean and what they imply about your global issue — not what happens in them."
+        },
+        {
+          "code": "B",
+          "name": "Analysis and evaluation",
+          "marks": 10,
+          "guidance": "Explain how the author's choices build the global issue. Naming a device without its effect earns nothing."
+        },
+        {
+          "code": "C",
+          "name": "Focus and organization",
+          "marks": 10,
+          "guidance": "The global issue is the through-line, not a label. It should decide what you include and what you cut."
+        },
+        {
+          "code": "D",
+          "name": "Language",
+          "marks": 10,
+          "guidance": "Accurate, precise and appropriately formal. Delivery counts — a recited script reads as flat."
+        }
+      ],
+      "criteriaConfidence": "corroborated",
+      "criteriaSource": "corroborated: revisiondojo.com, hackyourcourse.com and savemyexams.com independently state four criteria A-D at 10 marks each, total 40, for the Language A individual oral (first assessment 2021); consistent with knowledge base 7.9 [OFFICIAL] which gives the same four criterion names and the 40-mark total",
+      "externallyModerated": true
     },
     {
       "code": "EXTERNAL_HL",
@@ -44,10 +100,14 @@
     }
   ],
   "notes": [
-    "15 minutes: 10-minute presentation, then 5 minutes of teacher questions.",
-    "Two literary works connected by a global issue of the student's choosing.",
-    "Works used for the oral may not be reused for the HL essay or paper 2.",
-    "Four criteria A to D; the per-criterion marks are not confirmed in the source used.",
-    "Figures taken from the Albus IB knowledge base v1.0 (compiled August 2026), which paraphrases the official IB subject guides rather than reproducing them. Verify against the current guide before quoting marks to a student."
-  ]
+    "15 minutes: 10-minute presentation on two literary works connected by a global issue, then 5 minutes of teacher questions.",
+    "A global issue must be significant at scale, transnational, and visible in everyday local contexts.",
+    "Works used for the individual oral may NOT be reused for the HL essay or for paper 2.",
+    "Four criteria A-D at 10 marks each, total 40."
+  ],
+  "firstAssessment": 2021,
+  "lastAssessment": null,
+  "guideStatus": "current",
+  "supersededBy": null,
+  "group": "Studies in language and literature"
 }
