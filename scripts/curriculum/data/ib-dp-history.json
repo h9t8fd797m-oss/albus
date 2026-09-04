@@ -35,7 +35,9 @@
           "marks": 4,
           "guidance": "What your own investigation revealed about how historians work."
         }
-      ]
+      ],
+      "criteriaConfidence": "official",
+      "criteriaSource": "Albus IB knowledge base 7.5 [OFFICIAL] — History guide, first assessment 2017"
     },
     {
       "code": "EXTERNAL_SL",
@@ -71,7 +73,9 @@
           "marks": 4,
           "guidance": "What your own investigation revealed about how historians work."
         }
-      ]
+      ],
+      "criteriaConfidence": "official",
+      "criteriaSource": "Albus IB knowledge base 7.5 [OFFICIAL] — History guide, first assessment 2017"
     },
     {
       "code": "EXTERNAL_HL",

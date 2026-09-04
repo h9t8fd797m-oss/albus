@@ -2,10 +2,10 @@
   "code": "IB_DP_GEOGRAPHY",
   "qualification": "IB_DP",
   "subject": "Geography",
-  "specVersion": "Current guide",
+  "specVersion": "First assessment 2019",
   "source": "https://www.ibo.org/programmes/diploma-programme/curriculum/",
-  "retrievedAt": "2026-08-25",
-  "verifiedPages": "knowledge base 7.2, 7.8",
+  "retrievedAt": "2026-09-04",
+  "verifiedPages": "knowledge base 7.8",
   "objectives": [],
   "components": [
     {
@@ -16,7 +16,48 @@
       "marks": 25,
       "weighting": 25,
       "level": "SL",
-      "criteria": []
+      "criteria": [
+        {
+          "code": "A",
+          "name": "Fieldwork question and geographic context",
+          "marks": null,
+          "guidance": "Name the question, the place, and the syllabus theory it comes from — a question with no theory behind it caps this."
+        },
+        {
+          "code": "B",
+          "name": "Method(s) of investigation",
+          "marks": null,
+          "guidance": "Say what you did and why that method suited the question, including how you sampled."
+        },
+        {
+          "code": "C",
+          "name": "Quality and treatment of information collected",
+          "marks": null,
+          "guidance": "Every figure needs a title, units and a scale. Present data so it can be read, not just shown."
+        },
+        {
+          "code": "D",
+          "name": "Written analysis",
+          "marks": null,
+          "guidance": "Interpret the graphs rather than describing them, and tie each finding back to the question."
+        },
+        {
+          "code": "E",
+          "name": "Conclusion",
+          "marks": null,
+          "guidance": "Answer your own question directly, and only as far as the data supports."
+        },
+        {
+          "code": "F",
+          "name": "Evaluation",
+          "marks": null,
+          "guidance": "Name the confounds that actually mattered — weather, time of day, sample size — and what you would change."
+        }
+      ],
+      "criteriaConfidence": "corroborated",
+      "criteriaSource": "corroborated: ibsolved.com IA guide and sites.google.com/yis.ac.jp IB Geography (citing Geography guide p.72) agree on six criteria A-F totalling 25; per-criterion split not stated by either, so marks are left null",
+      "wordLimit": 2500,
+      "externallyModerated": true
     },
     {
       "code": "EXTERNAL_SL",
@@ -33,7 +74,48 @@
       "marks": 25,
       "weighting": 20,
       "level": "HL",
-      "criteria": []
+      "criteria": [
+        {
+          "code": "A",
+          "name": "Fieldwork question and geographic context",
+          "marks": null,
+          "guidance": "Name the question, the place, and the syllabus theory it comes from — a question with no theory behind it caps this."
+        },
+        {
+          "code": "B",
+          "name": "Method(s) of investigation",
+          "marks": null,
+          "guidance": "Say what you did and why that method suited the question, including how you sampled."
+        },
+        {
+          "code": "C",
+          "name": "Quality and treatment of information collected",
+          "marks": null,
+          "guidance": "Every figure needs a title, units and a scale. Present data so it can be read, not just shown."
+        },
+        {
+          "code": "D",
+          "name": "Written analysis",
+          "marks": null,
+          "guidance": "Interpret the graphs rather than describing them, and tie each finding back to the question."
+        },
+        {
+          "code": "E",
+          "name": "Conclusion",
+          "marks": null,
+          "guidance": "Answer your own question directly, and only as far as the data supports."
+        },
+        {
+          "code": "F",
+          "name": "Evaluation",
+          "marks": null,
+          "guidance": "Name the confounds that actually mattered — weather, time of day, sample size — and what you would change."
+        }
+      ],
+      "criteriaConfidence": "corroborated",
+      "criteriaSource": "corroborated: ibsolved.com IA guide and sites.google.com/yis.ac.jp IB Geography (citing Geography guide p.72) agree on six criteria A-F totalling 25; per-criterion split not stated by either, so marks are left null",
+      "wordLimit": 2500,
+      "externallyModerated": true
     },
     {
       "code": "EXTERNAL_HL",
@@ -44,9 +126,14 @@
     }
   ],
   "notes": [
-    "Maximum 2,500 words; markers are advised to stop reading past the limit, which hits the later criteria hardest.",
-    "Six criteria A to F; the per-criterion marks are not confirmed in the source used.",
-    "Primary data collected at a local scale.",
-    "Figures taken from the Albus IB knowledge base v1.0 (compiled August 2026), which paraphrases the official IB subject guides rather than reproducing them. Verify against the current guide before quoting marks to a student."
-  ]
+    "Maximum 2,500 words; exceeding it particularly damages the later criteria, because moderators are advised to stop reading.",
+    "Six criteria A-F totalling 25 marks. The per-criterion split is NOT verified — criteria are published by name only, with no marks.",
+    "Appendices should hold representative examples only, never every questionnaire and never secondary information.",
+    "Superseded 2011 guide used 30 marks across seven criteria A-G; sources describing that split do not apply."
+  ],
+  "firstAssessment": 2019,
+  "lastAssessment": null,
+  "guideStatus": "current",
+  "supersededBy": null,
+  "group": "Individuals and societies"
 }

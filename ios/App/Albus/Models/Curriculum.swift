@@ -201,9 +201,9 @@ extension CurriculumSubject {
             .init(code: "IA_HL", name: "Business research project (HL)", kind: .internalAssessment, minutes: 1200, marks: 25, weighting: 20, level: "HL", covers: nil, format: nil, criteria: []),
             .init(code: "EXTERNAL_HL", name: "Examinations (HL)", kind: .exam, minutes: nil, marks: nil, weighting: 80, level: "HL", covers: nil, format: nil, criteria: [])
             ],
-            notes: ["Maximum 1,800 words; only the first 1,800 are marked.", "One real organisation, and exactly one of change, creativity, ethics or sustainability as the lens.", "Three to five supporting documents must be attached.", "The published criterion mark split is not confirmed in the source used; do not quote per-criterion marks.", "Figures taken from the Albus IB knowledge base v1.0 (compiled August 2026), which paraphrases the official IB subject guides rather than reproducing them. Verify against the current guide before quoting marks to a student."],
+            notes: ["Maximum 1,800 words; only the first 1,800 are marked.", "One real organisation, and exactly one of change, creativity, ethics or sustainability as the lens.", "Three to five supporting documents must be attached.", "25 marks, common to SL and HL under the 2024 guide. Criterion split NOT published: knowledge base 7.7 tags it [UNCERTAIN] and no source names the guide it describes.", "The public ibo.org subject page still describes the pre-2024 structure (HL research project, SL written commentary) despite a 2026 'last updated' date — do not source from it."],
             source: "https://www.ibo.org/programmes/diploma-programme/curriculum/",
-            retrievedAt: "2026-08-25"
+            retrievedAt: "2026-09-04"
         ),
         .init(
             code: "IB_DP_CHEMISTRY",
@@ -239,9 +239,9 @@ extension CurriculumSubject {
             .init(code: "IA_HL", name: "Computational solution (HL)", kind: .internalAssessment, minutes: 2100, marks: 30, weighting: 20, level: "HL", covers: nil, format: nil, criteria: []),
             .init(code: "EXTERNAL_HL", name: "Examinations (HL)", kind: .exam, minutes: nil, marks: nil, weighting: 80, level: "HL", covers: nil, format: nil, criteria: [])
             ],
-            notes: ["First assessment 2027; marks and criteria are still settling in public sources.", "Documentation-based, with a video.", "Figures taken from the Albus IB knowledge base v1.0 (compiled August 2026), which paraphrases the official IB subject guides rather than reproducing them. Verify against the current guide before quoting marks to a student."],
+            notes: ["2027 guide: a 35-hour computational solution, 30 marks across five criteria, with a video submission alongside the documentation. 30% at SL, 20% at HL, same criteria at both levels.", "Applies to candidates from the May 2027 session. A November 2026 candidate is still on the previous guide (34 marks) — check the student's exam session before quoting anything.", "Criterion split NOT published. Nearly every secondary source still describes the superseded 34-mark rubric, so Tier C corroboration is unusually unsafe for this subject.", "Four of the five criteria assess process; only one assesses the finished product, with the video as the primary evidence of functionality.", "Scoping is the dominant failure: a modest system that demonstrably runs outscores an ambitious one that does not.", "The 2027 guide does not require a named client."],
             source: "https://www.ibo.org/programmes/diploma-programme/curriculum/",
-            retrievedAt: "2026-08-25"
+            retrievedAt: "2026-09-04"
         ),
         .init(
             code: "IB_DP_ECONOMICS",
@@ -253,14 +253,14 @@ extension CurriculumSubject {
 
             ],
             components: [
-            .init(code: "IA_SL", name: "Portfolio of three commentaries (SL)", kind: .internalAssessment, minutes: 1200, marks: 45, weighting: 30, level: "SL", covers: nil, format: nil, criteria: []),
+            .init(code: "IA_SL", name: "Portfolio of three commentaries (SL)", kind: .internalAssessment, minutes: 1200, marks: 45, weighting: 30, level: "SL", covers: nil, format: nil, criteria: [.init(code: "A", name: "Diagrams", marks: nil, guidance: "Accurate, labelled, and actually referred to in the text. A diagram nobody discusses earns little."), .init(code: "B", name: "Terminology", marks: nil, guidance: "Use the economic terms the article calls for, consistently, not once in the introduction."), .init(code: "C", name: "Application and analysis", marks: nil, guidance: "Explain the economics of this specific situation. Summarising the article is not application."), .init(code: "D", name: "Key concept", marks: nil, guidance: "One concept per commentary, integrated throughout — naming it and moving on forfeits the marks."), .init(code: "E", name: "Evaluation", marks: nil, guidance: "Stakeholders, short run versus long run, and assumptions. One-sided evaluation caps the mark.")]),
             .init(code: "EXTERNAL_SL", name: "Examinations (SL)", kind: .exam, minutes: nil, marks: nil, weighting: 70, level: "SL", covers: nil, format: nil, criteria: []),
-            .init(code: "IA_HL", name: "Portfolio of three commentaries (HL)", kind: .internalAssessment, minutes: 1200, marks: 45, weighting: 20, level: "HL", covers: nil, format: nil, criteria: []),
+            .init(code: "IA_HL", name: "Portfolio of three commentaries (HL)", kind: .internalAssessment, minutes: 1200, marks: 45, weighting: 20, level: "HL", covers: nil, format: nil, criteria: [.init(code: "A", name: "Diagrams", marks: nil, guidance: "Accurate, labelled, and actually referred to in the text. A diagram nobody discusses earns little."), .init(code: "B", name: "Terminology", marks: nil, guidance: "Use the economic terms the article calls for, consistently, not once in the introduction."), .init(code: "C", name: "Application and analysis", marks: nil, guidance: "Explain the economics of this specific situation. Summarising the article is not application."), .init(code: "D", name: "Key concept", marks: nil, guidance: "One concept per commentary, integrated throughout — naming it and moving on forfeits the marks."), .init(code: "E", name: "Evaluation", marks: nil, guidance: "Stakeholders, short run versus long run, and assumptions. One-sided evaluation caps the mark.")]),
             .init(code: "EXTERNAL_HL", name: "Examinations (HL)", kind: .exam, minutes: nil, marks: nil, weighting: 80, level: "HL", covers: nil, format: nil, criteria: [])
             ],
-            notes: ["Three commentaries, maximum 800 words each, marked out of 14, plus 3 portfolio marks.", "Each must use a different syllabus unit, a different key concept and a different source.", "Articles must have been published within a year of the commentary.", "At SL this is the highest-weighted IA of the major group 3 subjects.", "Figures taken from the Albus IB knowledge base v1.0 (compiled August 2026), which paraphrases the official IB subject guides rather than reproducing them. Verify against the current guide before quoting marks to a student."],
+            notes: ["Three commentaries, each on a different published article, a different syllabus unit and a different key concept.", "Each commentary is 800 words maximum and marked out of 14 across five criteria; 3 further portfolio-level marks give a total of 45.", "Criterion NAMES are corroborated; the per-criterion mark split is NOT — sources disagree, so no marks are published.", "Articles must be from different sources and published within a year of the commentary.", "At SL this is 30% of the subject — the highest-weighted IA in group 3."],
             source: "https://www.ibo.org/programmes/diploma-programme/curriculum/",
-            retrievedAt: "2026-08-25"
+            retrievedAt: "2026-09-04"
         ),
         .init(
             code: "IB_DP_ESS",
@@ -277,9 +277,9 @@ extension CurriculumSubject {
             .init(code: "IA_HL", name: "Individual investigation (HL)", kind: .internalAssessment, minutes: 600, marks: 30, weighting: 20, level: "HL", covers: nil, format: nil, criteria: []),
             .init(code: "EXTERNAL_HL", name: "Examinations (HL)", kind: .exam, minutes: nil, marks: nil, weighting: 80, level: "HL", covers: nil, format: nil, criteria: [])
             ],
-            notes: ["Maximum 3,000 words, up from 2,250 under the previous guide.", "Common criteria at SL and HL, including a criterion on strategy and the tensions in environmental issues.", "ESS may satisfy either the group 3 or the group 4 requirement, but not both.", "Figures taken from the Albus IB knowledge base v1.0 (compiled August 2026), which paraphrases the official IB subject guides rather than reproducing them. Verify against the current guide before quoting marks to a student."],
+            notes: ["3,000 words maximum, up from 2,250 under the previous guide. 30 marks, common criteria at SL and HL. Ten hours.", "The 2026 guide adds a criterion on strategy and the tensions inherent in environmental issues — it has no legacy exemplars.", "Criterion split NOT published. Secondary sources overwhelmingly describe the superseded guide (five criteria of 6), which would be wrong here.", "Treating this as a Biology IA with an environmental topic forfeits the strategy criterion entirely.", "Group collaboration is permitted if variables differ and each student's data is their own."],
             source: "https://www.ibo.org/programmes/diploma-programme/curriculum/",
-            retrievedAt: "2026-08-25"
+            retrievedAt: "2026-09-04"
         ),
         .init(
             code: "IB_DP_EXTENDED_ESSAY",
@@ -307,14 +307,14 @@ extension CurriculumSubject {
 
             ],
             components: [
-            .init(code: "IA_SL", name: "Fieldwork report (SL)", kind: .internalAssessment, minutes: 1200, marks: 25, weighting: 25, level: "SL", covers: nil, format: nil, criteria: []),
+            .init(code: "IA_SL", name: "Fieldwork report (SL)", kind: .internalAssessment, minutes: 1200, marks: 25, weighting: 25, level: "SL", covers: nil, format: nil, criteria: [.init(code: "A", name: "Fieldwork question and geographic context", marks: nil, guidance: "Name the question, the place, and the syllabus theory it comes from — a question with no theory behind it caps this."), .init(code: "B", name: "Method(s) of investigation", marks: nil, guidance: "Say what you did and why that method suited the question, including how you sampled."), .init(code: "C", name: "Quality and treatment of information collected", marks: nil, guidance: "Every figure needs a title, units and a scale. Present data so it can be read, not just shown."), .init(code: "D", name: "Written analysis", marks: nil, guidance: "Interpret the graphs rather than describing them, and tie each finding back to the question."), .init(code: "E", name: "Conclusion", marks: nil, guidance: "Answer your own question directly, and only as far as the data supports."), .init(code: "F", name: "Evaluation", marks: nil, guidance: "Name the confounds that actually mattered — weather, time of day, sample size — and what you would change.")]),
             .init(code: "EXTERNAL_SL", name: "Examinations (SL)", kind: .exam, minutes: nil, marks: nil, weighting: 75, level: "SL", covers: nil, format: nil, criteria: []),
-            .init(code: "IA_HL", name: "Fieldwork report (HL)", kind: .internalAssessment, minutes: 1200, marks: 25, weighting: 20, level: "HL", covers: nil, format: nil, criteria: []),
+            .init(code: "IA_HL", name: "Fieldwork report (HL)", kind: .internalAssessment, minutes: 1200, marks: 25, weighting: 20, level: "HL", covers: nil, format: nil, criteria: [.init(code: "A", name: "Fieldwork question and geographic context", marks: nil, guidance: "Name the question, the place, and the syllabus theory it comes from — a question with no theory behind it caps this."), .init(code: "B", name: "Method(s) of investigation", marks: nil, guidance: "Say what you did and why that method suited the question, including how you sampled."), .init(code: "C", name: "Quality and treatment of information collected", marks: nil, guidance: "Every figure needs a title, units and a scale. Present data so it can be read, not just shown."), .init(code: "D", name: "Written analysis", marks: nil, guidance: "Interpret the graphs rather than describing them, and tie each finding back to the question."), .init(code: "E", name: "Conclusion", marks: nil, guidance: "Answer your own question directly, and only as far as the data supports."), .init(code: "F", name: "Evaluation", marks: nil, guidance: "Name the confounds that actually mattered — weather, time of day, sample size — and what you would change.")]),
             .init(code: "EXTERNAL_HL", name: "Examinations (HL)", kind: .exam, minutes: nil, marks: nil, weighting: 80, level: "HL", covers: nil, format: nil, criteria: [])
             ],
-            notes: ["Maximum 2,500 words; markers are advised to stop reading past the limit, which hits the later criteria hardest.", "Six criteria A to F; the per-criterion marks are not confirmed in the source used.", "Primary data collected at a local scale.", "Figures taken from the Albus IB knowledge base v1.0 (compiled August 2026), which paraphrases the official IB subject guides rather than reproducing them. Verify against the current guide before quoting marks to a student."],
+            notes: ["Maximum 2,500 words; exceeding it particularly damages the later criteria, because moderators are advised to stop reading.", "Six criteria A-F totalling 25 marks. The per-criterion split is NOT verified — criteria are published by name only, with no marks.", "Appendices should hold representative examples only, never every questionnaire and never secondary information.", "Superseded 2011 guide used 30 marks across seven criteria A-G; sources describing that split do not apply."],
             source: "https://www.ibo.org/programmes/diploma-programme/curriculum/",
-            retrievedAt: "2026-08-25"
+            retrievedAt: "2026-09-04"
         ),
         .init(
             code: "IB_DP_HISTORY",
@@ -345,14 +345,14 @@ extension CurriculumSubject {
 
             ],
             components: [
-            .init(code: "IA_SL", name: "Individual oral (SL)", kind: .internalAssessment, minutes: 15, marks: 40, weighting: 30, level: "SL", covers: nil, format: nil, criteria: []),
+            .init(code: "IA_SL", name: "Individual oral (SL)", kind: .internalAssessment, minutes: 15, marks: 40, weighting: 30, level: "SL", covers: nil, format: nil, criteria: [.init(code: "A", name: "Knowledge, understanding and interpretation", marks: 10, guidance: "Show what the extracts mean and what they imply about your global issue — not what happens in them."), .init(code: "B", name: "Analysis and evaluation", marks: 10, guidance: "Explain how the author's choices build the global issue. Naming a device without its effect earns nothing."), .init(code: "C", name: "Focus and organization", marks: 10, guidance: "The global issue is the through-line, not a label. It should decide what you include and what you cut."), .init(code: "D", name: "Language", marks: 10, guidance: "Accurate, precise and appropriately formal. Delivery counts — a recited script reads as flat.")]),
             .init(code: "EXTERNAL_SL", name: "Examinations (SL)", kind: .exam, minutes: nil, marks: nil, weighting: 70, level: "SL", covers: nil, format: nil, criteria: []),
-            .init(code: "IA_HL", name: "Individual oral (HL)", kind: .internalAssessment, minutes: 15, marks: 40, weighting: 20, level: "HL", covers: nil, format: nil, criteria: []),
+            .init(code: "IA_HL", name: "Individual oral (HL)", kind: .internalAssessment, minutes: 15, marks: 40, weighting: 20, level: "HL", covers: nil, format: nil, criteria: [.init(code: "A", name: "Knowledge, understanding and interpretation", marks: 10, guidance: "Show what the extracts mean and what they imply about your global issue — not what happens in them."), .init(code: "B", name: "Analysis and evaluation", marks: 10, guidance: "Explain how the author's choices build the global issue. Naming a device without its effect earns nothing."), .init(code: "C", name: "Focus and organization", marks: 10, guidance: "The global issue is the through-line, not a label. It should decide what you include and what you cut."), .init(code: "D", name: "Language", marks: 10, guidance: "Accurate, precise and appropriately formal. Delivery counts — a recited script reads as flat.")]),
             .init(code: "EXTERNAL_HL", name: "Examinations (HL)", kind: .exam, minutes: nil, marks: nil, weighting: 80, level: "HL", covers: nil, format: nil, criteria: [])
             ],
-            notes: ["Two extracts, one literary and one non-literary, connected by a global issue.", "A global issue must be significant at scale, transnational, and felt locally.", "Works used for the oral may not be reused for the HL essay or paper 2.", "Figures taken from the Albus IB knowledge base v1.0 (compiled August 2026), which paraphrases the official IB subject guides rather than reproducing them. Verify against the current guide before quoting marks to a student."],
+            notes: ["15 minutes: 10-minute presentation on one literary and one non-literary extract connected by a global issue, then 5 minutes of teacher questions.", "A global issue must be significant at scale, transnational, and visible in everyday local contexts.", "Works used for the individual oral may NOT be reused for the HL essay or for paper 2.", "Four criteria A-D at 10 marks each, total 40."],
             source: "https://www.ibo.org/programmes/diploma-programme/curriculum/",
-            retrievedAt: "2026-08-25"
+            retrievedAt: "2026-09-04"
         ),
         .init(
             code: "IB_DP_LANG_A_LIT",
@@ -364,14 +364,14 @@ extension CurriculumSubject {
 
             ],
             components: [
-            .init(code: "IA_SL", name: "Individual oral (SL)", kind: .internalAssessment, minutes: 15, marks: 40, weighting: 30, level: "SL", covers: nil, format: nil, criteria: []),
+            .init(code: "IA_SL", name: "Individual oral (SL)", kind: .internalAssessment, minutes: 15, marks: 40, weighting: 30, level: "SL", covers: nil, format: nil, criteria: [.init(code: "A", name: "Knowledge, understanding and interpretation", marks: 10, guidance: "Show what the extracts mean and what they imply about your global issue — not what happens in them."), .init(code: "B", name: "Analysis and evaluation", marks: 10, guidance: "Explain how the author's choices build the global issue. Naming a device without its effect earns nothing."), .init(code: "C", name: "Focus and organization", marks: 10, guidance: "The global issue is the through-line, not a label. It should decide what you include and what you cut."), .init(code: "D", name: "Language", marks: 10, guidance: "Accurate, precise and appropriately formal. Delivery counts — a recited script reads as flat.")]),
             .init(code: "EXTERNAL_SL", name: "Examinations (SL)", kind: .exam, minutes: nil, marks: nil, weighting: 70, level: "SL", covers: nil, format: nil, criteria: []),
-            .init(code: "IA_HL", name: "Individual oral (HL)", kind: .internalAssessment, minutes: 15, marks: 40, weighting: 20, level: "HL", covers: nil, format: nil, criteria: []),
+            .init(code: "IA_HL", name: "Individual oral (HL)", kind: .internalAssessment, minutes: 15, marks: 40, weighting: 20, level: "HL", covers: nil, format: nil, criteria: [.init(code: "A", name: "Knowledge, understanding and interpretation", marks: 10, guidance: "Show what the extracts mean and what they imply about your global issue — not what happens in them."), .init(code: "B", name: "Analysis and evaluation", marks: 10, guidance: "Explain how the author's choices build the global issue. Naming a device without its effect earns nothing."), .init(code: "C", name: "Focus and organization", marks: 10, guidance: "The global issue is the through-line, not a label. It should decide what you include and what you cut."), .init(code: "D", name: "Language", marks: 10, guidance: "Accurate, precise and appropriately formal. Delivery counts — a recited script reads as flat.")]),
             .init(code: "EXTERNAL_HL", name: "Examinations (HL)", kind: .exam, minutes: nil, marks: nil, weighting: 80, level: "HL", covers: nil, format: nil, criteria: [])
             ],
-            notes: ["15 minutes: 10-minute presentation, then 5 minutes of teacher questions.", "Two literary works connected by a global issue of the student's choosing.", "Works used for the oral may not be reused for the HL essay or paper 2.", "Four criteria A to D; the per-criterion marks are not confirmed in the source used.", "Figures taken from the Albus IB knowledge base v1.0 (compiled August 2026), which paraphrases the official IB subject guides rather than reproducing them. Verify against the current guide before quoting marks to a student."],
+            notes: ["15 minutes: 10-minute presentation on two literary works connected by a global issue, then 5 minutes of teacher questions.", "A global issue must be significant at scale, transnational, and visible in everyday local contexts.", "Works used for the individual oral may NOT be reused for the HL essay or for paper 2.", "Four criteria A-D at 10 marks each, total 40."],
             source: "https://www.ibo.org/programmes/diploma-programme/curriculum/",
-            retrievedAt: "2026-08-25"
+            retrievedAt: "2026-09-04"
         ),
         .init(
             code: "IB_DP_LANG_B",
@@ -383,14 +383,14 @@ extension CurriculumSubject {
 
             ],
             components: [
-            .init(code: "IA_SL", name: "Individual oral (SL)", kind: .internalAssessment, minutes: 15, marks: 30, weighting: 25, level: "SL", covers: nil, format: nil, criteria: []),
+            .init(code: "IA_SL", name: "Individual oral (SL)", kind: .internalAssessment, minutes: 15, marks: 30, weighting: 25, level: "SL", covers: nil, format: nil, criteria: [.init(code: "A", name: "Language", marks: 12, guidance: "Accuracy and fluency: grammar, vocabulary, pronunciation and coherence across the whole oral."), .init(code: "B", name: "Message", marks: 12, guidance: "Ideas that actually engage the stimulus or extract, developed rather than listed."), .init(code: "C", name: "Interactive skills: communication", marks: 6, guidance: "Move the conversation forward yourself. Answering only what you are asked caps this.")]),
             .init(code: "EXTERNAL_SL", name: "Examinations (SL)", kind: .exam, minutes: nil, marks: nil, weighting: 75, level: "SL", covers: nil, format: nil, criteria: []),
-            .init(code: "IA_HL", name: "Individual oral (HL)", kind: .internalAssessment, minutes: 15, marks: 30, weighting: 20, level: "HL", covers: nil, format: nil, criteria: []),
+            .init(code: "IA_HL", name: "Individual oral (HL)", kind: .internalAssessment, minutes: 15, marks: 30, weighting: 20, level: "HL", covers: nil, format: nil, criteria: [.init(code: "A", name: "Language", marks: 12, guidance: "Accuracy and fluency: grammar, vocabulary, pronunciation and coherence across the whole oral."), .init(code: "B", name: "Message", marks: 12, guidance: "Ideas that actually engage the stimulus or extract, developed rather than listed."), .init(code: "C", name: "Interactive skills: communication", marks: 6, guidance: "Move the conversation forward yourself. Answering only what you are asked caps this.")]),
             .init(code: "EXTERNAL_HL", name: "Examinations (HL)", kind: .exam, minutes: nil, marks: nil, weighting: 80, level: "HL", covers: nil, format: nil, criteria: [])
             ],
-            notes: ["SL works from a visual stimulus; HL from an extract of a studied literary work.", "Ignoring context, purpose and audience can score zero for message and conceptual understanding even with strong language.", "Language-improvement software is not permitted in language acquisition subjects.", "Figures taken from the Albus IB knowledge base v1.0 (compiled August 2026), which paraphrases the official IB subject guides rather than reproducing them. Verify against the current guide before quoting marks to a student."],
+            notes: ["SL: presentation on a visual stimulus tied to a prescribed theme. HL: presentation on an extract from a studied literary work.", "Three criteria: Language 12, Message 12, Interactive skills 6 — total 30.", "On paper 1, ignoring context, purpose and audience can score zero for message and conceptual understanding even with strong language.", "Language acquisition is the exception to IB's general position on spelling and grammar; language-improvement software is not permitted."],
             source: "https://www.ibo.org/programmes/diploma-programme/curriculum/",
-            retrievedAt: "2026-08-25"
+            retrievedAt: "2026-09-04"
         ),
         .init(
             code: "IB_DP_MATHS_AA",
@@ -459,12 +459,12 @@ extension CurriculumSubject {
 
             ],
             components: [
-            .init(code: "ESSAY", name: "TOK essay", kind: .coursework, minutes: 1200, marks: 10, weighting: 66.67, level: nil, covers: nil, format: "1,600 words on a prescribed title, externally assessed; counted twice in the aggregate", criteria: []),
-            .init(code: "EXHIBITION", name: "TOK exhibition", kind: .internalAssessment, minutes: 900, marks: 10, weighting: 33.33, level: nil, covers: nil, format: "950 words on three objects, internally assessed and externally moderated", criteria: [])
+            .init(code: "ESSAY", name: "TOK essay", kind: .coursework, minutes: 1200, marks: 10, weighting: 66.67, level: nil, covers: nil, format: "1,600 words on a prescribed title, externally assessed; counted twice in the aggregate", criteria: [.init(code: "GLOBAL", name: "Clear, coherent and critical exploration of the title", marks: 10, guidance: "Argue about how knowledge is made, not about the topic. Specific, named, dated examples beat general ones.")]),
+            .init(code: "EXHIBITION", name: "TOK exhibition", kind: .internalAssessment, minutes: 900, marks: 10, weighting: 33.33, level: nil, covers: nil, format: "950 words on three objects, internally assessed and externally moderated", criteria: [.init(code: "GLOBAL", name: "How TOK manifests in the world around us", marks: 10, guidance: "Three specific objects, each with its own real-world context, each tied explicitly to the prompt.")])
             ],
-            notes: ["The essay is worth exactly twice the exhibition.", "The exhibition draws on the core and optional themes; the essay emphasises areas of knowledge.", "An E in TOK is a failing condition for the diploma regardless of total points.", "Figures taken from the Albus IB knowledge base v1.0 (compiled August 2026), which paraphrases the official IB subject guides rather than reproducing them. Verify against the current guide before quoting marks to a student."],
+            notes: ["Both tasks are assessed against a SINGLE global instrument with five holistic levels — not lettered criteria. Modelled as one criterion each on purpose.", "Essay 1,600 words, exhibition 950; examiners stop reading at the limit.", "An exhibition not based on one of the 35 prescribed prompts scores zero.", "The essay counts twice in the aggregate, so it is worth exactly twice the exhibition.", "An E in TOK is a failing condition for the diploma regardless of total points."],
             source: "https://www.ibo.org/programmes/diploma-programme/curriculum/",
-            retrievedAt: "2026-08-25"
+            retrievedAt: "2026-09-04"
         ),
     ]
 

@@ -4,8 +4,8 @@
   "subject": "Computer science",
   "specVersion": "First assessment 2027",
   "source": "https://www.ibo.org/programmes/diploma-programme/curriculum/",
-  "retrievedAt": "2026-08-25",
-  "verifiedPages": "knowledge base 7.2, 7.12",
+  "retrievedAt": "2026-09-04",
+  "verifiedPages": "knowledge base 7.12",
   "objectives": [],
   "components": [
     {
@@ -16,7 +16,10 @@
       "marks": 30,
       "weighting": 30,
       "level": "SL",
-      "criteria": []
+      "criteria": [],
+      "criteriaConfidence": "unverified",
+      "criteriaSource": null,
+      "externallyModerated": true
     },
     {
       "code": "EXTERNAL_SL",
@@ -33,7 +36,10 @@
       "marks": 30,
       "weighting": 20,
       "level": "HL",
-      "criteria": []
+      "criteria": [],
+      "criteriaConfidence": "unverified",
+      "criteriaSource": null,
+      "externallyModerated": true
     },
     {
       "code": "EXTERNAL_HL",
@@ -44,8 +50,16 @@
     }
   ],
   "notes": [
-    "First assessment 2027; marks and criteria are still settling in public sources.",
-    "Documentation-based, with a video.",
-    "Figures taken from the Albus IB knowledge base v1.0 (compiled August 2026), which paraphrases the official IB subject guides rather than reproducing them. Verify against the current guide before quoting marks to a student."
-  ]
+    "2027 guide: a 35-hour computational solution, 30 marks across five criteria, with a video submission alongside the documentation. 30% at SL, 20% at HL, same criteria at both levels.",
+    "Applies to candidates from the May 2027 session. A November 2026 candidate is still on the previous guide (34 marks) — check the student's exam session before quoting anything.",
+    "Criterion split NOT published. Nearly every secondary source still describes the superseded 34-mark rubric, so Tier C corroboration is unusually unsafe for this subject.",
+    "Four of the five criteria assess process; only one assesses the finished product, with the video as the primary evidence of functionality.",
+    "Scoping is the dominant failure: a modest system that demonstrably runs outscores an ambitious one that does not.",
+    "The 2027 guide does not require a named client."
+  ],
+  "firstAssessment": 2027,
+  "lastAssessment": null,
+  "guideStatus": "current",
+  "supersededBy": null,
+  "group": "Sciences"
 }

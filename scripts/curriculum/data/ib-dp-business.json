@@ -4,8 +4,8 @@
   "subject": "Business management",
   "specVersion": "First assessment 2024",
   "source": "https://www.ibo.org/programmes/diploma-programme/curriculum/",
-  "retrievedAt": "2026-08-25",
-  "verifiedPages": "knowledge base 7.2, 7.7",
+  "retrievedAt": "2026-09-04",
+  "verifiedPages": "knowledge base 7.7",
   "objectives": [],
   "components": [
     {
@@ -16,7 +16,11 @@
       "marks": 25,
       "weighting": 30,
       "level": "SL",
-      "criteria": []
+      "criteria": [],
+      "criteriaConfidence": "unverified",
+      "criteriaSource": null,
+      "externallyModerated": true,
+      "wordLimit": 1800
     },
     {
       "code": "EXTERNAL_SL",
@@ -33,7 +37,11 @@
       "marks": 25,
       "weighting": 20,
       "level": "HL",
-      "criteria": []
+      "criteria": [],
+      "criteriaConfidence": "unverified",
+      "criteriaSource": null,
+      "externallyModerated": true,
+      "wordLimit": 1800
     },
     {
       "code": "EXTERNAL_HL",
@@ -47,7 +55,12 @@
     "Maximum 1,800 words; only the first 1,800 are marked.",
     "One real organisation, and exactly one of change, creativity, ethics or sustainability as the lens.",
     "Three to five supporting documents must be attached.",
-    "The published criterion mark split is not confirmed in the source used; do not quote per-criterion marks.",
-    "Figures taken from the Albus IB knowledge base v1.0 (compiled August 2026), which paraphrases the official IB subject guides rather than reproducing them. Verify against the current guide before quoting marks to a student."
-  ]
+    "25 marks, common to SL and HL under the 2024 guide. Criterion split NOT published: knowledge base 7.7 tags it [UNCERTAIN] and no source names the guide it describes.",
+    "The public ibo.org subject page still describes the pre-2024 structure (HL research project, SL written commentary) despite a 2026 'last updated' date — do not source from it."
+  ],
+  "firstAssessment": 2024,
+  "lastAssessment": null,
+  "guideStatus": "current",
+  "supersededBy": null,
+  "group": "Individuals and societies"
 }

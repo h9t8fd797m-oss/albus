@@ -41,7 +41,9 @@
           "marks": 6,
           "guidance": "Name the specific weaknesses that mattered most and improvements that address them."
         }
-      ]
+      ],
+      "criteriaConfidence": "official",
+      "criteriaSource": "Albus IB knowledge base 7.3 [OFFICIAL] — Biology/Chemistry/Physics guides, first assessment 2025"
     },
     {
       "code": "EXTERNAL_SL",
@@ -83,7 +85,9 @@
           "marks": 6,
           "guidance": "Name the specific weaknesses that mattered most and improvements that address them."
         }
-      ]
+      ],
+      "criteriaConfidence": "official",
+      "criteriaSource": "Albus IB knowledge base 7.3 [OFFICIAL] — Biology/Chemistry/Physics guides, first assessment 2025"
     },
     {
       "code": "EXTERNAL_HL",

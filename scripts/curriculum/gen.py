@@ -54,6 +54,18 @@ QUALIFICATION_NAMES = {
 }
 COMPONENT_KINDS = {"exam", "coursework", "internal_assessment", "practical", "oral"}
 
+# How well we actually know a component's per-criterion mark split.
+#
+# This exists because the failure it prevents is invisible once shipped: a
+# plausible-looking rubric that is not the real one sends a student to optimise
+# their IA against marks that do not exist, and it does so with the authority of
+# a printed table. Empty is a worse product and a better outcome than wrong.
+#
+#   official     — transcribed from the subject guide itself
+#   corroborated — two or more independent sources agree; guide not seen
+#   unverified   — we do not know, and must therefore publish no criteria
+CRITERIA_CONFIDENCE = {"official", "corroborated", "unverified"}
+
 
 class DataError(Exception):
     pass
@@ -127,6 +139,30 @@ def validate(name, s):
             summed = sum(x.get("marks") or 0 for x in criteria)
             if summed and summed != marks:
                 errs.append(f"{code}: criteria sum to {summed} but component is {marks} marks")
+
+        # Publishing a rubric is a claim about how a student is marked, so it
+        # has to carry how well we know it. The sum check above catches a split
+        # that is internally inconsistent; this catches one that is merely
+        # invented — internally perfect and still not the real mark scheme.
+        confidence = c.get("criteriaConfidence")
+        if criteria:
+            if confidence not in CRITERIA_CONFIDENCE:
+                errs.append(
+                    f"{code}: lists criteria, so criteriaConfidence must be one of "
+                    f"{sorted(CRITERIA_CONFIDENCE)} (got {confidence!r})"
+                )
+            elif confidence == "unverified":
+                errs.append(
+                    f"{code}: criteriaConfidence is 'unverified', so it must publish no "
+                    "criteria — remove them or raise the confidence with a source"
+                )
+            elif not c.get("criteriaSource"):
+                errs.append(f"{code}: criteriaConfidence '{confidence}' needs a criteriaSource")
+        elif confidence not in (None, "unverified"):
+            errs.append(
+                f"{code}: criteriaConfidence '{confidence}' but no criteria — "
+                "either add them or drop the claim"
+            )
 
     # Levels (SL/HL) are assessed separately, so each level sums to 100 alone.
     levels = {c.get("level") for c in components}

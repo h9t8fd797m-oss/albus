@@ -47,7 +47,9 @@
           "marks": 6,
           "guidance": "Mathematics at the right level, correct, and visibly understood."
         }
-      ]
+      ],
+      "criteriaConfidence": "official",
+      "criteriaSource": "Albus IB knowledge base 7.4 [OFFICIAL] — Mathematics guides, first assessment 2021"
     },
     {
       "code": "EXTERNAL_SL",
@@ -95,7 +97,9 @@
           "marks": 6,
           "guidance": "Mathematics at the right level, correct, and visibly understood."
         }
-      ]
+      ],
+      "criteriaConfidence": "official",
+      "criteriaSource": "Albus IB knowledge base 7.4 [OFFICIAL] — Mathematics guides, first assessment 2021"
     },
     {
       "code": "EXTERNAL_HL",

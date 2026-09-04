@@ -4,8 +4,8 @@
   "subject": "Economics",
   "specVersion": "First assessment 2022",
   "source": "https://www.ibo.org/programmes/diploma-programme/curriculum/",
-  "retrievedAt": "2026-08-25",
-  "verifiedPages": "knowledge base 7.2, 7.6",
+  "retrievedAt": "2026-09-04",
+  "verifiedPages": "knowledge base 7.6",
   "objectives": [],
   "components": [
     {
@@ -16,7 +16,42 @@
       "marks": 45,
       "weighting": 30,
       "level": "SL",
-      "criteria": []
+      "criteria": [
+        {
+          "code": "A",
+          "name": "Diagrams",
+          "marks": null,
+          "guidance": "Accurate, labelled, and actually referred to in the text. A diagram nobody discusses earns little."
+        },
+        {
+          "code": "B",
+          "name": "Terminology",
+          "marks": null,
+          "guidance": "Use the economic terms the article calls for, consistently, not once in the introduction."
+        },
+        {
+          "code": "C",
+          "name": "Application and analysis",
+          "marks": null,
+          "guidance": "Explain the economics of this specific situation. Summarising the article is not application."
+        },
+        {
+          "code": "D",
+          "name": "Key concept",
+          "marks": null,
+          "guidance": "One concept per commentary, integrated throughout — naming it and moving on forfeits the marks."
+        },
+        {
+          "code": "E",
+          "name": "Evaluation",
+          "marks": null,
+          "guidance": "Stakeholders, short run versus long run, and assumptions. One-sided evaluation caps the mark."
+        }
+      ],
+      "criteriaConfidence": "corroborated",
+      "criteriaSource": "corroborated for NAMES ONLY: knowledge base 7.6 [OFFICIAL] gives 'marked out of 14 across five criteria' plus 3 portfolio-level marks, total 45. Secondary sources DISAGREE on the split — one gives A3/B2/C4/D0/E5, another A3/B2/C3/D3/E3, both summing to 14. A key-concept criterion worth zero contradicts the 2022 guide, so no split is published",
+      "wordLimit": 800,
+      "externallyModerated": true
     },
     {
       "code": "EXTERNAL_SL",
@@ -33,7 +68,42 @@
       "marks": 45,
       "weighting": 20,
       "level": "HL",
-      "criteria": []
+      "criteria": [
+        {
+          "code": "A",
+          "name": "Diagrams",
+          "marks": null,
+          "guidance": "Accurate, labelled, and actually referred to in the text. A diagram nobody discusses earns little."
+        },
+        {
+          "code": "B",
+          "name": "Terminology",
+          "marks": null,
+          "guidance": "Use the economic terms the article calls for, consistently, not once in the introduction."
+        },
+        {
+          "code": "C",
+          "name": "Application and analysis",
+          "marks": null,
+          "guidance": "Explain the economics of this specific situation. Summarising the article is not application."
+        },
+        {
+          "code": "D",
+          "name": "Key concept",
+          "marks": null,
+          "guidance": "One concept per commentary, integrated throughout — naming it and moving on forfeits the marks."
+        },
+        {
+          "code": "E",
+          "name": "Evaluation",
+          "marks": null,
+          "guidance": "Stakeholders, short run versus long run, and assumptions. One-sided evaluation caps the mark."
+        }
+      ],
+      "criteriaConfidence": "corroborated",
+      "criteriaSource": "corroborated for NAMES ONLY: knowledge base 7.6 [OFFICIAL] gives 'marked out of 14 across five criteria' plus 3 portfolio-level marks, total 45. Secondary sources DISAGREE on the split — one gives A3/B2/C4/D0/E5, another A3/B2/C3/D3/E3, both summing to 14. A key-concept criterion worth zero contradicts the 2022 guide, so no split is published",
+      "wordLimit": 800,
+      "externallyModerated": true
     },
     {
       "code": "EXTERNAL_HL",
@@ -44,10 +114,15 @@
     }
   ],
   "notes": [
-    "Three commentaries, maximum 800 words each, marked out of 14, plus 3 portfolio marks.",
-    "Each must use a different syllabus unit, a different key concept and a different source.",
-    "Articles must have been published within a year of the commentary.",
-    "At SL this is the highest-weighted IA of the major group 3 subjects.",
-    "Figures taken from the Albus IB knowledge base v1.0 (compiled August 2026), which paraphrases the official IB subject guides rather than reproducing them. Verify against the current guide before quoting marks to a student."
-  ]
+    "Three commentaries, each on a different published article, a different syllabus unit and a different key concept.",
+    "Each commentary is 800 words maximum and marked out of 14 across five criteria; 3 further portfolio-level marks give a total of 45.",
+    "Criterion NAMES are corroborated; the per-criterion mark split is NOT — sources disagree, so no marks are published.",
+    "Articles must be from different sources and published within a year of the commentary.",
+    "At SL this is 30% of the subject — the highest-weighted IA in group 3."
+  ],
+  "firstAssessment": 2022,
+  "lastAssessment": null,
+  "guideStatus": "current",
+  "supersededBy": null,
+  "group": "Individuals and societies"
 }
