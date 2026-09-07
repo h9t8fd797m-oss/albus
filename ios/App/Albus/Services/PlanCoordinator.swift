@@ -28,7 +28,8 @@ final class PlanCoordinator {
     /// plan that does not fit looked exactly like one that does: the steps are
     /// listed, they simply never appear on any day. Twenty hours of work due
     /// tomorrow produced a full plan and a nearly empty calendar, silently.
-    private(set) var unplacedStepIDs: Set<UUID> = []
+    var unplacedStepIDs: Set<UUID> { Set(unplacedItems.map(\.id)) }
+    private(set) var unplacedItems: [ScheduleItem] = []
 
     /// How heavy the week actually is, straight from the scheduler.
     ///
@@ -414,7 +415,7 @@ final class PlanCoordinator {
                                          uniquingKeysWith: { a, _ in a }),
                 existing: existing
             )
-            unplacedStepIDs = Set(result.unplaceable.map(\.id))
+            unplacedItems = result.unplaceable
             workload = result.workload
             movedCount = result.movedCount
             lastRunSucceeded = true

@@ -1,0 +1,322 @@
+Building for debugging...
+[0/7] Write sources
+[2/7] /Users/felipegutierrez/Claude/albus-week-fit/ios/AlbusCore/.build/arm64-apple-macosx/debug/AlbusCorePackageTests.derived/runner.swift
+[3/7] Write sources
+[4/7] Write swift-version--58304C5D6DBC2206.txt
+[6/18] Compiling AlbusCore NotificationModels.swift
+[7/18] Compiling AlbusCore NotificationPlanner.swift
+[8/18] Compiling AlbusCore Corpus+Engagement.swift
+[9/18] Compiling AlbusCore Corpus.swift
+[10/18] Compiling AlbusCore NotificationCopy.swift
+[11/18] Compiling AlbusCore StableHash.swift
+[12/18] Compiling AlbusCore WeekFit.swift
+[13/18] Compiling AlbusCore Corpus+Deadline.swift
+[14/18] Emitting module AlbusCore
+[15/18] Compiling AlbusCore Estimator.swift
+[16/18] Compiling AlbusCore PlanModels.swift
+[17/19] Compiling AlbusCore Scheduler.swift
+[18/27] Compiling AlbusCoreTests NotificationCopyTests.swift
+[19/27] Compiling AlbusCoreTests NotificationPlannerTests.swift
+[20/27] Compiling AlbusCoreTests WeekFitTests.swift
+[21/27] Compiling AlbusCoreTests FuzzTests.swift
+[22/27] Compiling AlbusCoreTests OversizedStepTests.swift
+[23/27] Compiling AlbusCoreTests EstimatorTests.swift
+[24/27] Emitting module AlbusCoreTests
+[25/27] Compiling AlbusCoreTests SchedulerTests.swift
+[26/29] Emitting module AlbusCorePackageTests
+[27/29] Compiling AlbusCorePackageTests runner.swift
+[27/29] Write Objects.LinkFileList
+[28/29] Linking AlbusCorePackageTests
+Build complete! (45.06s)
+Test Suite 'All tests' started at 2026-09-07 19:21:13.026.
+Test Suite 'All tests' passed at 2026-09-07 19:21:13.038.
+	 Executed 0 tests, with 0 failures (0 unexpected) in 0.000 (0.012) seconds
+◇ Test run started.
+↳ Testing Library Version: 1902
+↳ Target Platform: arm64e-apple-macos14.0
+◇ Suite "Volume" started.
+◇ Suite "Overload" started.
+◇ Suite "Placement" started.
+◇ Suite "Plan stopped fitting" started.
+◇ Suite "Notification planning" started.
+◇ Suite "Regressions — found by reading real output" started.
+◇ Suite "Week fit" started.
+◇ Suite "Stability — the property users feel" started.
+◇ Suite "Copy — structure" started.
+◇ Suite "Deadline edits revalidate placed work" started.
+◇ Suite "Impossible workloads" started.
+◇ Suite "Oversized steps" started.
+◇ Suite "Quiet hours" started.
+◇ Suite "Copy — house rules" started.
+◇ Suite "Back-off" started.
+◇ Suite "Fuzz — invariants under arbitrary input" started.
+◇ Suite "Stable hashing" started.
+◇ Suite "Regressions — found in the real pending queue" started.
+◇ Suite "Hostile input" started.
+◇ Suite "Stability — the property users feel" started.
+◇ Test "due-today is never suppressed by the volume cap" started.
+◇ Test "the 64-slot budget is never exceeded" started.
+◇ Test "due today replaces the brief rather than arriving beside it" started.
+◇ Test "when the budget bites, the nearest deadlines are what survive" started.
+◇ Test "a light week reads as calm" started.
+◇ Test "a full day reads as cooked even when everything fits" started.
+◇ Test "zero capacity places nothing and says so" started.
+◇ Test "work that cannot fit is surfaced, never dropped" started.
+◇ Test "routes around fixed commitments, never through them" started.
+◇ Test "earliest deadline is scheduled first" started.
+◇ Suite "Missed work is re-placed" started.
+◇ Test "excluded weekdays stay empty" started.
+◇ Suite "Priority orders work without overriding deadlines" started.
+◇ Test "sessions never overlap each other" started.
+◇ Test "never schedules into the past" started.
+◇ Test "work due in the past cannot be placed" started.
+◇ Test "places work inside the study window" started.
+◇ Test "every line renders with no placeholder left behind" started.
+◇ Test "disabled means silent, whatever else is true" started.
+◇ Test "does not fire again while the same work stays unplaceable" started.
+◇ Test "fires when the unplaceable set changes" started.
+◇ Suite "Copy — selection" started.
+◇ Test "one assignment never speaks twice within three hours" started.
+◇ Test "daily capacity is not exceeded" started.
+◇ Test "a day with nothing scheduled gets no brief" started.
+◇ Test "days are counted from the moment it fires too" started.
+◇ Suite "Estimator" started.
+◇ Test "a day with work does get one" started.
+◇ Test "one of something is singular" started.
+◇ Test "a completed assignment is not chased" started.
+◇ Test "A full but placeable week is quiet for every workload state" started.
+◇ Test "Includes overdue work, counts assignments once and excludes later deadlines" started.
+◇ Test "steps of one assignment keep their order" started.
+◇ Test "One solver exposes competition across subjects" started.
+◇ Test "says nothing when everything fits" started.
+◇ Test "planning twice produces exactly the same thing" started.
+◇ Test "nothing is ever scheduled in the past" started.
+◇ Test "a spring-forward day still produces exactly one brief" started.
+◇ Test "the order assignments arrive in does not change the output" started.
+◇ Test "a template missing a fact is never offered" started.
+◇ Test "no kind that forbids chaos has a chaotic line" started.
+◇ Test "identifiers are unique within one plan" started.
+◇ Test "template ids are unique across the whole corpus" started.
+◇ Test "every kind can speak using only the facts the planner guarantees" started.
+◇ Test "nothing renders with a placeholder still in it" started.
+◇ Test "hours are counted from the moment it fires, not the moment it was planned" started.
+◇ Test "every reachable moment has something to say" started.
+◇ Test "asking for chaos on a forbidden kind still returns plain" started.
+◇ Test "Seven local days retain the boundary across daylight saving" started.
+◇ Test "the daily cap holds for everything that is not urgent" started.
+◇ Test "moving a deadline into the past removes the invalid future placement" started.
+◇ Test "work that cannot fit before the deadline is reported as unplaceable" started.
+◇ Test "a step longer than the daily capacity cannot be placed at all" started.
+◇ Test "the same work as sittable steps schedules fine" started.
+◇ Test "an empty store says nothing" started.
+◇ Test "an assignment with work produces a brief" started.
+◇ Test "moving a deadline later leaves an already-valid placement alone" started.
+◇ Test "respects the deadline" started.
+◇ Test "a warning that would settle past its own deadline is dropped, not moved" started.
+◇ Test "nothing is delivered inside quiet hours" started.
+◇ Test "quiet hours move forward, never backward" started.
+◇ Test "a time outside quiet hours is untouched" started.
+◇ Test "an early-morning time moves to the same day's end of quiet" started.
+◇ Test "moving a deadline earlier removes every placement now beyond it" started.
+◇ Test "a quiet window that does not wrap midnight still works" started.
+◇ Test "the high-frequency kinds have enough lines not to repeat" started.
+◇ Test "bodies fit on a lock screen" started.
+◇ Test "titles fit on a lock screen" started.
+◇ Test "the pause announces itself exactly once" started.
+◇ Test "Albus is deadpan — no exclamation marks anywhere" started.
+◇ Test "while paused, only real consequences get through" started.
+◇ Test "dormancy is not scheduled while paused" started.
+◇ Test "re-scheduling repeatedly converges instead of churning" started.
+◇ Test "invariants hold across 300 randomised scenarios" started.
+◇ Test "a fixed string always hashes to the same number" started.
+◇ Test "an empty signature is empty, so it can mean 'everything fits'" started.
+◇ Test "a fixed uuid always hashes to the same number" started.
+◇ Test "a signature does not depend on the order ids arrive in" started.
+◇ Test "different inputs do not collide" started.
+◇ Test "short durations are still said in minutes" started.
+◇ Test "long durations are said in hours, not in hundreds of minutes" started.
+◇ Test "a brief never describes a deadline that has passed by the time it arrives" started.
+◇ Test "completed work is never rewritten" started.
+◇ Test "re-placed work keeps its identity so the UI can animate a move" started.
+◇ Test "a missed session moves as little as possible" started.
+◇ Test "identical input produces identical output" started.
+◇ Test "a session in progress is not moved out from under the student" started.
+deadline past: future placement removed and work reported unplaceable
+◇ Test "no items is not an error" started.
+◇ Test "a zero-minute item is clamped rather than looping" started.
+◇ Test "a commitment with inverted times cannot swallow the day" started.
+── 480-minute step, 180-min/day capacity, 60 days available
+   placed: 0  unplaceable: 1
+◇ Test "an item longer than any single day is reported, not wedged in" started.
+◇ Test "an absurd deadline terminates instead of hanging" started.
+◇ Test "a large plan completes quickly" started.
+── 16 x 75min due tomorrow, 180min/day
+   placed: 2  unplaceable: 14
+── same 480 minutes as 8 x 60-minute steps
+   placed: 8  unplaceable: 0
+deadline later: placement stayed at 2026-05-20 14:00:00 +0000
+✔ Test "zero capacity places nothing and says so" passed after 0.153 seconds.
+✔ Test "earliest deadline is scheduled first" passed after 0.152 seconds.
+✔ Test "routes around fixed commitments, never through them" passed after 0.152 seconds.
+◇ Test "a session whose window has passed is moved into the future" started.
+◇ Test "an unmarked past block is not disturbed" started.
+◇ Test "missed work does not keep blocking the slot it never used" started.
+◇ Test "completed work stays exactly where it happened" started.
+✔ Test "a full day reads as cooked even when everything fits" passed after 0.153 seconds.
+◇ Test "a block in progress right now is left alone" started.
+◇ Test "priority alone does not reorder work within one assignment" started.
+◇ Test "priority never pushes other work past its deadline" started.
+◇ Test "high priority goes first when two things share a deadline" started.
+✔ Test "never schedules into the past" passed after 0.153 seconds.
+◇ Test "scheduling is still deterministic with priorities in play" started.
+✔ Test "work due in the past cannot be placed" passed after 0.153 seconds.
+✔ Test "due-today is never suppressed by the volume cap" passed after 0.163 seconds.
+✔ Test "places work inside the study window" passed after 0.161 seconds.
+✔ Test "due today replaces the brief rather than arriving beside it" passed after 0.163 seconds.
+✔ Test "disabled means silent, whatever else is true" passed after 0.161 seconds.
+✔ Test "a light week reads as calm" passed after 0.163 seconds.
+✔ Test "work that cannot fit is surfaced, never dropped" passed after 0.163 seconds.
+◇ Test "an empty pool returns nothing rather than crashing" started.
+◇ Test "the order the pool arrives in does not change the pick" started.
+◇ Test "different seeds reach different lines" started.
+◇ Test "an exhausted pool still says something rather than going silent" started.
+◇ Test "the same seed always picks the same line" started.
+◇ Test "a recently used line is skipped" started.
+✔ Test "fires when the unplaceable set changes" passed after 0.161 seconds.
+✔ Test "excluded weekdays stay empty" passed after 0.163 seconds.
+✔ Test "does not fire again while the same work stays unplaceable" passed after 0.162 seconds.
+✔ Test "one assignment never speaks twice within three hours" passed after 0.161 seconds.
+✔ Test "every line renders with no placeholder left behind" passed after 0.162 seconds.
+✔ Test "sessions never overlap each other" passed after 0.163 seconds.
+◇ Test "completion rate is smoothed against tiny samples" started.
+◇ Test "recent behaviour outweighs old behaviour" started.
+◇ Test "timer-backed data counts for more than inferred data" started.
+◇ Test "start delay is the median, not the mean" started.
+✔ Test "daily capacity is not exceeded" passed after 0.163 seconds.
+◇ Test "the ratio is clamped against absurd data" started.
+◇ Test "with no history it returns the base estimate" started.
+◇ Test "one observation barely moves the estimate" started.
+◇ Test "a consistent overrunner gets longer estimates" started.
+◇ Test "a different subject falls back rather than borrowing blindly" started.
+◇ Test "a runaway timer does not wreck the estimate" started.
+✔ Test "steps of one assignment keep their order" passed after 0.164 seconds.
+✔ Test "Includes overdue work, counts assignments once and excludes later deadlines" passed after 0.162 seconds.
+✔ Test "one of something is singular" passed after 0.162 seconds.
+✔ Test "a day with work does get one" passed after 0.162 seconds.
+✔ Test "days are counted from the moment it fires too" passed after 0.162 seconds.
+✔ Test "a completed assignment is not chased" passed after 0.162 seconds.
+✔ Test "a day with nothing scheduled gets no brief" passed after 0.163 seconds.
+✔ Test "says nothing when everything fits" passed after 0.161 seconds.
+✔ Test "a spring-forward day still produces exactly one brief" passed after 0.161 seconds.
+✔ Test "a template missing a fact is never offered" passed after 0.161 seconds.
+✔ Test "template ids are unique across the whole corpus" passed after 0.161 seconds.
+✔ Test "nothing is ever scheduled in the past" passed after 0.162 seconds.
+✔ Test "no kind that forbids chaos has a chaotic line" passed after 0.161 seconds.
+✔ Test "the 64-slot budget is never exceeded" passed after 0.166 seconds.
+✔ Test "asking for chaos on a forbidden kind still returns plain" passed after 0.161 seconds.
+✔ Test "planning twice produces exactly the same thing" passed after 0.162 seconds.
+✔ Test "Seven local days retain the boundary across daylight saving" passed after 0.161 seconds.
+✔ Test "A full but placeable week is quiet for every workload state" passed after 0.162 seconds.
+✔ Test "One solver exposes competition across subjects" passed after 0.162 seconds.
+deadline earlier: 4 placed -> 2 placed, 2 unplaceable
+✔ Test "every kind can speak using only the facts the planner guarantees" passed after 0.161 seconds.
+✔ Test "moving a deadline into the past removes the invalid future placement" passed after 0.160 seconds.
+✔ Test "a step longer than the daily capacity cannot be placed at all" passed after 0.162 seconds.
+✔ Test "work that cannot fit before the deadline is reported as unplaceable" passed after 0.168 seconds.
+✔ Test "the same work as sittable steps schedules fine" passed after 0.168 seconds.
+✔ Test "nothing renders with a placeholder still in it" passed after 0.170 seconds.
+✔ Test "an empty store says nothing" passed after 0.173 seconds.
+✔ Test "an assignment with work produces a brief" passed after 0.169 seconds.
+✔ Test "respects the deadline" passed after 0.169 seconds.
+✔ Test "identifiers are unique within one plan" passed after 0.171 seconds.
+✔ Test "moving a deadline later leaves an already-valid placement alone" passed after 0.169 seconds.
+✔ Test "quiet hours move forward, never backward" passed after 0.169 seconds.
+✔ Test "hours are counted from the moment it fires, not the moment it was planned" passed after 0.172 seconds.
+✔ Test "a time outside quiet hours is untouched" passed after 0.169 seconds.
+✔ Test "an early-morning time moves to the same day's end of quiet" passed after 0.169 seconds.
+✔ Test "a quiet window that does not wrap midnight still works" passed after 0.169 seconds.
+✔ Test "the high-frequency kinds have enough lines not to repeat" passed after 0.168 seconds.
+✔ Test "bodies fit on a lock screen" passed after 0.168 seconds.
+✔ Test "nothing is delivered inside quiet hours" passed after 0.169 seconds.
+✔ Test "titles fit on a lock screen" passed after 0.168 seconds.
+✔ Test "every reachable moment has something to say" passed after 0.171 seconds.
+✔ Test "the pause announces itself exactly once" passed after 0.168 seconds.
+✔ Test "Albus is deadpan — no exclamation marks anywhere" passed after 0.168 seconds.
+✔ Test "the daily cap holds for everything that is not urgent" passed after 0.172 seconds.
+✔ Test "dormancy is not scheduled while paused" passed after 0.169 seconds.
+✔ Test "a fixed string always hashes to the same number" passed after 0.169 seconds.
+✔ Test "an empty signature is empty, so it can mean 'everything fits'" passed after 0.168 seconds.
+✔ Test "a fixed uuid always hashes to the same number" passed after 0.168 seconds.
+✔ Test "a signature does not depend on the order ids arrive in" passed after 0.168 seconds.
+✔ Test "a warning that would settle past its own deadline is dropped, not moved" passed after 0.171 seconds.
+✔ Test "the order assignments arrive in does not change the output" passed after 0.174 seconds.
+✔ Test "moving a deadline earlier removes every placement now beyond it" passed after 0.176 seconds.
+✔ Test "when the budget bites, the nearest deadlines are what survive" passed after 0.184 seconds.
+✔ Test "completed work is never rewritten" passed after 0.159 seconds.
+✔ Test "while paused, only real consequences get through" passed after 0.179 seconds.
+✔ Test "short durations are still said in minutes" passed after 0.165 seconds.
+✔ Test "long durations are said in hours, not in hundreds of minutes" passed after 0.165 seconds.
+✔ Test "a session in progress is not moved out from under the student" passed after 0.159 seconds.
+✔ Test "re-placed work keeps its identity so the UI can animate a move" passed after 0.166 seconds.
+✔ Test "no items is not an error" passed after 0.068 seconds.
+✔ Test "a zero-minute item is clamped rather than looping" passed after 0.068 seconds.
+✔ Test "a commitment with inverted times cannot swallow the day" passed after 0.068 seconds.
+✔ Test "an absurd deadline terminates instead of hanging" passed after 0.067 seconds.
+✔ Test "an item longer than any single day is reported, not wedged in" passed after 0.068 seconds.
+✔ Suite "Overload" passed after 0.202 seconds.
+✔ Suite "Placement" passed after 0.202 seconds.
+✔ Test "an unmarked past block is not disturbed" passed after 0.045 seconds.
+✔ Test "missed work does not keep blocking the slot it never used" passed after 0.045 seconds.
+✔ Test "a missed session moves as little as possible" passed after 0.171 seconds.
+✔ Test "a brief never describes a deadline that has passed by the time it arrives" passed after 0.171 seconds.
+✔ Test "a block in progress right now is left alone" passed after 0.046 seconds.
+✔ Test "completed work stays exactly where it happened" passed after 0.045 seconds.
+✔ Test "priority never pushes other work past its deadline" passed after 0.046 seconds.
+✔ Test "a session whose window has passed is moved into the future" passed after 0.046 seconds.
+✔ Test "priority alone does not reorder work within one assignment" passed after 0.046 seconds.
+✔ Suite "Volume" passed after 0.204 seconds.
+✔ Suite "Notification planning" passed after 0.203 seconds.
+✔ Test "an empty pool returns nothing rather than crashing" passed after 0.037 seconds.
+✔ Test "the order the pool arrives in does not change the pick" passed after 0.037 seconds.
+✔ Test "high priority goes first when two things share a deadline" passed after 0.046 seconds.
+✔ Test "an exhausted pool still says something rather than going silent" passed after 0.037 seconds.
+✔ Test "the same seed always picks the same line" passed after 0.037 seconds.
+✔ Test "a recently used line is skipped" passed after 0.037 seconds.
+✔ Suite "Plan stopped fitting" passed after 0.203 seconds.
+✔ Test "completion rate is smoothed against tiny samples" passed after 0.036 seconds.
+✔ Suite "Regressions — found by reading real output" passed after 0.203 seconds.
+✔ Test "scheduling is still deterministic with priorities in play" passed after 0.046 seconds.
+✔ Test "recent behaviour outweighs old behaviour" passed after 0.036 seconds.
+✔ Test "timer-backed data counts for more than inferred data" passed after 0.036 seconds.
+✔ Test "the ratio is clamped against absurd data" passed after 0.036 seconds.
+✔ Test "start delay is the median, not the mean" passed after 0.036 seconds.
+✔ Test "a consistent overrunner gets longer estimates" passed after 0.036 seconds.
+✔ Test "one observation barely moves the estimate" passed after 0.036 seconds.
+✔ Test "a different subject falls back rather than borrowing blindly" passed after 0.036 seconds.
+✔ Test "with no history it returns the base estimate" passed after 0.037 seconds.
+✔ Test "a runaway timer does not wreck the estimate" passed after 0.036 seconds.
+✔ Suite "Week fit" passed after 0.204 seconds.
+✔ Suite "Stability — the property users feel" passed after 0.204 seconds.
+✔ Suite "Copy — structure" passed after 0.204 seconds.
+✔ Suite "Deadline edits revalidate placed work" passed after 0.203 seconds.
+✔ Suite "Oversized steps" passed after 0.203 seconds.
+✔ Suite "Impossible workloads" passed after 0.204 seconds.
+✔ Suite "Quiet hours" passed after 0.205 seconds.
+✔ Suite "Back-off" passed after 0.203 seconds.
+✔ Suite "Copy — house rules" passed after 0.203 seconds.
+✔ Suite "Regressions — found in the real pending queue" passed after 0.203 seconds.
+✔ Test "identical input produces identical output" passed after 0.173 seconds.
+✔ Suite "Missed work is re-placed" passed after 0.201 seconds.
+✔ Suite "Priority orders work without overriding deadlines" passed after 0.201 seconds.
+✔ Suite "Stability — the property users feel" passed after 0.205 seconds.
+✔ Suite "Estimator" passed after 0.199 seconds.
+✔ Test "different seeds reach different lines" passed after 0.041 seconds.
+✔ Suite "Copy — selection" passed after 0.203 seconds.
+✔ Test "different inputs do not collide" passed after 0.205 seconds.
+✔ Suite "Stable hashing" passed after 0.217 seconds.
+✔ Test "re-scheduling repeatedly converges instead of churning" passed after 0.221 seconds.
+✔ Test "a large plan completes quickly" passed after 0.327 seconds.
+✔ Suite "Hostile input" passed after 0.460 seconds.
+✔ Test "invariants hold across 300 randomised scenarios" passed after 1.899 seconds.
+✔ Suite "Fuzz — invariants under arbitrary input" passed after 1.908 seconds.
+✔ Test run with 114 tests in 24 suites passed after 1.912 seconds.
