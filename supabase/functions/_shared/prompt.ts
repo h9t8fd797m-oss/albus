@@ -255,7 +255,7 @@ This is assessed work: ${rubricCtx.assessmentName}, ${rubricCtx.courseName} (${r
 ${objectives ? `It is assessed against these objectives:\n${objectives}` : "No assessment objectives or per-criterion marks are confirmed for this component."}${topicBlock}
 
 ${objectives
-  ? "Weight the plan towards the supplied objectives; use published weightings only where given."
+  ? "Where a published weighting is higher, that objective deserves more of the student's time. Never infer missing weightings."
   : "Use the topics to keep revision relevant, without inferring assessment weights from their order."} Set
 rubric_criterion_code to null on every step: no per-criterion marks are supplied for this component, and inventing a code would be worse than leaving it empty.`;
   }
