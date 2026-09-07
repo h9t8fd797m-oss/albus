@@ -113,6 +113,9 @@
     "No word limit; 12 to 20 pages recommended.",
     "HL expects greater sophistication and rigour in Use of mathematics.",
     "Cite at the point of use; a bibliography alone can become a misconduct finding.",
-    "Figures taken from the Albus IB knowledge base v1.0 (compiled August 2026), which paraphrases the official IB subject guides rather than reproducing them. Verify against the current guide before quoting marks to a student."
-  ]
+    "Figures taken from the Albus IB knowledge base v1.0 (compiled August 2026), which paraphrases the official IB subject guides rather than reproducing them. Verify against the current guide before quoting marks to a student.",
+    "Syllabus topics remain unverified: the public mathematics page distinguishes first assessment 2021 from the new 2029 briefs but does not list the 2021 syllabus units. Do not substitute the newer outline."
+  ],
+  "syllabusTopics": [],
+  "syllabusTopicsConfidence": "unverified"
 }

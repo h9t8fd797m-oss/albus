@@ -101,6 +101,43 @@
     "Identical IA across Biology, Chemistry and Physics under the first-assessment-2025 guides.",
     "Report maximum 3,000 words; tables, calculations, citations, graphs and appendices are excluded.",
     "Conclusion and Evaluation are together half the marks.",
-    "Figures taken from the Albus IB knowledge base v1.0 (compiled August 2026), which paraphrases the official IB subject guides rather than reproducing them. Verify against the current guide before quoting marks to a student."
-  ]
+    "Figures taken from the Albus IB knowledge base v1.0 (compiled August 2026), which paraphrases the official IB subject guides rather than reproducing them. Verify against the current guide before quoting marks to a student.",
+    "The public syllabus table confirms organizing concepts and six headings, not individual subtopics or their SL/HL scope. First teaching 2023 matches the first-assessment-2025 specification."
+  ],
+  "syllabusTopics": [
+    {
+      "name": "Structure",
+      "ordinal": 0
+    },
+    {
+      "name": "Structure 1: Models of the particulate nature of matter",
+      "ordinal": 1
+    },
+    {
+      "name": "Structure 2: Models of bonding and structure",
+      "ordinal": 2
+    },
+    {
+      "name": "Structure 3: Classification of matter",
+      "ordinal": 3
+    },
+    {
+      "name": "Reactivity",
+      "ordinal": 4
+    },
+    {
+      "name": "Reactivity 1: What drives chemical reactions?",
+      "ordinal": 5
+    },
+    {
+      "name": "Reactivity 2: How much, how fast and how far?",
+      "ordinal": 6
+    },
+    {
+      "name": "Reactivity 3: What are the mechanisms of chemical change?",
+      "ordinal": 7
+    }
+  ],
+  "syllabusTopicsSource": "https://www.ibo.org/programmes/diploma-programme/curriculum/sciences/chemistry/ (retrieved 2026-09-07, page states 'First teaching Aug/Sept 2023')",
+  "syllabusTopicsConfidence": "official"
 }

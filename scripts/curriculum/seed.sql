@@ -41,6 +41,7 @@ begin
   values (v_template, 'AO2', 'Apply knowledge and understanding of scientific ideas, processes, techniques and procedures', 40, 45, 1);
   insert into public.assessment_objectives (course_template_id, code, name, weighting_min, weighting_max, ordinal)
   values (v_template, 'AO3', 'Analyse, interpret and evaluate scientific information, ideas and evidence', 25, 30, 2);
+  delete from public.syllabus_topics where course_template_id = v_template;
 
   insert into public.assessment_types (course_template_id, code, name, typical_minutes)
   values (v_template, 'PAPER_1', 'Paper 1', 120)
@@ -76,6 +77,7 @@ begin
   values (v_template, 'AO2', 'Apply knowledge and understanding of scientific ideas, processes, techniques and procedures', 45, 45, 1);
   insert into public.assessment_objectives (course_template_id, code, name, weighting_min, weighting_max, ordinal)
   values (v_template, 'AO3', 'Analyse, interpret and evaluate scientific information, ideas and evidence', 25, 25, 2);
+  delete from public.syllabus_topics where course_template_id = v_template;
 
   insert into public.assessment_types (course_template_id, code, name, typical_minutes)
   values (v_template, 'PAPER_1', 'Paper 1', 120)
@@ -111,6 +113,7 @@ begin
   values (v_template, 'AO2', 'Apply knowledge and understanding of scientific ideas, processes, techniques and procedures', 42, 42, 1);
   insert into public.assessment_objectives (course_template_id, code, name, weighting_min, weighting_max, ordinal)
   values (v_template, 'AO3', 'Analyse, interpret and evaluate scientific information, ideas and evidence', 25, 25, 2);
+  delete from public.syllabus_topics where course_template_id = v_template;
 
   insert into public.assessment_types (course_template_id, code, name, typical_minutes)
   values (v_template, 'PAPER_1', 'Paper 1', 120)
@@ -140,6 +143,15 @@ begin
   returning id into v_template;
 
   delete from public.assessment_objectives where course_template_id = v_template;
+  delete from public.syllabus_topics where course_template_id = v_template;
+  insert into public.syllabus_topics (course_template_id, name, ordinal)
+  values (v_template, 'A: Unity and diversity', 0);
+  insert into public.syllabus_topics (course_template_id, name, ordinal)
+  values (v_template, 'B: Form and function', 1);
+  insert into public.syllabus_topics (course_template_id, name, ordinal)
+  values (v_template, 'C: Interaction and interdependence', 2);
+  insert into public.syllabus_topics (course_template_id, name, ordinal)
+  values (v_template, 'D: Continuity and change', 3);
 
   insert into public.assessment_types (course_template_id, code, name, typical_minutes)
   values (v_template, 'IA_SL', 'Scientific investigation (SL)', 600)
@@ -193,6 +205,7 @@ begin
   returning id into v_template;
 
   delete from public.assessment_objectives where course_template_id = v_template;
+  delete from public.syllabus_topics where course_template_id = v_template;
 
   insert into public.assessment_types (course_template_id, code, name, typical_minutes)
   values (v_template, 'IA_SL', 'Business research project (SL)', 1200)
@@ -228,6 +241,23 @@ begin
   returning id into v_template;
 
   delete from public.assessment_objectives where course_template_id = v_template;
+  delete from public.syllabus_topics where course_template_id = v_template;
+  insert into public.syllabus_topics (course_template_id, name, ordinal)
+  values (v_template, 'Structure', 0);
+  insert into public.syllabus_topics (course_template_id, name, ordinal)
+  values (v_template, 'Structure 1: Models of the particulate nature of matter', 1);
+  insert into public.syllabus_topics (course_template_id, name, ordinal)
+  values (v_template, 'Structure 2: Models of bonding and structure', 2);
+  insert into public.syllabus_topics (course_template_id, name, ordinal)
+  values (v_template, 'Structure 3: Classification of matter', 3);
+  insert into public.syllabus_topics (course_template_id, name, ordinal)
+  values (v_template, 'Reactivity', 4);
+  insert into public.syllabus_topics (course_template_id, name, ordinal)
+  values (v_template, 'Reactivity 1: What drives chemical reactions?', 5);
+  insert into public.syllabus_topics (course_template_id, name, ordinal)
+  values (v_template, 'Reactivity 2: How much, how fast and how far?', 6);
+  insert into public.syllabus_topics (course_template_id, name, ordinal)
+  values (v_template, 'Reactivity 3: What are the mechanisms of chemical change?', 7);
 
   insert into public.assessment_types (course_template_id, code, name, typical_minutes)
   values (v_template, 'IA_SL', 'Scientific investigation (SL)', 600)
@@ -281,6 +311,27 @@ begin
   returning id into v_template;
 
   delete from public.assessment_objectives where course_template_id = v_template;
+  delete from public.syllabus_topics where course_template_id = v_template;
+  insert into public.syllabus_topics (course_template_id, name, ordinal)
+  values (v_template, 'A: Concepts of computer science', 0);
+  insert into public.syllabus_topics (course_template_id, name, ordinal)
+  values (v_template, 'A.1 Computer fundamentals', 1);
+  insert into public.syllabus_topics (course_template_id, name, ordinal)
+  values (v_template, 'A.2 Networks', 2);
+  insert into public.syllabus_topics (course_template_id, name, ordinal)
+  values (v_template, 'A.3 Databases', 3);
+  insert into public.syllabus_topics (course_template_id, name, ordinal)
+  values (v_template, 'A.4 Machine learning', 4);
+  insert into public.syllabus_topics (course_template_id, name, ordinal)
+  values (v_template, 'B: Computational thinking and problem solving', 5);
+  insert into public.syllabus_topics (course_template_id, name, ordinal)
+  values (v_template, 'B.1 Computational thinking', 6);
+  insert into public.syllabus_topics (course_template_id, name, ordinal)
+  values (v_template, 'B.2 Programming', 7);
+  insert into public.syllabus_topics (course_template_id, name, ordinal)
+  values (v_template, 'B.3 Object Oriented Programming (OOP)', 8);
+  insert into public.syllabus_topics (course_template_id, name, ordinal)
+  values (v_template, 'B.4 Abstract data types (HL only)', 9);
 
   insert into public.assessment_types (course_template_id, code, name, typical_minutes)
   values (v_template, 'IA_SL', 'Computational solution (SL)', 2100)
@@ -338,6 +389,7 @@ begin
   returning id into v_template;
 
   delete from public.assessment_objectives where course_template_id = v_template;
+  delete from public.syllabus_topics where course_template_id = v_template;
 
   insert into public.assessment_types (course_template_id, code, name, typical_minutes)
   values (v_template, 'IA_SL', 'Portfolio of three commentaries (SL)', 1200)
@@ -395,6 +447,7 @@ begin
   returning id into v_template;
 
   delete from public.assessment_objectives where course_template_id = v_template;
+  delete from public.syllabus_topics where course_template_id = v_template;
 
   insert into public.assessment_types (course_template_id, code, name, typical_minutes)
   values (v_template, 'IA_SL', 'Individual investigation (SL)', 600)
@@ -456,6 +509,7 @@ begin
   returning id into v_template;
 
   delete from public.assessment_objectives where course_template_id = v_template;
+  delete from public.syllabus_topics where course_template_id = v_template;
 
   insert into public.assessment_types (course_template_id, code, name, typical_minutes)
   values (v_template, 'ESSAY', 'Extended essay', 2400)
@@ -492,6 +546,7 @@ begin
   values (v_template, 'AO3', 'Synthesis and evaluation', null, null, 2);
   insert into public.assessment_objectives (course_template_id, code, name, weighting_min, weighting_max, ordinal)
   values (v_template, 'AO4', 'Selection, use and application of a variety of appropriate skills and techniques', null, null, 3);
+  delete from public.syllabus_topics where course_template_id = v_template;
 
   insert into public.assessment_types (course_template_id, code, name, typical_minutes)
   values (v_template, 'IA_SL', 'Fieldwork report (SL)', 1200)
@@ -553,6 +608,55 @@ begin
   returning id into v_template;
 
   delete from public.assessment_objectives where course_template_id = v_template;
+  delete from public.syllabus_topics where course_template_id = v_template;
+  insert into public.syllabus_topics (course_template_id, name, ordinal)
+  values (v_template, 'Prescribed subjects (choose one; SL and HL)', 0);
+  insert into public.syllabus_topics (course_template_id, name, ordinal)
+  values (v_template, '1. Military leaders', 1);
+  insert into public.syllabus_topics (course_template_id, name, ordinal)
+  values (v_template, '2. Conquest and its impact', 2);
+  insert into public.syllabus_topics (course_template_id, name, ordinal)
+  values (v_template, '3. The move to global war', 3);
+  insert into public.syllabus_topics (course_template_id, name, ordinal)
+  values (v_template, '4. Rights and protest', 4);
+  insert into public.syllabus_topics (course_template_id, name, ordinal)
+  values (v_template, '5. Conflict and intervention', 5);
+  insert into public.syllabus_topics (course_template_id, name, ordinal)
+  values (v_template, 'World history topics (choose two; SL and HL)', 6);
+  insert into public.syllabus_topics (course_template_id, name, ordinal)
+  values (v_template, '1. Society and economy (750-1400)', 7);
+  insert into public.syllabus_topics (course_template_id, name, ordinal)
+  values (v_template, '2. Causes and effects of wars (750-1500)', 8);
+  insert into public.syllabus_topics (course_template_id, name, ordinal)
+  values (v_template, '3. Dynasties and rulers (750-1500)', 9);
+  insert into public.syllabus_topics (course_template_id, name, ordinal)
+  values (v_template, '4. Societies in transition (1400-1700)', 10);
+  insert into public.syllabus_topics (course_template_id, name, ordinal)
+  values (v_template, '5. Early Modern states (1450-1789)', 11);
+  insert into public.syllabus_topics (course_template_id, name, ordinal)
+  values (v_template, '6. Causes and effects of Early Modern wars (1500-1750)', 12);
+  insert into public.syllabus_topics (course_template_id, name, ordinal)
+  values (v_template, '7. Origins, development and impact of industrialization (1750-2005)', 13);
+  insert into public.syllabus_topics (course_template_id, name, ordinal)
+  values (v_template, '8. Independence movements (1800-2000)', 14);
+  insert into public.syllabus_topics (course_template_id, name, ordinal)
+  values (v_template, '9. Emergence and development of democratic states (1848-2000)', 15);
+  insert into public.syllabus_topics (course_template_id, name, ordinal)
+  values (v_template, '10. Authoritarian states (20th century)', 16);
+  insert into public.syllabus_topics (course_template_id, name, ordinal)
+  values (v_template, '11. Causes and effects of 20th-century wars', 17);
+  insert into public.syllabus_topics (course_template_id, name, ordinal)
+  values (v_template, '12. The Cold War: superpower tensions and rivalries (20th century)', 18);
+  insert into public.syllabus_topics (course_template_id, name, ordinal)
+  values (v_template, 'HL options: Depth studies (choose one; HL only)', 19);
+  insert into public.syllabus_topics (course_template_id, name, ordinal)
+  values (v_template, '1. History of Africa and the Middle East (HL only)', 20);
+  insert into public.syllabus_topics (course_template_id, name, ordinal)
+  values (v_template, '2. History of the Americas (HL only)', 21);
+  insert into public.syllabus_topics (course_template_id, name, ordinal)
+  values (v_template, '3. History of Asia and Oceania (HL only)', 22);
+  insert into public.syllabus_topics (course_template_id, name, ordinal)
+  values (v_template, '4. History of Europe (HL only)', 23);
 
   insert into public.assessment_types (course_template_id, code, name, typical_minutes)
   values (v_template, 'IA_SL', 'Historical investigation (SL)', 1200)
@@ -602,6 +706,7 @@ begin
   returning id into v_template;
 
   delete from public.assessment_objectives where course_template_id = v_template;
+  delete from public.syllabus_topics where course_template_id = v_template;
 
   insert into public.assessment_types (course_template_id, code, name, typical_minutes)
   values (v_template, 'IA_SL', 'Individual oral (SL)', 15)
@@ -655,6 +760,7 @@ begin
   returning id into v_template;
 
   delete from public.assessment_objectives where course_template_id = v_template;
+  delete from public.syllabus_topics where course_template_id = v_template;
 
   insert into public.assessment_types (course_template_id, code, name, typical_minutes)
   values (v_template, 'IA_SL', 'Individual oral (SL)', 15)
@@ -708,6 +814,7 @@ begin
   returning id into v_template;
 
   delete from public.assessment_objectives where course_template_id = v_template;
+  delete from public.syllabus_topics where course_template_id = v_template;
 
   insert into public.assessment_types (course_template_id, code, name, typical_minutes)
   values (v_template, 'IA_SL', 'Individual oral (SL)', 15)
@@ -757,6 +864,7 @@ begin
   returning id into v_template;
 
   delete from public.assessment_objectives where course_template_id = v_template;
+  delete from public.syllabus_topics where course_template_id = v_template;
 
   insert into public.assessment_types (course_template_id, code, name, typical_minutes)
   values (v_template, 'IA_SL', 'Mathematical exploration (SL)', 750)
@@ -814,6 +922,7 @@ begin
   returning id into v_template;
 
   delete from public.assessment_objectives where course_template_id = v_template;
+  delete from public.syllabus_topics where course_template_id = v_template;
 
   insert into public.assessment_types (course_template_id, code, name, typical_minutes)
   values (v_template, 'IA_SL', 'Mathematical exploration (SL)', 750)
@@ -871,6 +980,65 @@ begin
   returning id into v_template;
 
   delete from public.assessment_objectives where course_template_id = v_template;
+  delete from public.syllabus_topics where course_template_id = v_template;
+  insert into public.syllabus_topics (course_template_id, name, ordinal)
+  values (v_template, 'A: Space, time and motion', 0);
+  insert into public.syllabus_topics (course_template_id, name, ordinal)
+  values (v_template, 'A.1 Kinematics', 1);
+  insert into public.syllabus_topics (course_template_id, name, ordinal)
+  values (v_template, 'A.2 Forces and momentum', 2);
+  insert into public.syllabus_topics (course_template_id, name, ordinal)
+  values (v_template, 'A.3 Work, energy and power', 3);
+  insert into public.syllabus_topics (course_template_id, name, ordinal)
+  values (v_template, 'A.4 Rigid body mechanics (HL only)', 4);
+  insert into public.syllabus_topics (course_template_id, name, ordinal)
+  values (v_template, 'A.5 Galilean and special relativity (HL only)', 5);
+  insert into public.syllabus_topics (course_template_id, name, ordinal)
+  values (v_template, 'B: The particulate nature of matter', 6);
+  insert into public.syllabus_topics (course_template_id, name, ordinal)
+  values (v_template, 'B.1 Thermal energy transfers', 7);
+  insert into public.syllabus_topics (course_template_id, name, ordinal)
+  values (v_template, 'B.2 Greenhouse effect', 8);
+  insert into public.syllabus_topics (course_template_id, name, ordinal)
+  values (v_template, 'B.3 Gas laws', 9);
+  insert into public.syllabus_topics (course_template_id, name, ordinal)
+  values (v_template, 'B.4 Thermodynamics (HL only)', 10);
+  insert into public.syllabus_topics (course_template_id, name, ordinal)
+  values (v_template, 'B.5 Current and circuits', 11);
+  insert into public.syllabus_topics (course_template_id, name, ordinal)
+  values (v_template, 'C: Wave behaviour', 12);
+  insert into public.syllabus_topics (course_template_id, name, ordinal)
+  values (v_template, 'C.1 Simple harmonic motion', 13);
+  insert into public.syllabus_topics (course_template_id, name, ordinal)
+  values (v_template, 'C.2 Wave model', 14);
+  insert into public.syllabus_topics (course_template_id, name, ordinal)
+  values (v_template, 'C.3 Wave phenomena', 15);
+  insert into public.syllabus_topics (course_template_id, name, ordinal)
+  values (v_template, 'C.4 Standing waves and resonance', 16);
+  insert into public.syllabus_topics (course_template_id, name, ordinal)
+  values (v_template, 'C.5 Doppler effect', 17);
+  insert into public.syllabus_topics (course_template_id, name, ordinal)
+  values (v_template, 'D: Fields', 18);
+  insert into public.syllabus_topics (course_template_id, name, ordinal)
+  values (v_template, 'D.1 Gravitational fields', 19);
+  insert into public.syllabus_topics (course_template_id, name, ordinal)
+  values (v_template, 'D.2 Electric and magnetic fields', 20);
+  insert into public.syllabus_topics (course_template_id, name, ordinal)
+  values (v_template, 'D.3 Motion in electromagnetic fields', 21);
+  insert into public.syllabus_topics (course_template_id, name, ordinal)
+  values (v_template, 'D.4 Induction (HL only)', 22);
+  insert into public.syllabus_topics (course_template_id, name, ordinal)
+  values (v_template, 'E: Nuclear and quantum physics', 23);
+  insert into public.syllabus_topics (course_template_id, name, ordinal)
+  values (v_template, 'E.1 Structure of the atom', 24);
+  insert into public.syllabus_topics (course_template_id, name, ordinal)
+  values (v_template, 'E.2 Quantum physics (HL only)', 25);
+  insert into public.syllabus_topics (course_template_id, name, ordinal)
+  values (v_template, 'E.3 Radioactive decay', 26);
+  insert into public.syllabus_topics (course_template_id, name, ordinal)
+  values (v_template, 'E.4 Fission', 27);
+  insert into public.syllabus_topics (course_template_id, name, ordinal)
+  values (v_template, 'E.5 Fusion and stars', 28);
 
   insert into public.assessment_types (course_template_id, code, name, typical_minutes)
   values (v_template, 'IA_SL', 'Scientific investigation (SL)', 600)
@@ -924,6 +1092,7 @@ begin
   returning id into v_template;
 
   delete from public.assessment_objectives where course_template_id = v_template;
+  delete from public.syllabus_topics where course_template_id = v_template;
 
   insert into public.assessment_types (course_template_id, code, name, typical_minutes)
   values (v_template, 'ESSAY', 'TOK essay', 1200)

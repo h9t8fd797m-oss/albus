@@ -116,11 +116,56 @@
     "Applies from the May 2027 session. A November 2026 candidate is still on the previous guide (34 marks, different criteria) — check the student's exam session before quoting anything.",
     "Four of the five criteria assess process; only D assesses the finished product, with the video as the primary evidence of functionality.",
     "Scoping is the dominant failure: a modest system that demonstrably runs outscores an ambitious one that does not.",
-    "The 2027 guide does not require a named client."
+    "The 2027 guide does not require a named client.",
+    "The main subject page explicitly describes last assessment 2026 and must not supply topics for this record. The linked 2027 curriculum update supplies these headings; its assessment prose and table disagree on SL weighting, so no assessment figures are taken from it."
   ],
   "firstAssessment": 2027,
   "lastAssessment": null,
   "guideStatus": "current",
   "supersededBy": null,
-  "group": "Sciences"
+  "group": "Sciences",
+  "syllabusTopics": [
+    {
+      "name": "A: Concepts of computer science",
+      "ordinal": 0
+    },
+    {
+      "name": "A.1 Computer fundamentals",
+      "ordinal": 1
+    },
+    {
+      "name": "A.2 Networks",
+      "ordinal": 2
+    },
+    {
+      "name": "A.3 Databases",
+      "ordinal": 3
+    },
+    {
+      "name": "A.4 Machine learning",
+      "ordinal": 4
+    },
+    {
+      "name": "B: Computational thinking and problem solving",
+      "ordinal": 5
+    },
+    {
+      "name": "B.1 Computational thinking",
+      "ordinal": 6
+    },
+    {
+      "name": "B.2 Programming",
+      "ordinal": 7
+    },
+    {
+      "name": "B.3 Object Oriented Programming (OOP)",
+      "ordinal": 8
+    },
+    {
+      "name": "B.4 Abstract data types (HL only)",
+      "ordinal": 9
+    }
+  ],
+  "syllabusTopicsSource": "https://www.ibo.org/university-admission/latest-curriculum-updates/computer-science-updates/ (retrieved 2026-09-07, page states 'First assessment will take place in May 2027')",
+  "syllabusTopicsConfidence": "official"
 }

@@ -34,6 +34,7 @@ export interface RubricContext {
    * marks is actually assessed against.
    */
   objectives?: AssessmentObjective[];
+  syllabusTopics?: string[];
   /** Scheduled length of the component, where the board publishes one. */
   componentMinutes?: number | null;
   /** The pasted sheet, when the student did not break it into criteria. */
@@ -89,6 +90,7 @@ export function hasRubricContent(r: RubricContext | null): boolean {
   return r != null && (
     r.criteria.length > 0 ||
     (r.objectives?.length ?? 0) > 0 ||
+    (r.syllabusTopics?.length ?? 0) > 0 ||
     (r.body ?? "").trim().length > 0
   );
 }
@@ -229,6 +231,12 @@ on every step.`;
     .map((o) => `- ${o.code}: ${o.name}${objectiveWeighting(o)}`)
     .join("\n");
 
+  // Reference outlines can be large; only a bounded prefix belongs in a paid prompt.
+  const topics = (rubricCtx.syllabusTopics ?? []).slice(0, 40);
+  const topicBlock = topics.length
+    ? `\n\nSyllabus topics (select only those relevant to this task):\n${topics.map((name) => `- ${name}`).join("\n")}`
+    : "";
+
   const length = rubricCtx.componentMinutes
     ? `\nIt is a ${rubricCtx.componentMinutes}-minute component.`
     : "";
@@ -244,13 +252,11 @@ on every step.`;
 
 This is assessed work: ${rubricCtx.assessmentName}, ${rubricCtx.courseName} (${rubricCtx.curriculumName}).${length}
 
-It is assessed against these objectives:
-${objectives}
+${objectives ? `It is assessed against these objectives:\n${objectives}` : "No assessment objectives or per-criterion marks are confirmed for this component."}${topicBlock}
 
 Weight the plan towards what this component actually rewards — an objective
 carrying 45% deserves more of the student's time than one carrying 25%. Set
-rubric_criterion_code to null on every step: this component is not marked by
-criterion, and inventing a code would be worse than leaving it empty.`;
+rubric_criterion_code to null on every step: no per-criterion marks are supplied for this component, and inventing a code would be worse than leaving it empty.`;
   }
 
   return `${VOICE}
@@ -258,7 +264,7 @@ criterion, and inventing a code would be worse than leaving it empty.`;
 This assignment is assessed work: ${rubricCtx.assessmentName}, ${rubricCtx.courseName} (${rubricCtx.curriculumName}).${length}
 
 It is marked against these criteria:
-${criteria}${objectives ? `\n\nAnd assessed against these objectives:\n${objectives}` : ""}
+${criteria}${objectives ? `\n\nAnd assessed against these objectives:\n${objectives}` : ""}${topicBlock}
 
 Shape the steps around these criteria in the order a student would actually
 work through them. Set rubric_criterion_code to the matching code for steps

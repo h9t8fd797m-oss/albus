@@ -118,11 +118,14 @@
     "Each commentary is 800 words maximum and marked out of 14 across five criteria; 3 further portfolio-level marks give a total of 45.",
     "Criterion NAMES are corroborated; the per-criterion mark split is NOT — sources disagree, so no marks are published.",
     "Articles must be from different sources and published within a year of the commentary.",
-    "At SL this is 30% of the subject — the highest-weighted IA in group 3."
+    "At SL this is 30% of the subject — the highest-weighted IA in group 3.",
+    "Syllabus topics remain unverified: the public economics page names broad fields but supplies neither a complete unit outline nor an explicit matching first-assessment-2022 label. The full matching outline is not confirmed."
   ],
   "firstAssessment": 2022,
   "lastAssessment": null,
   "guideStatus": "current",
   "supersededBy": null,
-  "group": "Individuals and societies"
+  "group": "Individuals and societies",
+  "syllabusTopics": [],
+  "syllabusTopicsConfidence": "unverified"
 }
