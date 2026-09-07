@@ -257,6 +257,9 @@ Deno.serve(async (req) => {
         "completed",
         generated.inputTokens,
         generated.outputTokens,
+        null,
+        generated.cacheWriteTokens,
+        generated.cacheReadTokens,
       );
 
       return jsonResponse({
@@ -274,6 +277,8 @@ Deno.serve(async (req) => {
         generated?.inputTokens ?? null,
         generated?.outputTokens ?? null,
         usageFailureCode(e),
+        generated?.cacheWriteTokens ?? null,
+        generated?.cacheReadTokens ?? null,
       );
       throw e;
     }
