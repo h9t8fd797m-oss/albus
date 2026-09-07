@@ -991,7 +991,7 @@ values ('IB_DP', '7.7', 'Business management: the research project', '7. INTERNA
 - **Three to five supporting documents** must be attached, from which the majority of the information is drawn.
 - Primary and/or secondary research, selected for suitability, depth and breadth.
 
-[UNCERTAIN] Criterion structure widely reported as including integration of the key concept (5 marks), supporting documents (4 marks), and selection and application of tools and theories (4 marks), with the remainder across analysis, conclusions and structure. Verify against the guide before quoting marks.
+[UNCERTAIN] **The criterion structure must not be quoted, because the sources disagree about the total, not merely the split.** Three incompatible accounts are in circulation: this knowledge base records 25 marks; ibcourses.net gives four criteria A-D at 5 marks each, totalling 20; ibmastery.com gives 25 marks but cites a "Criterion G" worth 2, implying seven criteria. Earlier reporting of a key-concept/supporting-documents/tools split is a fourth variant and is equally unconfirmed. When sources cannot agree on what a task is marked out of, there is no split worth guessing at. The official IB subject brief confirms the component (20 hours, 20% at HL) and, like every subject brief, carries no per-criterion marks.
 
 [STRATEGY] The two decisive early choices are the organisation and the concept. An organisation with thin public information starves the supporting documents criterion. A concept chosen for convenience rather than fit produces a lens that is mentioned and then abandoned, which is where most of the concept marks are lost. Supporting documents should be recent, varied in perspective, reliable and detailed enough to sustain analysis.', 'business management IA research project supporting documents', false, 68);
 insert into public.knowledge_sections (corpus, section, title, parent_title, body, keywords, always_include, ordinal)
@@ -1079,9 +1079,36 @@ values ('IB_DP', '7.11', 'ESS: the individual investigation', '7. INTERNAL ASSES
 - Collaboration in small groups is now permitted, with shared methodologies allowed provided variables differ and each student''s data is unique.
 - A new criterion addresses **strategy and the tensions inherent in environmental issues**, requiring a nuanced understanding of the issue or context investigated.
 
+[CORROBORATED] Six criteria A-F totalling 30. Names agreed independently by sciencesauceonline.com and revisiondojo.com. **The per-criterion split is NOT corroborated and must not be quoted** — one source gives 4/4/4/6/6/6, the other states it is unpublished.
+
+| Criterion | Name |
+| --- | --- |
+| A | Research question and inquiry |
+| B | Strategy and tension |
+| C | Method |
+| D | Treatment of data |
+| E | Analysis and conclusion |
+| F | Evaluation |
+
+Criterion B independently confirms the [OFFICIAL] note above that the 2026 guide adds a strategy-and-tensions criterion.
+
 [STRATEGY] The strategy criterion is the differentiator and the part with no legacy exemplars. It requires the student to show how different perspectives affect the outcome of a strategy, which is an ESS-specific demand that does not appear in the pure science IAs. Students who treat the ESS IA as a Biology IA with an environmental topic will lose that criterion entirely.', 'ESS environmental systems societies IA individual investigation', false, 72);
 insert into public.knowledge_sections (corpus, section, title, parent_title, body, keywords, always_include, ordinal)
 values ('IB_DP', '7.12', 'Computer science and Psychology under the 2027 guides', '7. INTERNAL ASSESSMENT: MASTER REFERENCE', '[OFFICIAL] **Computer science.** Paper 3 removed. Two themes. The IA is a **35-hour computational solution**, marked out of **30 across five criteria**, requiring a **video submission alongside the documentation**. 30% at SL, 20% at HL, same criteria at both levels. Marks are whole numbers only and awarded on a best-fit basis. There is also a 10-hour collaborative sciences project. The 2027 guide does not require a named client.
+
+[CORROBORATED] The 2027 computer science IA split. Agreed independently by clastify.com and educs.me, and consistent with every structural fact above.
+
+| Criterion | Name | Marks |
+| --- | --- | --- |
+| A | Problem specification | 4 |
+| B | Planning | 4 |
+| C | System overview | 6 |
+| D | Development | **12** |
+| E | Evaluation | 4 |
+
+D being much the largest is what the process-versus-product split above predicts.
+
+[UNCERTAIN] **This subject is the easiest to be confidently wrong about.** At least one tutoring site publishes a different set of criteria — Planning, Solution Overview, Development, Functionality, Evaluation — under a "2027" heading, while actually describing the superseded 2026-cohort guide (34 marks). Check the criterion *names* before trusting any source on this subject, and check the student''s exam session before quoting anything: a November 2026 candidate is still on the old guide.
 
 [STRATEGY] The scoping error that dominates: whole-school timetabling systems and full library management systems do not fit in 35 hours. Four of the five criteria assess process; only one assesses the finished product, with the video as primary evidence of functionality. A modest system, fully documented and demonstrably working, outscores an ambitious system that does not run.
 

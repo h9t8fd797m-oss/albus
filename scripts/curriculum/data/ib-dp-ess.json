@@ -16,9 +16,46 @@
       "marks": 30,
       "weighting": 25,
       "level": "SL",
-      "criteria": [],
-      "criteriaConfidence": "unverified",
-      "criteriaSource": null,
+      "criteria": [
+        {
+          "code": "A",
+          "name": "Research question and inquiry",
+          "marks": null,
+          "guidance": "Name the environmental issue and the question, and show why it is worth investigating."
+        },
+        {
+          "code": "B",
+          "name": "Strategy and tension",
+          "marks": null,
+          "guidance": "New in the 2026 guide and the differentiator. Show how competing perspectives change the outcome of a strategy."
+        },
+        {
+          "code": "C",
+          "name": "Method",
+          "marks": null,
+          "guidance": "Appropriate to the question and repeatable by someone else from what you wrote."
+        },
+        {
+          "code": "D",
+          "name": "Treatment of data",
+          "marks": null,
+          "guidance": "Process and present the data so it can be read, uncertainties included."
+        },
+        {
+          "code": "E",
+          "name": "Analysis and conclusion",
+          "marks": null,
+          "guidance": "Interpret what the data shows and answer your own question, only as far as it supports."
+        },
+        {
+          "code": "F",
+          "name": "Evaluation",
+          "marks": null,
+          "guidance": "Limitations that actually mattered, improvements that address them, and what is still open."
+        }
+      ],
+      "criteriaConfidence": "corroborated",
+      "criteriaSource": "corroborated for NAMES ONLY: sciencesauceonline.com and revisiondojo.com independently give six criteria A-F totalling 30 with the same names, consistent with knowledge base 7.11 [OFFICIAL]. Only sciencesauce states a split (4/4/4/6/6/6); revisiondojo says it is not specified, so no marks are published. Criterion B corroborates 7.11's [OFFICIAL] note that the 2026 guide adds a criterion on strategy and environmental tensions",
       "externallyModerated": true,
       "wordLimit": 3000
     },
@@ -37,9 +74,46 @@
       "marks": 30,
       "weighting": 20,
       "level": "HL",
-      "criteria": [],
-      "criteriaConfidence": "unverified",
-      "criteriaSource": null,
+      "criteria": [
+        {
+          "code": "A",
+          "name": "Research question and inquiry",
+          "marks": null,
+          "guidance": "Name the environmental issue and the question, and show why it is worth investigating."
+        },
+        {
+          "code": "B",
+          "name": "Strategy and tension",
+          "marks": null,
+          "guidance": "New in the 2026 guide and the differentiator. Show how competing perspectives change the outcome of a strategy."
+        },
+        {
+          "code": "C",
+          "name": "Method",
+          "marks": null,
+          "guidance": "Appropriate to the question and repeatable by someone else from what you wrote."
+        },
+        {
+          "code": "D",
+          "name": "Treatment of data",
+          "marks": null,
+          "guidance": "Process and present the data so it can be read, uncertainties included."
+        },
+        {
+          "code": "E",
+          "name": "Analysis and conclusion",
+          "marks": null,
+          "guidance": "Interpret what the data shows and answer your own question, only as far as it supports."
+        },
+        {
+          "code": "F",
+          "name": "Evaluation",
+          "marks": null,
+          "guidance": "Limitations that actually mattered, improvements that address them, and what is still open."
+        }
+      ],
+      "criteriaConfidence": "corroborated",
+      "criteriaSource": "corroborated for NAMES ONLY: sciencesauceonline.com and revisiondojo.com independently give six criteria A-F totalling 30 with the same names, consistent with knowledge base 7.11 [OFFICIAL]. Only sciencesauce states a split (4/4/4/6/6/6); revisiondojo says it is not specified, so no marks are published. Criterion B corroborates 7.11's [OFFICIAL] note that the 2026 guide adds a criterion on strategy and environmental tensions",
       "externallyModerated": true,
       "wordLimit": 3000
     },
@@ -52,10 +126,9 @@
     }
   ],
   "notes": [
-    "3,000 words maximum, up from 2,250 under the previous guide. 30 marks, common criteria at SL and HL. Ten hours.",
-    "The 2026 guide adds a criterion on strategy and the tensions inherent in environmental issues — it has no legacy exemplars.",
-    "Criterion split NOT published. Secondary sources overwhelmingly describe the superseded guide (five criteria of 6), which would be wrong here.",
-    "Treating this as a Biology IA with an environmental topic forfeits the strategy criterion entirely.",
+    "3,000 words maximum, up from 2,250 under the previous guide. 30 marks across six criteria A-F, common at SL and HL. Ten hours.",
+    "Criterion NAMES are corroborated; the per-criterion split is NOT — one source gives 4/4/4/6/6/6, another states it is unpublished. No marks are claimed.",
+    "Criterion B (strategy and tension) is new in the 2026 guide and has no legacy exemplars. Treating this as a Biology IA with an environmental topic forfeits it entirely.",
     "Group collaboration is permitted if variables differ and each student's data is their own."
   ],
   "firstAssessment": 2026,
