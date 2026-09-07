@@ -1,7 +1,8 @@
 begin;
 create extension if not exists pgtap with schema extensions;
 set local search_path = extensions, public;
-select plan(2);
+select plan(3);
+select ok(exists(select 1 from public.syllabus_topics), 'syllabus seed is loaded');
 select is((select count(*) from (
   select course_template_id, ordinal from public.syllabus_topics
   group by course_template_id, ordinal having count(*) > 1

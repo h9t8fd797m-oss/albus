@@ -11,6 +11,7 @@ on:
       - 'supabase/tests/**'
       - 'supabase/config.toml'
       - 'scripts/security-concurrency-local.sh'
+      - 'scripts/curriculum/**'
       - '.github/workflows/database-security.yml'
 
 jobs:
@@ -25,6 +26,13 @@ jobs:
           version: latest
       - name: Rebuild every migration
         run: supabase start
+      - name: Reset and apply the current curriculum seed
+        run: |
+          supabase db reset --local --no-seed --yes
+          REF=$(sed -nE 's/^project_id = "([^"]+)"/\1/p' supabase/config.toml)
+          docker exec -i "supabase_db_${REF}" psql -U postgres -d postgres -v ON_ERROR_STOP=1 -q < scripts/curriculum/seed.sql
+      - name: Prove syllabus assertions reject bad rows
+        run: python3 scripts/curriculum/prove_topics_db_guards.py
       - name: Run policy and financial-safety assertions
         run: supabase test db --local
       - name: Race the last available slots
