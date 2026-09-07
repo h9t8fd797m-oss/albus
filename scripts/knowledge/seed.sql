@@ -919,7 +919,9 @@ values ('IB_DP', '7.4', 'Mathematics: the exploration', '7. INTERNAL ASSESSMENT:
 
 [DERIVED] Arithmetic worth showing a student: the IA is 20 marks scaled to 20 percent, so **one IA mark equals one percent of the subject total.** A student targeting a solid 6 at roughly 65 percent overall needs about 13 out of 20 on the exploration just to stay on pace.', 'maths mathematics AA AI exploration IA pages personal engagement', false, 65);
 insert into public.knowledge_sections (corpus, section, title, parent_title, body, keywords, always_include, ordinal)
-values ('IB_DP', '7.5', 'History: the historical investigation', '7. INTERNAL ASSESSMENT: MASTER REFERENCE', 'Source: History guide, first assessment 2017. Applies through May 2027; the new guide is first assessed May 2028.
+values ('IB_DP', '7.5', 'History: the historical investigation', '7. INTERNAL ASSESSMENT: MASTER REFERENCE', 'Source: History guide, first assessment 2017. **Applies through May 2027.** The replacement guide is first taught August 2026 and first assessed **May 2028** — verified 7 Sep 2026, and the criteria below are confirmed current by multiple 2025-26 sources.
+
+[UNCERTAIN] Some official IB subject briefs still carry "first assessments 2017—last assessments 2025" for this guide. That is a stale projection from a 2015-vintage document; IB extended the guide. Do not act on it.
 
 [OFFICIAL]
 
@@ -991,7 +993,9 @@ values ('IB_DP', '7.7', 'Business management: the research project', '7. INTERNA
 - **Three to five supporting documents** must be attached, from which the majority of the information is drawn.
 - Primary and/or secondary research, selected for suitability, depth and breadth.
 
-[UNCERTAIN] **The criterion structure must not be quoted, because the sources disagree about the total, not merely the split.** Three incompatible accounts are in circulation: this knowledge base records 25 marks; ibcourses.net gives four criteria A-D at 5 marks each, totalling 20; ibmastery.com gives 25 marks but cites a "Criterion G" worth 2, implying seven criteria. Earlier reporting of a key-concept/supporting-documents/tools split is a fourth variant and is equally unconfirmed. When sources cannot agree on what a task is marked out of, there is no split worth guessing at. The official IB subject brief confirms the component (20 hours, 20% at HL) and, like every subject brief, carries no per-criterion marks.
+[CORROBORATED] **25 marks across seven criteria A-G**, common to SL and HL. The total is agreed by this knowledge base and two independent sources; a published grader rubric and a second source both reference a Criterion G, which rules out the competing claim of four criteria totalling 20 marks.
+
+[UNCERTAIN] **The per-criterion split still must not be quoted.** The only source that lists all seven marks sums them to 27 rather than its own stated 25, and sources disagree on whether criterion A is the key concept or the identification of context. Corroborated fragments only: key concept 5, supporting documents 4, presentation 2. The official IB subject brief confirms the component (20 hours, 20% at HL) and, like every subject brief, carries no per-criterion marks.
 
 [STRATEGY] The two decisive early choices are the organisation and the concept. An organisation with thin public information starves the supporting documents criterion. A concept chosen for convenience rather than fit produces a lens that is mentioned and then abandoned, which is where most of the concept marks are lost. Supporting documents should be recent, varied in perspective, reliable and detailed enough to sustain analysis.', 'business management IA research project supporting documents', false, 68);
 insert into public.knowledge_sections (corpus, section, title, parent_title, body, keywords, always_include, ordinal)

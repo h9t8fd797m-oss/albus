@@ -90,6 +90,8 @@
     "Section 2 carries 15 of the 25 marks.",
     "Same requirements at SL and HL; only the weighting differs.",
     "Figures taken from the Albus IB knowledge base v1.0 (compiled August 2026), which paraphrases the official IB subject guides rather than reproducing them. Verify against the current guide before quoting marks to a student.",
-    "Guide currency conflict, unresolved: this file follows the knowledge base (7.5), which states the 2017 guide 'applies through May 2027; the new guide is first assessed May 2028.' An official IB subject brief PDF (Nord Anglia mirror, IBO copyright 2015) instead states 'First assessments 2017-last assessments 2025' for the same guide. Not resolved either way -- a student on the wrong side of this date would have the wrong IA criteria. Check directly against a current guide before the 2026-27 school year if this has not been done."
-  ]
+    "Guide currency RESOLVED. The replacement History guide is first taught August 2026 and first assessed May 2028, so the 2017 guide runs through May 2027 — the knowledge base was right and the official subject brief's 'last assessments 2025' was a stale projection from a 2015-vintage document that IB later extended. The published criteria (A 6 / B 15 / C 4 = 25, 2,200 words) are confirmed current by multiple 2025-26 sources. A candidate sitting May 2028 or later will need the new guide; nobody in the app today does."
+  ],
+  "lastAssessment": 2027,
+  "supersededBy": "First assessment 2028"
 }
