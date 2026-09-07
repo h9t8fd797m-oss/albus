@@ -117,7 +117,8 @@
     "Four of the five criteria assess process; only D assesses the finished product, with the video as the primary evidence of functionality.",
     "Scoping is the dominant failure: a modest system that demonstrably runs outscores an ambitious one that does not.",
     "The 2027 guide does not require a named client.",
-    "The main subject page explicitly describes last assessment 2026 and must not supply topics for this record. The linked 2027 curriculum update supplies these headings; its assessment prose and table disagree on SL weighting, so no assessment figures are taken from it."
+    "The main subject page explicitly describes last assessment 2026 and must not supply topics for this record. The linked 2027 curriculum update supplies these headings; its assessment prose and table disagree on SL weighting, so no assessment figures are taken from it.",
+    "Assessment objectives remain unverified for First assessment 2027: the complete numbered objective set and its scope have not been confirmed from a matching official publication plus an independent agreeing source. The public curriculum overview and assessment component labels do not establish that set; no AO codes, descriptions or weightings are inferred."
   ],
   "firstAssessment": 2027,
   "lastAssessment": null,
@@ -167,5 +168,6 @@
     }
   ],
   "syllabusTopicsSource": "https://www.ibo.org/university-admission/latest-curriculum-updates/computer-science-updates/ (retrieved 2026-09-07, page states 'First assessment will take place in May 2027')",
-  "syllabusTopicsConfidence": "official"
+  "syllabusTopicsConfidence": "official",
+  "objectivesConfidence": "unverified"
 }

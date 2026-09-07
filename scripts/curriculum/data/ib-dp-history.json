@@ -91,7 +91,8 @@
     "Same requirements at SL and HL; only the weighting differs.",
     "Figures taken from the Albus IB knowledge base v1.0 (compiled August 2026), which paraphrases the official IB subject guides rather than reproducing them. Verify against the current guide before quoting marks to a student.",
     "Guide currency RESOLVED. The replacement History guide is first taught August 2026 and first assessed May 2028, so the 2017 guide runs through May 2027 — the knowledge base was right and the official subject brief's 'last assessments 2025' was a stale projection from a 2015-vintage document that IB later extended. The published criteria (A 6 / B 15 / C 4 = 25, 2,200 words) are confirmed current by multiple 2025-26 sources. A candidate sitting May 2028 or later will need the new guide; nobody in the app today does.",
-    "The public outline matches this record’s 2017 guide and last-assessment-2027 course, not the separately linked first-assessment-2028 replacement. Headings retain the choice structure: these are options, not a requirement to study every listed topic. The page does not specify which options a student’s school chose."
+    "The public outline matches this record’s 2017 guide and last-assessment-2027 course, not the separately linked first-assessment-2028 replacement. Headings retain the choice structure: these are options, not a requirement to study every listed topic. The page does not specify which options a student’s school chose.",
+    "Assessment objectives remain unverified for First assessment 2017 (new guide first assessed 2028): the complete numbered objective set and its scope have not been confirmed from a matching official publication plus an independent agreeing source. The public curriculum overview and assessment component labels do not establish that set; no AO codes, descriptions or weightings are inferred."
   ],
   "lastAssessment": 2027,
   "supersededBy": "First assessment 2028",
@@ -194,5 +195,6 @@
     }
   ],
   "syllabusTopicsSource": "https://www.ibo.org/programmes/diploma-programme/curriculum/individuals-and-societies/history/ (retrieved 2026-09-07, page states 'last assessment in 2027')",
-  "syllabusTopicsConfidence": "official"
+  "syllabusTopicsConfidence": "official",
+  "objectivesConfidence": "unverified"
 }

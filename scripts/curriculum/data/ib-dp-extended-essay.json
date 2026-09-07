@@ -57,8 +57,10 @@
     "Criterion D alone is 8 of 30 marks.",
     "An E in the extended essay is a failing condition for the diploma regardless of total points.",
     "Figures taken from the Albus IB knowledge base v1.0 (compiled August 2026), which paraphrases the official IB subject guides rather than reproducing them. Verify against the current guide before quoting marks to a student.",
-    "Syllabus topics remain unverified: the public extended-essay page describes independent research rather than a dated first-assessment-2027 syllabus topic list. Essay examples are not prescribed topics."
+    "Syllabus topics remain unverified: the public extended-essay page describes independent research rather than a dated first-assessment-2027 syllabus topic list. Essay examples are not prescribed topics.",
+    "Assessment objectives remain unverified for First assessment 2027: the complete numbered objective set and its scope have not been confirmed from a matching official publication plus an independent agreeing source. The public curriculum overview and assessment component labels do not establish that set; no AO codes, descriptions or weightings are inferred."
   ],
   "syllabusTopics": [],
-  "syllabusTopicsConfidence": "unverified"
+  "syllabusTopicsConfidence": "unverified",
+  "objectivesConfidence": "unverified"
 }

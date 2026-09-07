@@ -1,0 +1,3 @@
+reversed AO weighting fixture:
+  - AO1: weightingMin > weightingMax
+Violating fixture discarded; original record accepted.

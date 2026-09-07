@@ -119,7 +119,8 @@
     "Criterion NAMES are corroborated; the per-criterion mark split is NOT — sources disagree, so no marks are published.",
     "Articles must be from different sources and published within a year of the commentary.",
     "At SL this is 30% of the subject — the highest-weighted IA in group 3.",
-    "Syllabus topics remain unverified: the public economics page names broad fields but supplies neither a complete unit outline nor an explicit matching first-assessment-2022 label. The full matching outline is not confirmed."
+    "Syllabus topics remain unverified: the public economics page names broad fields but supplies neither a complete unit outline nor an explicit matching first-assessment-2022 label. The full matching outline is not confirmed.",
+    "Assessment objectives remain unverified for First assessment 2022: the complete numbered objective set and its scope have not been confirmed from a matching official publication plus an independent agreeing source. The public curriculum overview and assessment component labels do not establish that set; no AO codes, descriptions or weightings are inferred."
   ],
   "firstAssessment": 2022,
   "lastAssessment": null,
@@ -127,5 +128,6 @@
   "supersededBy": null,
   "group": "Individuals and societies",
   "syllabusTopics": [],
-  "syllabusTopicsConfidence": "unverified"
+  "syllabusTopicsConfidence": "unverified",
+  "objectivesConfidence": "unverified"
 }
