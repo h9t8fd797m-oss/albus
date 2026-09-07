@@ -95,7 +95,7 @@ select ok(has_function_privilege(
   'service_role', 'public.check_and_record_ai_usage(uuid,text,text)', 'EXECUTE'),
   'the server can reserve paid AI work');
 select ok(not has_function_privilege(
-  'authenticated', 'public.finalize_ai_usage(uuid,text,integer,integer,text)', 'EXECUTE'),
+  'authenticated', 'public.finalize_ai_usage(uuid,text,integer,integer,text,integer,integer)', 'EXECUTE'),
   'the app cannot forge token counts or completion state');
 select ok(not has_function_privilege(
   'authenticated', 'public.check_api_request_rate(uuid,text)', 'EXECUTE'),
@@ -710,6 +710,57 @@ select ok(
      where rc.marks is not null and rc.marks <= 0
   ),
   'a published criterion mark is always positive');
+
+-- Cached tokens are billed, and were being counted as zero.
+--
+-- `usage.input_tokens` from the Anthropic API excludes both cache fields, so a
+-- ledger fed only input+output cannot see them. A cache write costs MORE per
+-- token than fresh input (1.25x), which is why the blind spot was worst exactly
+-- where the money was.
+select is(
+  private.ai_metered_cost('claude-sonnet-5', 1000, 100, 1000, 10000)::bigint,
+  7500::bigint,
+  'cache writes price at 1.25x input and reads at 0.10x');
+
+-- Haiku's input rate is 1 micro-USD per token, so `rate / 10` for a cache read
+-- truncates to zero in integer arithmetic. Multiplying before dividing is the
+-- only reason the cheapest model does not price its cached tokens at nothing.
+select is(
+  private.ai_metered_cost('claude-haiku-4-5', 0, 0, 0, 10000)::bigint,
+  1000::bigint,
+  'the cheapest model still prices cache reads above zero');
+
+select ok(
+  private.ai_metered_cost('claude-opus-5', 0, 0, 1000, 0)
+    > private.ai_metered_cost('claude-opus-5', 1000, 0, 0, 0),
+  'a cache write costs more than the same number of ordinary input tokens');
+
+-- Uncached behaviour must be byte-identical to before this change.
+select is(
+  private.ai_metered_cost('claude-sonnet-5', 1412, 316)::bigint,
+  5984::bigint,
+  'pricing a call with no cache involvement is unchanged');
+
+-- End to end: the tokens have to survive the reservation -> finalise round trip
+-- and land in a cost, not just price correctly in isolation.
+create temporary table test_cache_usage (id uuid primary key);
+insert into test_cache_usage select public.check_and_record_ai_usage(
+  '10000000-0000-4000-8000-000000000002', 'breakdown', 'claude-haiku-4-5');
+-- Split from the assertion deliberately: a subquery reading the row in the same
+-- statement that mutates it sees the pre-update snapshot.
+select public.finalize_ai_usage(
+  (select id from test_cache_usage), 'completed', 10, 20, null, 100, 1000);
+-- 10*1 + 20*5 + (100*1*125/100 = 125) + (1000*1*10/100 = 100) = 335
+select is(
+  (select actual_cost_microusd from public.ai_usage
+    where id = (select id from test_cache_usage)),
+  335,
+  'cached tokens reach the ledger and are charged');
+select is(
+  (select cache_write_tokens || '/' || cache_read_tokens from public.ai_usage
+    where id = (select id from test_cache_usage)),
+  '100/1000',
+  'cache token counts are stored, not just folded into a total');
 
 select * from finish();
 rollback;

@@ -27,6 +27,9 @@ export interface GenerationResult {
   model: string;
   inputTokens: number;
   outputTokens: number;
+  /** Billed at 1.25x the input rate — dearer per token than fresh input. */
+  cacheWriteTokens: number;
+  /** Billed at 0.10x the input rate. */
   cacheReadTokens: number;
 }
 
@@ -75,6 +78,7 @@ export async function generateBreakdown(
       model,
       inputTokens: u.input_tokens ?? 0,
       outputTokens: u.output_tokens ?? 0,
+      cacheWriteTokens: u.cache_creation_input_tokens ?? 0,
       cacheReadTokens: u.cache_read_input_tokens ?? 0,
     };
   } catch (e) {
@@ -106,6 +110,10 @@ export interface ChatResult {
   text: string;
   inputTokens: number;
   outputTokens: number;
+  /** Billed at 1.25x the input rate — dearer per token than fresh input. */
+  cacheWriteTokens: number;
+  /** Billed at 0.10x the input rate. */
+  cacheReadTokens: number;
 }
 
 /**
@@ -139,6 +147,8 @@ export async function chatReply(
       text,
       inputTokens: response.usage.input_tokens ?? 0,
       outputTokens: response.usage.output_tokens ?? 0,
+      cacheWriteTokens: response.usage.cache_creation_input_tokens ?? 0,
+      cacheReadTokens: response.usage.cache_read_input_tokens ?? 0,
     };
   } catch (e) {
     if (e instanceof HttpError) throw e;
@@ -226,6 +236,7 @@ export async function gradeWork(
       model,
       inputTokens: u.input_tokens ?? 0,
       outputTokens: u.output_tokens ?? 0,
+      cacheWriteTokens: u.cache_creation_input_tokens ?? 0,
       cacheReadTokens: u.cache_read_input_tokens ?? 0,
     };
   } catch (e) {

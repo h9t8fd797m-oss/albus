@@ -129,6 +129,12 @@ export async function finalizeAIUsage(
   inputTokens: number | null = null,
   outputTokens: number | null = null,
   failureCode: string | null = null,
+  // Anthropic reports cached tokens in separate fields that `input_tokens`
+  // excludes, and bills for both — a cache write at 1.25x the input rate, a
+  // read at 0.10x. Omitting them did not make them free; it made them
+  // invisible to the ledger the monthly ceiling is computed from.
+  cacheWriteTokens: number | null = null,
+  cacheReadTokens: number | null = null,
 ): Promise<boolean> {
   let lastFailure = "unknown";
   // A transient database/network edge after a paid provider response should
@@ -143,6 +149,8 @@ export async function finalizeAIUsage(
         p_input_tokens: inputTokens,
         p_output_tokens: outputTokens,
         p_failure_code: failureCode,
+        p_cache_write_tokens: cacheWriteTokens,
+        p_cache_read_tokens: cacheReadTokens,
       });
       if (!error) {
         if (data !== true) {
