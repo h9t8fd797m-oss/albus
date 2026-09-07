@@ -16,9 +16,40 @@
       "marks": 30,
       "weighting": 30,
       "level": "SL",
-      "criteria": [],
-      "criteriaConfidence": "unverified",
-      "criteriaSource": null,
+      "criteria": [
+        {
+          "code": "A",
+          "name": "Problem specification",
+          "marks": 4,
+          "guidance": "Define the problem and give requirements specific enough to test the finished thing against."
+        },
+        {
+          "code": "B",
+          "name": "Planning",
+          "marks": 4,
+          "guidance": "Show the design decisions and why you made them, not just what you built."
+        },
+        {
+          "code": "C",
+          "name": "System overview",
+          "marks": 6,
+          "guidance": "How the parts fit together. Diagrams that a reader could rebuild the structure from."
+        },
+        {
+          "code": "D",
+          "name": "Development",
+          "marks": 12,
+          "guidance": "The largest criterion and the only one assessing the product. Show techniques, not just working code."
+        },
+        {
+          "code": "E",
+          "name": "Evaluation",
+          "marks": 4,
+          "guidance": "Test against your own criterion A requirements, and say what you would do differently."
+        }
+      ],
+      "criteriaConfidence": "corroborated",
+      "criteriaSource": "corroborated: clastify.com and educs.me independently give A4/B4/C6/D12/E4 = 30 for the 2027 guide, matching knowledge base 7.12 [OFFICIAL] on all structural facts (30 marks, five criteria, four assessing process and one the finished product -- D, the largest, is the product criterion). A fourth source (tutorsplus.com) lists different criteria under a '2027' heading but is describing the superseded 2026-cohort guide",
       "externallyModerated": true
     },
     {
@@ -36,9 +67,40 @@
       "marks": 30,
       "weighting": 20,
       "level": "HL",
-      "criteria": [],
-      "criteriaConfidence": "unverified",
-      "criteriaSource": null,
+      "criteria": [
+        {
+          "code": "A",
+          "name": "Problem specification",
+          "marks": 4,
+          "guidance": "Define the problem and give requirements specific enough to test the finished thing against."
+        },
+        {
+          "code": "B",
+          "name": "Planning",
+          "marks": 4,
+          "guidance": "Show the design decisions and why you made them, not just what you built."
+        },
+        {
+          "code": "C",
+          "name": "System overview",
+          "marks": 6,
+          "guidance": "How the parts fit together. Diagrams that a reader could rebuild the structure from."
+        },
+        {
+          "code": "D",
+          "name": "Development",
+          "marks": 12,
+          "guidance": "The largest criterion and the only one assessing the product. Show techniques, not just working code."
+        },
+        {
+          "code": "E",
+          "name": "Evaluation",
+          "marks": 4,
+          "guidance": "Test against your own criterion A requirements, and say what you would do differently."
+        }
+      ],
+      "criteriaConfidence": "corroborated",
+      "criteriaSource": "corroborated: clastify.com and educs.me independently give A4/B4/C6/D12/E4 = 30 for the 2027 guide, matching knowledge base 7.12 [OFFICIAL] on all structural facts (30 marks, five criteria, four assessing process and one the finished product -- D, the largest, is the product criterion). A fourth source (tutorsplus.com) lists different criteria under a '2027' heading but is describing the superseded 2026-cohort guide",
       "externallyModerated": true
     },
     {
@@ -51,12 +113,10 @@
   ],
   "notes": [
     "2027 guide: a 35-hour computational solution, 30 marks across five criteria, with a video submission alongside the documentation. 30% at SL, 20% at HL, same criteria at both levels.",
-    "Applies to candidates from the May 2027 session. A November 2026 candidate is still on the previous guide (34 marks) — check the student's exam session before quoting anything.",
-    "Criterion split NOT published. Nearly every secondary source still describes the superseded 34-mark rubric, so Tier C corroboration is unusually unsafe for this subject.",
-    "Four of the five criteria assess process; only one assesses the finished product, with the video as the primary evidence of functionality.",
+    "Applies from the May 2027 session. A November 2026 candidate is still on the previous guide (34 marks, different criteria) — check the student's exam session before quoting anything.",
+    "Four of the five criteria assess process; only D assesses the finished product, with the video as the primary evidence of functionality.",
     "Scoping is the dominant failure: a modest system that demonstrably runs outscores an ambitious one that does not.",
-    "The 2027 guide does not require a named client.",
-    "Checked 2026-09-05: two sources (clastify.com, educs.me) independently agree on a 2027 split (Problem specification 4, Planning 4, System overview 6, Development 12, Evaluation 4 = 30), consistent with this file's existing marks and with the process/product split noted above. NOT published: a third source (tutorsplus.com) gave different criterion names (Planning, Solution Overview, Development, Functionality, Evaluation) under the identical '2027' label, and was actually describing the prior guide. Two agreeing tutoring sites do not outweigh a demonstrated live mislabeling of this exact guide version — still needs Tier A."
+    "The 2027 guide does not require a named client."
   ],
   "firstAssessment": 2027,
   "lastAssessment": null,

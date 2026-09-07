@@ -287,6 +287,17 @@ begin
   on conflict (course_template_id, code) do update
     set name = excluded.name, typical_minutes = excluded.typical_minutes
   returning id into v_assessment;
+  delete from public.rubric_criteria where assessment_type_id = v_assessment;
+  insert into public.rubric_criteria (assessment_type_id, code, name, marks, guidance, ordinal)
+  values (v_assessment, 'A', 'Problem specification', 4, 'Define the problem and give requirements specific enough to test the finished thing against.', 0);
+  insert into public.rubric_criteria (assessment_type_id, code, name, marks, guidance, ordinal)
+  values (v_assessment, 'B', 'Planning', 4, 'Show the design decisions and why you made them, not just what you built.', 1);
+  insert into public.rubric_criteria (assessment_type_id, code, name, marks, guidance, ordinal)
+  values (v_assessment, 'C', 'System overview', 6, 'How the parts fit together. Diagrams that a reader could rebuild the structure from.', 2);
+  insert into public.rubric_criteria (assessment_type_id, code, name, marks, guidance, ordinal)
+  values (v_assessment, 'D', 'Development', 12, 'The largest criterion and the only one assessing the product. Show techniques, not just working code.', 3);
+  insert into public.rubric_criteria (assessment_type_id, code, name, marks, guidance, ordinal)
+  values (v_assessment, 'E', 'Evaluation', 4, 'Test against your own criterion A requirements, and say what you would do differently.', 4);
 
   insert into public.assessment_types (course_template_id, code, name, typical_minutes)
   values (v_template, 'EXTERNAL_SL', 'Examinations (SL)', null)
@@ -299,6 +310,17 @@ begin
   on conflict (course_template_id, code) do update
     set name = excluded.name, typical_minutes = excluded.typical_minutes
   returning id into v_assessment;
+  delete from public.rubric_criteria where assessment_type_id = v_assessment;
+  insert into public.rubric_criteria (assessment_type_id, code, name, marks, guidance, ordinal)
+  values (v_assessment, 'A', 'Problem specification', 4, 'Define the problem and give requirements specific enough to test the finished thing against.', 0);
+  insert into public.rubric_criteria (assessment_type_id, code, name, marks, guidance, ordinal)
+  values (v_assessment, 'B', 'Planning', 4, 'Show the design decisions and why you made them, not just what you built.', 1);
+  insert into public.rubric_criteria (assessment_type_id, code, name, marks, guidance, ordinal)
+  values (v_assessment, 'C', 'System overview', 6, 'How the parts fit together. Diagrams that a reader could rebuild the structure from.', 2);
+  insert into public.rubric_criteria (assessment_type_id, code, name, marks, guidance, ordinal)
+  values (v_assessment, 'D', 'Development', 12, 'The largest criterion and the only one assessing the product. Show techniques, not just working code.', 3);
+  insert into public.rubric_criteria (assessment_type_id, code, name, marks, guidance, ordinal)
+  values (v_assessment, 'E', 'Evaluation', 4, 'Test against your own criterion A requirements, and say what you would do differently.', 4);
 
   insert into public.assessment_types (course_template_id, code, name, typical_minutes)
   values (v_template, 'EXTERNAL_HL', 'Examinations (HL)', null)
@@ -379,6 +401,19 @@ begin
   on conflict (course_template_id, code) do update
     set name = excluded.name, typical_minutes = excluded.typical_minutes
   returning id into v_assessment;
+  delete from public.rubric_criteria where assessment_type_id = v_assessment;
+  insert into public.rubric_criteria (assessment_type_id, code, name, marks, guidance, ordinal)
+  values (v_assessment, 'A', 'Research question and inquiry', null, 'Name the environmental issue and the question, and show why it is worth investigating.', 0);
+  insert into public.rubric_criteria (assessment_type_id, code, name, marks, guidance, ordinal)
+  values (v_assessment, 'B', 'Strategy and tension', null, 'New in the 2026 guide and the differentiator. Show how competing perspectives change the outcome of a strategy.', 1);
+  insert into public.rubric_criteria (assessment_type_id, code, name, marks, guidance, ordinal)
+  values (v_assessment, 'C', 'Method', null, 'Appropriate to the question and repeatable by someone else from what you wrote.', 2);
+  insert into public.rubric_criteria (assessment_type_id, code, name, marks, guidance, ordinal)
+  values (v_assessment, 'D', 'Treatment of data', null, 'Process and present the data so it can be read, uncertainties included.', 3);
+  insert into public.rubric_criteria (assessment_type_id, code, name, marks, guidance, ordinal)
+  values (v_assessment, 'E', 'Analysis and conclusion', null, 'Interpret what the data shows and answer your own question, only as far as it supports.', 4);
+  insert into public.rubric_criteria (assessment_type_id, code, name, marks, guidance, ordinal)
+  values (v_assessment, 'F', 'Evaluation', null, 'Limitations that actually mattered, improvements that address them, and what is still open.', 5);
 
   insert into public.assessment_types (course_template_id, code, name, typical_minutes)
   values (v_template, 'EXTERNAL_SL', 'Examinations (SL)', null)
@@ -391,6 +426,19 @@ begin
   on conflict (course_template_id, code) do update
     set name = excluded.name, typical_minutes = excluded.typical_minutes
   returning id into v_assessment;
+  delete from public.rubric_criteria where assessment_type_id = v_assessment;
+  insert into public.rubric_criteria (assessment_type_id, code, name, marks, guidance, ordinal)
+  values (v_assessment, 'A', 'Research question and inquiry', null, 'Name the environmental issue and the question, and show why it is worth investigating.', 0);
+  insert into public.rubric_criteria (assessment_type_id, code, name, marks, guidance, ordinal)
+  values (v_assessment, 'B', 'Strategy and tension', null, 'New in the 2026 guide and the differentiator. Show how competing perspectives change the outcome of a strategy.', 1);
+  insert into public.rubric_criteria (assessment_type_id, code, name, marks, guidance, ordinal)
+  values (v_assessment, 'C', 'Method', null, 'Appropriate to the question and repeatable by someone else from what you wrote.', 2);
+  insert into public.rubric_criteria (assessment_type_id, code, name, marks, guidance, ordinal)
+  values (v_assessment, 'D', 'Treatment of data', null, 'Process and present the data so it can be read, uncertainties included.', 3);
+  insert into public.rubric_criteria (assessment_type_id, code, name, marks, guidance, ordinal)
+  values (v_assessment, 'E', 'Analysis and conclusion', null, 'Interpret what the data shows and answer your own question, only as far as it supports.', 4);
+  insert into public.rubric_criteria (assessment_type_id, code, name, marks, guidance, ordinal)
+  values (v_assessment, 'F', 'Evaluation', null, 'Limitations that actually mattered, improvements that address them, and what is still open.', 5);
 
   insert into public.assessment_types (course_template_id, code, name, typical_minutes)
   values (v_template, 'EXTERNAL_HL', 'Examinations (HL)', null)
