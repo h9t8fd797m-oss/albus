@@ -59,7 +59,8 @@
     "The per-criterion SPLIT is still not publishable. The one source that lists all seven marks sums them to 27, not its own stated 25, and sources disagree on whether criterion A is the key concept or the context. Corroborated fragments only: key concept 5, supporting documents 4, presentation 2.",
     "The official IB subject brief confirms the component (20 hours, 20% at HL) but carries no per-criterion marks, as subject briefs never do.",
     "The public ibo.org subject page still describes the pre-2024 structure despite a 2026 'last updated' date — do not source from it.",
-    "Syllabus topics remain unverified: the public business-and-management page describes the pre-2024 structure despite its 06 March 2026 update date, which conflicts with this record’s first-assessment-2024 specification. No topics are taken from that page. Business criteria remain deliberately empty."
+    "Syllabus topics remain unverified: the public business-and-management page describes the pre-2024 structure despite its 06 March 2026 update date, which conflicts with this record’s first-assessment-2024 specification. No topics are taken from that page. Business criteria remain deliberately empty.",
+    "Assessment objectives remain unverified for First assessment 2024: the complete numbered objective set and its scope have not been confirmed from a matching official publication plus an independent agreeing source. The public curriculum overview and assessment component labels do not establish that set; no AO codes, descriptions or weightings are inferred."
   ],
   "firstAssessment": 2024,
   "lastAssessment": null,
@@ -67,5 +68,6 @@
   "supersededBy": null,
   "group": "Individuals and societies",
   "syllabusTopics": [],
-  "syllabusTopicsConfidence": "unverified"
+  "syllabusTopicsConfidence": "unverified",
+  "objectivesConfidence": "unverified"
 }

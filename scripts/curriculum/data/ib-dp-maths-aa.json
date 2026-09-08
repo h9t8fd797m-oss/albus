@@ -114,8 +114,10 @@
     "HL expects greater sophistication and rigour in Use of mathematics.",
     "Cite at the point of use; a bibliography alone can become a misconduct finding.",
     "Figures taken from the Albus IB knowledge base v1.0 (compiled August 2026), which paraphrases the official IB subject guides rather than reproducing them. Verify against the current guide before quoting marks to a student.",
-    "Syllabus topics remain unverified: the public mathematics page distinguishes first assessment 2021 from the new 2029 briefs but does not list the 2021 syllabus units. Do not substitute the newer outline."
+    "Syllabus topics remain unverified: the public mathematics page distinguishes first assessment 2021 from the new 2029 briefs but does not list the 2021 syllabus units. Do not substitute the newer outline.",
+    "Assessment objectives remain unverified for First assessment 2021: the complete numbered objective set and its scope have not been confirmed from a matching official publication plus an independent agreeing source. The public curriculum overview and assessment component labels do not establish that set; no AO codes, descriptions or weightings are inferred."
   ],
   "syllabusTopics": [],
-  "syllabusTopicsConfidence": "unverified"
+  "syllabusTopicsConfidence": "unverified",
+  "objectivesConfidence": "unverified"
 }

@@ -6,7 +6,32 @@
   "source": "https://www.ibo.org/programmes/diploma-programme/curriculum/",
   "retrievedAt": "2026-08-25",
   "verifiedPages": "knowledge base 7.2, 7.3",
-  "objectives": [],
+  "objectives": [
+    {
+      "code": "AO1",
+      "name": "Show that you know the subject’s facts, vocabulary and ideas, as well as its practical skills and methods.",
+      "weightingMin": null,
+      "weightingMax": null
+    },
+    {
+      "code": "AO2",
+      "name": "Use your understanding of the subject’s ideas and vocabulary to choose and apply suitable skills and methods.",
+      "weightingMin": null,
+      "weightingMax": null
+    },
+    {
+      "code": "AO3",
+      "name": "Examine experimental methods and data you collect or obtain from other sources; judge their quality and bring the evidence together to explain patterns and make predictions.",
+      "weightingMin": null,
+      "weightingMax": null
+    },
+    {
+      "code": "AO4",
+      "name": "Use your practical and analytical skills to investigate a worthwhile question, making responsible ethical choices throughout.",
+      "weightingMin": null,
+      "weightingMax": null
+    }
+  ],
   "components": [
     {
       "code": "IA_SL",
@@ -102,7 +127,8 @@
     "Report maximum 3,000 words; tables, calculations, citations, graphs and appendices are excluded.",
     "Conclusion and Evaluation are together half the marks.",
     "Figures taken from the Albus IB knowledge base v1.0 (compiled August 2026), which paraphrases the official IB subject guides rather than reproducing them. Verify against the current guide before quoting marks to a student.",
-    "Syllabus topics contain only the four organizing themes visible in the official page’s curriculum figure. The figure leaves individual topic nodes blank; their names and SL/HL scope are not confirmed here. First teaching 2023 matches the first-assessment-2025 specification."
+    "Syllabus topics contain only the four organizing themes visible in the official page’s curriculum figure. The figure leaves individual topic nodes blank; their names and SL/HL scope are not confirmed here. First teaching 2023 matches the first-assessment-2025 specification.",
+    "AO1–AO4 are Albus’s own second-person paraphrases of the matching 2025 assessment objectives, checked in two independently hosted IB publications. The brief gives component weightings, not separate per-AO percentages, so objective weights remain null. These are subject-wide objectives; AO4 concerns investigation skills, not a claim that every exam paper separately assesses them."
   ],
   "syllabusTopics": [
     {
@@ -123,5 +149,7 @@
     }
   ],
   "syllabusTopicsSource": "https://www.ibo.org/programmes/diploma-programme/curriculum/sciences/biology/ (retrieved 2026-09-07, page states 'First teaching Aug/Sept 2023')",
-  "syllabusTopicsConfidence": "official"
+  "syllabusTopicsConfidence": "official",
+  "objectivesSource": "https://resources.finalsite.net/images/v1747417432/palmbeachschoolsorg/jrntsobygrladyikevum/Biologysubjectbrief-Firstassessment2025.pdf; https://www.r1g.edu.lv/wp-content/uploads/2024/10/4_dp_sciences_biology_subject-brief_jan_2022_e.pdf (retrieved 2026-09-07; both state First assessment 2025; assessment objectives section)",
+  "objectivesConfidence": "corroborated"
 }

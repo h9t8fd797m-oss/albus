@@ -57,7 +57,8 @@
     "An exhibition not based on one of the 35 prescribed prompts scores zero.",
     "The essay counts twice in the aggregate, so it is worth exactly twice the exhibition.",
     "An E in TOK is a failing condition for the diploma regardless of total points.",
-    "Syllabus topics remain unverified: the public theory-of-knowledge page describes assessment formats but supplies no dated first-assessment-2022 theme or area-of-knowledge outline."
+    "Syllabus topics remain unverified: the public theory-of-knowledge page describes assessment formats but supplies no dated first-assessment-2022 theme or area-of-knowledge outline.",
+    "Assessment objectives remain unverified for First assessment 2022: the complete numbered objective set and its scope have not been confirmed from a matching official publication plus an independent agreeing source. The public curriculum overview and assessment component labels do not establish that set; no AO codes, descriptions or weightings are inferred."
   ],
   "firstAssessment": 2022,
   "lastAssessment": null,
@@ -65,5 +66,6 @@
   "supersededBy": null,
   "group": "Core",
   "syllabusTopics": [],
-  "syllabusTopicsConfidence": "unverified"
+  "syllabusTopicsConfidence": "unverified",
+  "objectivesConfidence": "unverified"
 }

@@ -130,7 +130,8 @@
     "Criterion NAMES are corroborated; the per-criterion split is NOT — one source gives 4/4/4/6/6/6, another states it is unpublished. No marks are claimed.",
     "Criterion B (strategy and tension) is new in the 2026 guide and has no legacy exemplars. Treating this as a Biology IA with an environmental topic forfeits it entirely.",
     "Group collaboration is permitted if variables differ and each student's data is their own.",
-    "Syllabus topics remain unverified: the public environmental-systems-and-societies page links the 2026 brief but does not name its seven syllabus topics. Its three unifying concepts and HL lenses are not a substitute for that missing outline."
+    "Syllabus topics remain unverified: the public environmental-systems-and-societies page links the 2026 brief but does not name its seven syllabus topics. Its three unifying concepts and HL lenses are not a substitute for that missing outline.",
+    "Assessment objectives remain unverified for First assessment 2026: the complete numbered objective set and its scope have not been confirmed from a matching official publication plus an independent agreeing source. The public curriculum overview and assessment component labels do not establish that set; no AO codes, descriptions or weightings are inferred."
   ],
   "firstAssessment": 2026,
   "lastAssessment": null,
@@ -138,5 +139,6 @@
   "supersededBy": null,
   "group": "Sciences / Individuals and societies",
   "syllabusTopics": [],
-  "syllabusTopicsConfidence": "unverified"
+  "syllabusTopicsConfidence": "unverified",
+  "objectivesConfidence": "unverified"
 }
