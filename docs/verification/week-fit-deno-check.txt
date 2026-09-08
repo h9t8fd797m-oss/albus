@@ -1,0 +1,3 @@
+Check supabase/functions/breakdown/index.ts
+Check supabase/functions/chat/index.ts
+Check supabase/functions/grade/index.ts

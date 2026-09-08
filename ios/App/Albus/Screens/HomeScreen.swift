@@ -57,7 +57,7 @@ struct HomeScreen: View {
     @State private var focusing: PlanSessionRecord?
 
     enum Filter: String, CaseIterable, Identifiable {
-        case all, dueSoon, overdue, done
+        case all, dueSoon, overdue, needsTime, done
         var id: String { rawValue }
 
         var title: String {
@@ -65,6 +65,7 @@ struct HomeScreen: View {
             case .all: "All"
             case .dueSoon: "Due soon"
             case .overdue: "Overdue"
+            case .needsTime: "Needs time"
             case .done: "Done"
             }
         }
@@ -138,7 +139,9 @@ struct HomeScreen: View {
     }
 
     private func content(now: Date) -> some View {
-        let visible = assignments.filter { matches($0, now: now) }
+        let fit = weekFit(now: now)
+        let needsTimeIDs = fit?.assignmentIDs ?? []
+        let visible = assignments.filter { matches($0, now: now, needsTimeIDs: needsTimeIDs) }
         let grouped = Dictionary(grouping: visible) { group(for: $0, now: now) }
 
         return ScrollView {
@@ -153,7 +156,11 @@ struct HomeScreen: View {
 
                 WeekStrip(sessions: sessions, now: now) { destination = .month }
 
-                FilterChipRow(filters: Filter.allCases, selection: $filter) { $0.title }
+                if let fit {
+                    weekFitNotice(fit)
+                }
+
+                FilterChipRow(filters: Filter.allCases.filter { $0 != .needsTime || fit != nil || filter == .needsTime }, selection: $filter) { $0.title }
                     .padding(.horizontal, -Tokens.Spacing.xl)
 
                 if visible.isEmpty {
@@ -211,15 +218,47 @@ struct HomeScreen: View {
         return .later
     }
 
-    private func matches(_ assignment: Assignment, now: Date) -> Bool {
+    private func matches(_ assignment: Assignment, now: Date, needsTimeIDs: Set<UUID>) -> Bool {
         switch filter {
         case .all: !assignment.isComplete
         case .dueSoon: !assignment.isComplete
             && assignment.deadline >= now
             && assignment.deadline <= (Calendar.current.date(byAdding: .day, value: 7, to: now) ?? now)
         case .overdue: !assignment.isComplete && assignment.deadline < now
+        case .needsTime:
+            !assignment.isComplete && needsTimeIDs.contains(assignment.id)
         case .done: assignment.isComplete
         }
+    }
+
+    private func weekFit(now: Date) -> WeekFit? {
+        guard coordinator.lastRunSucceeded else { return nil }
+        return WeekFit(unplaceable: coordinator.unplacedItems,
+                       workload: coordinator.workload, now: now)
+    }
+
+    private func weekFitNotice(_ fit: WeekFit) -> some View {
+        VStack(alignment: .leading, spacing: Tokens.Spacing.s) {
+            HStack(spacing: Tokens.Spacing.s) {
+                AlbusCactus(size: 28, mood: .init(fit.workload))
+                Text("Some work still needs time")
+                    .font(Tokens.Typography.cardTitle)
+            }
+            Text("Next 7 days and overdue: \(fit.items.count) \(fit.items.count == 1 ? "step" : "steps") across \(fit.assignmentIDs.count) \(fit.assignmentIDs.count == 1 ? "assignment" : "assignments") could not be scheduled by their deadlines (\(fit.minutesNeedingTime) min).")
+                .font(Tokens.Typography.body)
+            Text("Review the affected work. You can split a long step into smaller sittings, revise an estimate, or discuss a deadline with your teacher.")
+                .font(Tokens.Typography.caption)
+                .foregroundStyle(Tokens.Palette.inkSecondary)
+            Button("Review affected work") { filter = .needsTime }
+                .font(Tokens.Typography.label)
+                .foregroundStyle(Tokens.Palette.accent)
+        }
+        .foregroundStyle(Tokens.Palette.ink)
+        .padding(Tokens.Spacing.m)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Tokens.Palette.cardSurface,
+                    in: RoundedRectangle(cornerRadius: Tokens.Radius.card))
+        .accessibilityIdentifier("weekFitNotice")
     }
 
     /// The block happening now, or the next one due. Nil once everything is done.
@@ -326,6 +365,9 @@ struct HomeScreen: View {
         case .overdue:
             EmptyState(icon: "checkmark.circle", title: "Nothing overdue",
                        message: "You're on top of every deadline.")
+        case .needsTime:
+            EmptyState(icon: "calendar", title: "No work to review",
+                       message: "Unplaced work due in the next seven days or already overdue appears here after your plan is rebuilt.")
         case .done:
             EmptyState(icon: "checkmark.seal", title: "Nothing finished yet",
                        message: "Completed assignments collect here.")
