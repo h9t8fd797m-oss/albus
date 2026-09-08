@@ -1,0 +1,26 @@
+PASS aqa-alevel-biology.json: exact authored union; changed fields=notes,syllabusTopics,syllabusTopicsConfidence; notes=4; topics=0; objectives=3
+PASS aqa-alevel-chemistry.json: exact authored union; changed fields=notes,syllabusTopics,syllabusTopicsConfidence; notes=4; topics=0; objectives=3
+PASS aqa-alevel-physics.json: exact authored union; changed fields=notes,syllabusTopics,syllabusTopicsConfidence; notes=5; topics=0; objectives=3
+PASS ib-dp-biology.json: exact authored union; changed fields=notes,objectives,objectivesConfidence,objectivesSource,syllabusTopics,syllabusTopicsConfidence,syllabusTopicsSource; notes=6; topics=4; objectives=4
+  PASS science arrays preserve authored order and independently attached sources
+PASS ib-dp-business.json: exact authored union; changed fields=notes,objectivesConfidence,syllabusTopics,syllabusTopicsConfidence; notes=9; topics=0; objectives=0
+PASS ib-dp-chemistry.json: exact authored union; changed fields=notes,objectives,objectivesConfidence,objectivesSource,syllabusTopics,syllabusTopicsConfidence,syllabusTopicsSource; notes=6; topics=8; objectives=4
+  PASS science arrays preserve authored order and independently attached sources
+PASS ib-dp-compsci.json: exact authored union; changed fields=notes,objectivesConfidence,syllabusTopics,syllabusTopicsConfidence,syllabusTopicsSource; notes=7; topics=10; objectives=0
+PASS ib-dp-economics.json: exact authored union; changed fields=notes,objectivesConfidence,syllabusTopics,syllabusTopicsConfidence; notes=7; topics=0; objectives=0
+PASS ib-dp-ess.json: exact authored union; changed fields=notes,objectivesConfidence,syllabusTopics,syllabusTopicsConfidence; notes=6; topics=0; objectives=0
+PASS ib-dp-extended-essay.json: exact authored union; changed fields=notes,objectivesConfidence,syllabusTopics,syllabusTopicsConfidence; notes=6; topics=0; objectives=0
+PASS ib-dp-geography.json: exact authored union; changed fields=notes,syllabusTopics,syllabusTopicsConfidence; notes=6; topics=0; objectives=4
+PASS ib-dp-history.json: exact authored union; changed fields=notes,objectivesConfidence,syllabusTopics,syllabusTopicsConfidence,syllabusTopicsSource; notes=7; topics=24; objectives=0
+  PASS History dates already agree in common base and both authored branches; no duplicate keys
+PASS ib-dp-lang-a-langlit.json: exact authored union; changed fields=notes,objectivesConfidence,syllabusTopics,syllabusTopicsConfidence; notes=6; topics=0; objectives=0
+PASS ib-dp-lang-a-lit.json: exact authored union; changed fields=notes,objectivesConfidence,syllabusTopics,syllabusTopicsConfidence; notes=6; topics=0; objectives=0
+PASS ib-dp-lang-b.json: exact authored union; changed fields=notes,objectivesConfidence,syllabusTopics,syllabusTopicsConfidence; notes=6; topics=0; objectives=0
+PASS ib-dp-maths-aa.json: exact authored union; changed fields=notes,objectivesConfidence,syllabusTopics,syllabusTopicsConfidence; notes=6; topics=0; objectives=0
+PASS ib-dp-maths-ai.json: exact authored union; changed fields=notes,objectivesConfidence,syllabusTopics,syllabusTopicsConfidence; notes=5; topics=0; objectives=0
+PASS ib-dp-physics.json: exact authored union; changed fields=notes,objectives,objectivesConfidence,objectivesSource,syllabusTopics,syllabusTopicsConfidence,syllabusTopicsSource; notes=6; topics=29; objectives=4
+  PASS science arrays preserve authored order and independently attached sources
+PASS ib-dp-tok.json: exact authored union; changed fields=notes,objectivesConfidence,syllabusTopics,syllabusTopicsConfidence; notes=7; topics=0; objectives=0
+PASS 19 subjects, 304 top-level fields, 115 notes: no unexplained difference or lost note
+PASS e502286 and 24a9f2e have identical entire Git trees
+Observed landed parent(s): d439e3369cc313d1113aea390ffaf35f82adc87e
