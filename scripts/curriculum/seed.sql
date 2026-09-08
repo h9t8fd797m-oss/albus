@@ -143,6 +143,14 @@ begin
   returning id into v_template;
 
   delete from public.assessment_objectives where course_template_id = v_template;
+  insert into public.assessment_objectives (course_template_id, code, name, weighting_min, weighting_max, ordinal)
+  values (v_template, 'AO1', 'Show that you know the subject’s facts, vocabulary and ideas, as well as its practical skills and methods.', null, null, 0);
+  insert into public.assessment_objectives (course_template_id, code, name, weighting_min, weighting_max, ordinal)
+  values (v_template, 'AO2', 'Use your understanding of the subject’s ideas and vocabulary to choose and apply suitable skills and methods.', null, null, 1);
+  insert into public.assessment_objectives (course_template_id, code, name, weighting_min, weighting_max, ordinal)
+  values (v_template, 'AO3', 'Examine experimental methods and data you collect or obtain from other sources; judge their quality and bring the evidence together to explain patterns and make predictions.', null, null, 2);
+  insert into public.assessment_objectives (course_template_id, code, name, weighting_min, weighting_max, ordinal)
+  values (v_template, 'AO4', 'Use your practical and analytical skills to investigate a worthwhile question, making responsible ethical choices throughout.', null, null, 3);
   delete from public.syllabus_topics where course_template_id = v_template;
   insert into public.syllabus_topics (course_template_id, name, ordinal)
   values (v_template, 'A: Unity and diversity', 0);
@@ -241,6 +249,14 @@ begin
   returning id into v_template;
 
   delete from public.assessment_objectives where course_template_id = v_template;
+  insert into public.assessment_objectives (course_template_id, code, name, weighting_min, weighting_max, ordinal)
+  values (v_template, 'AO1', 'Show that you know the subject’s facts, vocabulary and ideas, as well as its practical skills and methods.', null, null, 0);
+  insert into public.assessment_objectives (course_template_id, code, name, weighting_min, weighting_max, ordinal)
+  values (v_template, 'AO2', 'Use your understanding of the subject’s ideas and vocabulary to choose and apply suitable skills and methods.', null, null, 1);
+  insert into public.assessment_objectives (course_template_id, code, name, weighting_min, weighting_max, ordinal)
+  values (v_template, 'AO3', 'Examine experimental methods and data you collect or obtain from other sources; judge their quality and bring the evidence together to explain patterns and make predictions.', null, null, 2);
+  insert into public.assessment_objectives (course_template_id, code, name, weighting_min, weighting_max, ordinal)
+  values (v_template, 'AO4', 'Use your practical and analytical skills to investigate a worthwhile question, making responsible ethical choices throughout.', null, null, 3);
   delete from public.syllabus_topics where course_template_id = v_template;
   insert into public.syllabus_topics (course_template_id, name, ordinal)
   values (v_template, 'Structure', 0);
@@ -980,6 +996,14 @@ begin
   returning id into v_template;
 
   delete from public.assessment_objectives where course_template_id = v_template;
+  insert into public.assessment_objectives (course_template_id, code, name, weighting_min, weighting_max, ordinal)
+  values (v_template, 'AO1', 'Show that you know the subject’s facts, vocabulary and ideas, as well as its practical skills and methods.', null, null, 0);
+  insert into public.assessment_objectives (course_template_id, code, name, weighting_min, weighting_max, ordinal)
+  values (v_template, 'AO2', 'Use your understanding of the subject’s ideas and vocabulary to choose and apply suitable skills and methods.', null, null, 1);
+  insert into public.assessment_objectives (course_template_id, code, name, weighting_min, weighting_max, ordinal)
+  values (v_template, 'AO3', 'Examine experimental methods and data you collect or obtain from other sources; judge their quality and bring the evidence together to explain patterns and make predictions.', null, null, 2);
+  insert into public.assessment_objectives (course_template_id, code, name, weighting_min, weighting_max, ordinal)
+  values (v_template, 'AO4', 'Use your practical and analytical skills to investigate a worthwhile question, making responsible ethical choices throughout.', null, null, 3);
   delete from public.syllabus_topics where course_template_id = v_template;
   insert into public.syllabus_topics (course_template_id, name, ordinal)
   values (v_template, 'A: Space, time and motion', 0);
