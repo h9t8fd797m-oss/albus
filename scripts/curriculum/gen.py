@@ -4,7 +4,7 @@
     data/*.json                          ← hand-verified against official specs
         │
         ├── ios/App/Albus/Models/Curriculum.swift        (bundled: drives the UI)
-        └── supabase/migrations/NNNN_seed_curriculum.sql (server: grounds prompts)
+        └── scripts/curriculum/seed.sql (server: grounds prompts)
 
 **Why both, and why they are not interchangeable.** The bundled Swift drives
 onboarding and the add-assignment pickers, so subject selection works offline and
@@ -172,6 +172,25 @@ def validate(name, s):
         if round(total) != 100:
             label = level or "(single level)"
             errs.append(f"weightings for {label} sum to {total}, not 100")
+
+    topics = s.get("syllabusTopics", [])
+    source = s.get("syllabusTopicsSource")
+    confidence = s.get("syllabusTopicsConfidence")
+    if bool(topics) != bool(source):
+        errs.append("syllabusTopics and syllabusTopicsSource must be supplied together")
+    if topics:
+        if confidence not in ("official", "corroborated"):
+            errs.append("published syllabusTopics need official or corroborated confidence")
+        if len(topics) == 1:
+            errs.append("a one-topic outline is incomplete")
+        for topic in topics:
+            if not isinstance(topic.get("name"), str) or not topic["name"].strip():
+                errs.append("every syllabus topic needs a non-empty name")
+        ordinals = [t.get("ordinal") for t in topics]
+        if any(type(n) is not int for n in ordinals) or sorted(ordinals) != list(range(len(topics))):
+            errs.append("syllabus topic ordinals must be unique and contiguous from zero")
+    elif confidence not in (None, "unverified"):
+        errs.append("empty syllabusTopics cannot claim verified confidence")
 
     for o in s.get("objectives", []):
         lo, hi = o.get("weightingMin"), o.get("weightingMax")
@@ -388,7 +407,7 @@ def sql_quote(v):
 def emit_sql(subjects):
     """Seed the tables the breakdown endpoint already reads.
 
-    Idempotent: re-running must not duplicate rows, because this migration will
+    Idempotent: re-running must not duplicate rows, because this seed will
     be re-applied every time the corpus grows.
     """
     lines = ['''-- scripts/curriculum/seed.sql
@@ -463,6 +482,12 @@ begin
                 f"  values (v_template, {sql_quote(o['code'])}, {sql_quote(o['name'])}, "
                 f"{o.get('weightingMin') if o.get('weightingMin') is not None else 'null'}, "
                 f"{o.get('weightingMax') if o.get('weightingMax') is not None else 'null'}, {i});\n"
+            )
+        lines.append("  delete from public.syllabus_topics where course_template_id = v_template;\n")
+        for topic in s_.get("syllabusTopics", []):
+            lines.append(
+                "  insert into public.syllabus_topics (course_template_id, name, ordinal)\n"
+                f"  values (v_template, {sql_quote(topic['name'])}, {topic['ordinal']});\n"
             )
         for c in s_["components"]:
             lines.append(f"""

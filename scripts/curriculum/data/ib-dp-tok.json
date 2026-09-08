@@ -56,11 +56,14 @@
     "Essay 1,600 words, exhibition 950; examiners stop reading at the limit.",
     "An exhibition not based on one of the 35 prescribed prompts scores zero.",
     "The essay counts twice in the aggregate, so it is worth exactly twice the exhibition.",
-    "An E in TOK is a failing condition for the diploma regardless of total points."
+    "An E in TOK is a failing condition for the diploma regardless of total points.",
+    "Syllabus topics remain unverified: the public theory-of-knowledge page describes assessment formats but supplies no dated first-assessment-2022 theme or area-of-knowledge outline."
   ],
   "firstAssessment": 2022,
   "lastAssessment": null,
   "guideStatus": "current",
   "supersededBy": null,
-  "group": "Core"
+  "group": "Core",
+  "syllabusTopics": [],
+  "syllabusTopicsConfidence": "unverified"
 }

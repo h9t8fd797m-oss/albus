@@ -1,0 +1,10 @@
+$ docker exec -i supabase_db_ssvehwhblgqtvqkfbkbj psql -U postgres -d postgres -q < scripts/curriculum/seed.sql
+TIMEOUT after 15 seconds: local Docker unavailable
+$ supabase test db --local
+Connecting to local database...
+failed to connect to postgres: failed to connect to `host=127.0.0.1 user=postgres database=postgres`: dial error (dial tcp 127.0.0.1:54322: connect: connection refused)
+Make sure your local IP is allowed in Network Restrictions and Network Bans.
+https://supabase.com/dashboard/project/_/database/settings
+exit=1
+$ ./scripts/security-concurrency-local.sh
+TIMEOUT after 15 seconds: local Docker unavailable

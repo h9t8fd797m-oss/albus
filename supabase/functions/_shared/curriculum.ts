@@ -41,7 +41,8 @@ export async function loadCurriculumComponent(
         code,
         name,
         curricula ( name ),
-        assessment_objectives ( code, name, weighting_min, weighting_max, ordinal )
+        assessment_objectives ( code, name, weighting_min, weighting_max, ordinal ),
+        syllabus_topics ( name, ordinal )
       ),
       rubric_criteria ( id, code, name, marks, guidance, ordinal )
     `)
@@ -65,6 +66,7 @@ export async function loadCurriculumComponent(
     name: string;
     curricula: unknown;
     assessment_objectives?: unknown[];
+    syllabus_topics?: unknown[];
   }>(data.course_templates);
   const curriculum = one<{ name: string }>(course?.curricula);
 
@@ -100,10 +102,17 @@ export async function loadCurriculumComponent(
       weightingMax: weighting_max,
     }));
 
+  const syllabusTopics = ((course?.syllabus_topics ?? []) as Array<{
+    name: string;
+    ordinal: number;
+  }>)
+    .sort((a, b) => a.ordinal - b.ordinal)
+    .map(({ name }) => name);
+
   // The component itself is always worth returning — it is what the assignment
   // records as its own. Only the *grounding* needs us to know something useful
   // about how it is marked: criteria, or objectives.
-  const known = criteria.length > 0 || objectives.length > 0;
+  const known = criteria.length > 0 || objectives.length > 0 || syllabusTopics.length > 0;
 
   return {
     assessmentTypeId: data.id as string,
@@ -115,6 +124,7 @@ export async function loadCurriculumComponent(
         assessmentName: data.name as string,
         criteria,
         objectives,
+        syllabusTopics,
         componentMinutes: (data.typical_minutes as number | null) ?? null,
         body: null,
       }

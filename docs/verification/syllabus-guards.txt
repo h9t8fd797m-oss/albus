@@ -1,0 +1,20 @@
+blank name:
+  - every syllabus topic needs a non-empty name
+duplicate ordinal:
+  - syllabus topic ordinals must be unique and contiguous from zero
+gap in ordinals:
+  - syllabus topic ordinals must be unique and contiguous from zero
+source without topics:
+  - syllabusTopics and syllabusTopicsSource must be supplied together
+  - empty syllabusTopics cannot claim verified confidence
+topics without source:
+  - syllabusTopics and syllabusTopicsSource must be supplied together
+unverified topics:
+  - published syllabusTopics need official or corroborated confidence
+one topic:
+  - a one-topic outline is incomplete
+confidence without topics:
+  - empty syllabusTopics cannot claim verified confidence
+reversed AO weighting:
+  - AO_TEST: weightingMin > weightingMax
+All 9 violating fixtures rejected; clean fixture accepted. No fixture persisted.

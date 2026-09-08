@@ -101,6 +101,27 @@
     "Identical IA across Biology, Chemistry and Physics under the first-assessment-2025 guides.",
     "Report maximum 3,000 words; tables, calculations, citations, graphs and appendices are excluded.",
     "Conclusion and Evaluation are together half the marks.",
-    "Figures taken from the Albus IB knowledge base v1.0 (compiled August 2026), which paraphrases the official IB subject guides rather than reproducing them. Verify against the current guide before quoting marks to a student."
-  ]
+    "Figures taken from the Albus IB knowledge base v1.0 (compiled August 2026), which paraphrases the official IB subject guides rather than reproducing them. Verify against the current guide before quoting marks to a student.",
+    "Syllabus topics contain only the four organizing themes visible in the official page’s curriculum figure. The figure leaves individual topic nodes blank; their names and SL/HL scope are not confirmed here. First teaching 2023 matches the first-assessment-2025 specification."
+  ],
+  "syllabusTopics": [
+    {
+      "name": "A: Unity and diversity",
+      "ordinal": 0
+    },
+    {
+      "name": "B: Form and function",
+      "ordinal": 1
+    },
+    {
+      "name": "C: Interaction and interdependence",
+      "ordinal": 2
+    },
+    {
+      "name": "D: Continuity and change",
+      "ordinal": 3
+    }
+  ],
+  "syllabusTopicsSource": "https://www.ibo.org/programmes/diploma-programme/curriculum/sciences/biology/ (retrieved 2026-09-07, page states 'First teaching Aug/Sept 2023')",
+  "syllabusTopicsConfidence": "official"
 }

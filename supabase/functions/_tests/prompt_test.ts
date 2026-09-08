@@ -313,3 +313,18 @@ Deno.test("fencing protects a tag nobody has invented yet", () => {
   assertEquals(out.match(/<\/student_anything>/g)?.length, 1);
   assert(!out.includes("</student_preferences>"));
 });
+
+Deno.test("syllabus grounding is bounded and absent when empty", () => {
+  const topics = Array.from({ length: 45 }, (_, i) => `Topic ${i + 1} end`);
+  for (const criteria of [RUBRIC.criteria, []]) {
+    const rubric = { ...RUBRIC, criteria, syllabusTopics: topics };
+    const prompt = buildSystemPrompt(rubric);
+    assertStringIncludes(prompt, "Topic 40 end");
+    assert(!prompt.includes("Topic 41 end"));
+    assert(hasRubricContent(rubric));
+  }
+  assert(!buildSystemPrompt({ ...RUBRIC, syllabusTopics: [] }).includes("Syllabus topics"));
+  const topicsOnly = buildSystemPrompt({ ...RUBRIC, criteria: [], syllabusTopics: topics });
+  assertStringIncludes(topicsOnly, "No assessment objectives or per-criterion marks are confirmed");
+  assert(!topicsOnly.includes("It is assessed against these objectives:"));
+});
