@@ -146,6 +146,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Verify knowledge continuation retrieval
+        run: python3 -m unittest discover -s scripts/knowledge -p 'test_*.py' -v
       - name: Validate curriculum and generated outputs
         run: |
           python3 scripts/curriculum/check_guards.py

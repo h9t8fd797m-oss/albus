@@ -408,7 +408,7 @@ values ('IB_DP', '4.2p2', 'The glossary (continued)', '4. COMMAND TERMS', '| Ter
 | **Predict** | Give an expected result. | An outcome, ideally with the reasoning behind it. | Hedging. |
 | **Formulate** | Express precisely and systematically the relevant concept or argument. | Precision of statement. | Vagueness. |
 | **Investigate** | Observe, study, or make a detailed and systematic examination in order to establish facts and reach new conclusions. | A method plus findings. | Opinion. |
-| **Prove / Show that / Derive** | Use a sequence of logical steps to obtain the required result in a formal way. | Every step visible; the target result must appear at the end. | Working backwards from the answer, or skipping algebra. |', '', false, 33);
+| **Prove / Show that / Derive** | Use a sequence of logical steps to obtain the required result in a formal way. | Every step visible; the target result must appear at the end. | Working backwards from the answer, or skipping algebra. |', 'command term evaluate discuss analyse compare contrast explain justify outline describe state suggest examine to what extent verb', false, 33);
 insert into public.knowledge_sections (corpus, section, title, parent_title, body, keywords, always_include, ordinal)
 values ('IB_DP', '4.3', 'Command term strategy', '4. COMMAND TERMS', '[STRATEGY] Rules that reliably convert to marks:
 
