@@ -3,7 +3,6 @@
 import Anthropic from "npm:@anthropic-ai/sdk@0.120.0";
 import { BREAKDOWN_JSON_SCHEMA } from "./breakdown_schema.ts";
 import { GRADE_JSON_SCHEMA } from "./grade_prompt.ts";
-import type { ChatTurn } from "./chat_prompt.ts";
 import { HttpError } from "./http.ts";
 
 let client: Anthropic | null = null;
@@ -101,65 +100,6 @@ export async function generateBreakdown(
         e.message,
       );
       throw new HttpError(502, "UPSTREAM_REJECTED", "Plan generation failed.");
-    }
-    throw e;
-  }
-}
-
-export interface ChatResult {
-  text: string;
-  inputTokens: number;
-  outputTokens: number;
-  /** Billed at 1.25x the input rate — dearer per token than fresh input. */
-  cacheWriteTokens: number;
-  /** Billed at 0.10x the input rate. */
-  cacheReadTokens: number;
-}
-
-/**
- * A grounded reply. max_tokens is held deliberately low: Ask Albus answers a
- * question about a plan, and an essay-length response is both slower and a
- * sign the model has wandered off task.
- */
-export async function chatReply(
-  model: string,
-  systemPrompt: string,
-  history: ChatTurn[],
-  message: string,
-): Promise<ChatResult> {
-  try {
-    const response = await getClient().messages.create({
-      model,
-      max_tokens: 700,
-      system: [{ type: "text", text: systemPrompt, cache_control: { type: "ephemeral" } }],
-      messages: [...history, { role: "user", content: message }],
-    });
-
-    if (response.stop_reason === "refusal") {
-      throw new HttpError(422, "REFUSED", "Albus could not answer that.");
-    }
-
-    const block = response.content.find((b) => b.type === "text");
-    const text = block && block.type === "text" ? block.text.trim() : "";
-    if (!text) throw new HttpError(502, "EMPTY_RESPONSE", "Model returned no text");
-
-    return {
-      text,
-      inputTokens: response.usage.input_tokens ?? 0,
-      outputTokens: response.usage.output_tokens ?? 0,
-      cacheWriteTokens: response.usage.cache_creation_input_tokens ?? 0,
-      cacheReadTokens: response.usage.cache_read_input_tokens ?? 0,
-    };
-  } catch (e) {
-    if (e instanceof HttpError) throw e;
-    if (e instanceof Anthropic.APIError) {
-      const status = e.status ?? 0;
-      if (status === 429 || status >= 500) {
-        console.error("anthropic transient error", status, e.message);
-        throw new HttpError(503, "UPSTREAM_UNAVAILABLE", "Albus is unavailable right now.");
-      }
-      console.error("ANTHROPIC REQUEST REJECTED (bug in our request):", status, e.message);
-      throw new HttpError(502, "UPSTREAM_REJECTED", "Albus could not answer that.");
     }
     throw e;
   }

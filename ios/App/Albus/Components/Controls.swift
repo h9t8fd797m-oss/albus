@@ -161,46 +161,6 @@ struct ToolChip: View {
     }
 }
 
-/// The inline "Ask Albus about this paper…" entry point.
-///
-/// A button, not a text field: tapping it opens the chat surface. Making it a
-/// live field here would mean two places that own the same conversation state.
-struct AskAlbusBar: View {
-    var prompt: String = "Ask Albus about this…"
-    var action: () -> Void
-
-    var body: some View {
-        Button(action: action) {
-            HStack(spacing: Tokens.Spacing.m) {
-                Text(prompt)
-                    .font(Tokens.Typography.body)
-                    .italic()
-                    .foregroundStyle(Tokens.Palette.inkMuted)
-                    .lineLimit(1)
-                Spacer(minLength: Tokens.Spacing.s)
-                Image(systemName: "arrow.right")
-                    .font(.system(size: 13, weight: .semibold))
-                    .foregroundStyle(.white)
-                    .frame(width: 28, height: 28)
-                    .background(Tokens.Palette.accent, in: Circle())
-            }
-            .padding(.leading, Tokens.Spacing.l)
-            .padding(.trailing, Tokens.Spacing.s)
-            .frame(height: 44)
-            .background(Tokens.Glass.fill,
-                        in: RoundedRectangle(cornerRadius: Tokens.Radius.control, style: .continuous))
-            .overlay {
-                RoundedRectangle(cornerRadius: Tokens.Radius.control, style: .continuous)
-                    .strokeBorder(Tokens.Palette.hairline, lineWidth: 0.5)
-            }
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .accessibilityLabel(prompt)
-        .accessibilityAddTraits(.isButton)
-    }
-}
-
 /// Full-width primary action. One definition so every screen's main button is
 /// the same height, radius and weight.
 struct PrimaryButton: View {
@@ -271,8 +231,6 @@ struct SecondaryButton: View {
                 VStack(alignment: .leading, spacing: Tokens.Spacing.s) {
                     ForEach(sample) { ToolChip(tool: $0) }
                 }
-
-                AskAlbusBar(prompt: "Ask Albus about this paper…") {}
 
                 HStack(spacing: Tokens.Spacing.s) {
                     PrimaryButton(title: "Start 45m session") {}

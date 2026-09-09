@@ -18,7 +18,6 @@ struct TaskDetailScreen: View {
     let assignment: Assignment
 
     @State private var expanded: UUID?
-    @State private var asking = false
     @State private var showingPaywall = false
     @State private var editing: StepDraft?
     @State private var addingStep = false
@@ -75,7 +74,6 @@ struct TaskDetailScreen: View {
                 albusNote
                 gradeEntry
                 plan
-                askAlbus
             }
             .padding(.horizontal, Tokens.Spacing.xl)
             .padding(.bottom, Tokens.Spacing.xl)
@@ -85,9 +83,6 @@ struct TaskDetailScreen: View {
         // one stacked above it.
         .navigationBarBackButtonHidden()
         .toolbar(.hidden, for: .navigationBar)
-        .sheet(isPresented: $asking) {
-            AskAlbusSheet(assignment: assignment)
-        }
         .sheet(isPresented: $showingPaywall) { PaywallScreen() }
         .sheet(item: $editing) { draft in
             StepEditorSheet(draft: draft) { saved in
@@ -132,34 +127,6 @@ struct TaskDetailScreen: View {
     /// fresh one starting now when the student got there early.
     private func start(_ step: Subtask) {
         focusing = coordinator.session(toStart: step, context: context)
-    }
-
-    /// Ask Albus, in the only place it exists now.
-    ///
-    /// Shown to everyone rather than hidden from Free and Plus. A feature a
-    /// student cannot see is a feature they cannot want — and the tap costs
-    /// nothing, because the server refuses the call before any model runs. The
-    /// gate here decides which *screen* opens, never whether the request is
-    /// allowed; `check_and_record_ai_usage` still answers that in Postgres.
-    @ViewBuilder private var askAlbus: some View {
-        let included = entitlements.plan.chat.isIncluded
-        VStack(alignment: .leading, spacing: Tokens.Spacing.xs) {
-            if !included {
-                HStack(spacing: Tokens.Spacing.xs) {
-                    Text("PRO")
-                        .font(Tokens.Typography.overline)
-                        .tracking(Tokens.Tracking.overline)
-                        .foregroundStyle(Tokens.Palette.accent)
-                    Text("Ask about this assignment and Albus answers from your own rubric.")
-                        .font(Tokens.Typography.caption)
-                        .foregroundStyle(Tokens.Palette.inkMuted)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-            }
-            AskAlbusBar(prompt: "Ask Albus about this \(assignment.taskType)…") {
-                if included { asking = true } else { showingPaywall = true }
-            }
-        }
     }
 
     // MARK: - Chrome
