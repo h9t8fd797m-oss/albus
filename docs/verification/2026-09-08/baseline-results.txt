@@ -1,0 +1,24 @@
+db-reset-retry.log
+Finished supabase db reset on branch main.
+
+pgtap.log
+All tests successful.
+Files=3, Tests=112,  3 wallclock secs ( 0.25 usr  0.12 sys +  0.10 cusr  0.16 csys =  0.63 CPU)
+Result: PASS
+
+edge-tests.log
+ok | 153 passed | 0 failed (3s)
+
+core-tests.log
+✔ Test run with 114 tests in 24 suites passed after 0.844 seconds.
+
+deno-check.log
+Check supabase/functions/breakdown/index.ts
+Check supabase/functions/chat/index.ts
+Check supabase/functions/grade/index.ts
+
+concurrency.log
+concurrency attacks pass: grading 1/12, task 1/12, rubric 1/12, rubric-owner 1/12
+
+xcode-build.log
+** TEST BUILD SUCCEEDED **

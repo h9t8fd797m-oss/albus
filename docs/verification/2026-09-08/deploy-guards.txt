@@ -1,0 +1,15 @@
+PASS pending-schema rehearsal: history repaired, all three changes applied, backup retained original stamp
+PASS second run: logical schema/data dump identical (DDL is re-executed)
+ERROR:  ib_student_context schema is incomplete; refusing to record an unapplied migration
+PASS missing student-context RPC: full application/history dump unchanged after refusal
+ERROR:  history missing expected version/name pairs: {0030_grading_free_quota}
+PASS wrong migration name: full application/history dump unchanged after refusal
+ERROR:  a wrongly-stamped version survived the repair
+PASS surviving wrong stamp: full application/history dump unchanged after refusal
+ERROR:  ai_usage cache token columns must both exist as integer; cached spend would be unreliable
+PASS cache_read_tokens wrong type: full application/history dump unchanged after refusal
+ERROR:  ai_usage cache token columns must both exist as integer; cached spend would be unreliable
+PASS cache_write_tokens wrong type: full application/history dump unchanged after refusal
+ERROR:  assignments_task_type_check does not include the IB types
+PASS missing final_exam: full application/history dump unchanged after refusal
+PASS all violating fixtures removed; production was never addressed
