@@ -14,14 +14,14 @@ final class SettingsUITests: XCTestCase {
 
     override func setUp() { continueAfterFailure = false }
 
-    func testSettingsReplacedAskAlbusInTheTabBar() throws {
+    func testSettingsIsInTheTabBar() throws {
         app.launch()
         OnboardingPath.reachApp(app)
 
         XCTAssertTrue(app.buttons["Settings"].waitForExistence(timeout: 15),
                       "Settings is not in the tab bar")
         XCTAssertFalse(app.buttons["Albus"].exists,
-                       "the Ask Albus tab is still there — it should live inside a task now")
+                       "there is no chat tab; the app does not have a chatbot")
     }
 
     /// The plan card is the only place a student can see what they are on.

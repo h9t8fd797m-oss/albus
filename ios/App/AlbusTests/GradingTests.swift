@@ -109,15 +109,14 @@ struct PricingTests {
         let plan: PaywallScreen.Plan
         let priceCents: Int
         let tasks: Int?      // nil = unlimited
-        let chatMonth: Int?
         let gradeWeek: Int?
         let rubrics: Int?
     }
 
     private static let server: [ServerPlan] = [
-        .init(plan: .free, priceCents:    0, tasks:    5, chatMonth:    0, gradeWeek: 0, rubrics:    3),
-        .init(plan: .plus, priceCents:  799, tasks:   10, chatMonth:    0, gradeWeek: 2, rubrics:    5),
-        .init(plan: .pro,  priceCents: 1499, tasks:  nil, chatMonth:  300, gradeWeek: 5, rubrics:  nil),
+        .init(plan: .free, priceCents:    0, tasks:    5, gradeWeek: 0, rubrics:    3),
+        .init(plan: .plus, priceCents:  799, tasks:   10, gradeWeek: 2, rubrics:    5),
+        .init(plan: .pro,  priceCents: 1499, tasks:  nil, gradeWeek: 5, rubrics:  nil),
     ]
 
     @Test("every plan's price matches the server's")
@@ -143,13 +142,11 @@ struct PricingTests {
         #expect(fallback.tier == .free)
         #expect(fallback.priceCents == free.priceCents)
         #expect(fallback.tasks.limit == free.tasks)
-        #expect(fallback.chat.limit == free.chatMonth)
         #expect(fallback.grader.limit == free.gradeWeek)
         #expect(fallback.rubrics.limit == free.rubrics)
 
         // And the consequence, spelled out: the fallback must not accidentally
         // hand out a feature Free does not have.
-        #expect(fallback.chat.hasAny == false)
         #expect(fallback.grader.hasAny == false)
     }
 
@@ -204,8 +201,6 @@ struct RefusalTests {
     func upgradeable() {
         #expect(GradingService.Failure.notOnPlan.isAnswerableByUpgrading)
         #expect(GradingService.Failure.allowanceUsed(resetsAt: nil).isAnswerableByUpgrading)
-        #expect(ChatService.Failure.notOnPlan.isAnswerableByUpgrading)
-        #expect(ChatService.Failure.allowanceUsed(resetsAt: nil).isAnswerableByUpgrading)
     }
 
     /// Going too fast is not something a plan fixes. Offering to sell somebody
@@ -213,11 +208,9 @@ struct RefusalTests {
     @Test("going too fast is never answered with a price")
     func rateLimitIsNotAPaywall() {
         #expect(GradingService.Failure.tooFast.isAnswerableByUpgrading == false)
-        #expect(ChatService.Failure.rateLimited.isAnswerableByUpgrading == false)
         #expect(GradingService.Failure.offline.isAnswerableByUpgrading == false)
         #expect(GradingService.Failure.unavailable.isAnswerableByUpgrading == false)
         #expect(GradingService.Failure.fairUseReached.isAnswerableByUpgrading == false)
-        #expect(ChatService.Failure.fairUseReached.isAnswerableByUpgrading == false)
     }
 
     /// Neither is a thing a purchase resolves, and both must stay reachable as

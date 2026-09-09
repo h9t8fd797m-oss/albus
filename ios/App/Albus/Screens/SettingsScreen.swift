@@ -98,7 +98,6 @@ struct SettingsScreen: View {
                     VStack(spacing: Tokens.Spacing.s) {
                         allowanceRow("Active tasks", entitlements.plan.tasks)
                         allowanceRow("Marking", entitlements.plan.grader, unit: "this week")
-                        allowanceRow("Ask Albus", entitlements.plan.chat, unit: "this month")
                         allowanceRow("Saved rubrics", entitlements.plan.rubrics)
                     }
 

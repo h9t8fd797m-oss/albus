@@ -98,7 +98,6 @@ final class EntitlementService {
         let expiresAt: Date?
 
         let tasks: Allowance
-        let chat: Allowance
         let grader: Allowance
         let rubrics: Allowance
 
@@ -119,7 +118,7 @@ final class EntitlementService {
 
         static let freeFallback = Plan(
             tier: .free, displayName: "Free", priceCents: 0, currency: "EUR", expiresAt: nil,
-            tasks: Allowance(limit: 5), chat: Allowance(limit: 0),
+            tasks: Allowance(limit: 5),
             grader: Allowance(limit: 0), rubrics: Allowance(limit: 3),
             toolsAccess: .basic, curriculumIntelligence: false, advancedModels: false)
     }
@@ -201,9 +200,6 @@ struct PlanReader: PlanReading, Sendable {
 
         let activeTasksLimit: Int?
         let activeTasksUsed: Int
-        let chatLimitMonth: Int?
-        let chatUsedMonth: Int
-        let chatResetsAt: String?
         let gradeLimitWeek: Int?
         let gradeUsedWeek: Int
         let gradeResetsAt: String?
@@ -222,9 +218,6 @@ struct PlanReader: PlanReading, Sendable {
             case expiresAt = "expires_at"
             case activeTasksLimit = "active_tasks_limit"
             case activeTasksUsed = "active_tasks_used"
-            case chatLimitMonth = "chat_limit_month"
-            case chatUsedMonth = "chat_used_month"
-            case chatResetsAt = "chat_resets_at"
             case gradeLimitWeek = "grade_limit_week"
             case gradeUsedWeek = "grade_used_week"
             case gradeResetsAt = "grade_resets_at"
@@ -264,8 +257,6 @@ struct PlanReader: PlanReading, Sendable {
             currency: row.currency,
             expiresAt: PostgresTimestamp.parse(row.expiresAt),
             tasks: .init(limit: row.activeTasksLimit, used: row.activeTasksUsed),
-            chat: .init(limit: row.chatLimitMonth, used: row.chatUsedMonth,
-                        resetsAt: PostgresTimestamp.parse(row.chatResetsAt)),
             grader: .init(limit: row.gradeLimitWeek, used: row.gradeUsedWeek,
                           resetsAt: PostgresTimestamp.parse(row.gradeResetsAt)),
             rubrics: .init(limit: row.rubricsLimit, used: row.rubricsUsed),
