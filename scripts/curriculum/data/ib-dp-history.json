@@ -6,7 +6,32 @@
   "source": "https://www.ibo.org/programmes/diploma-programme/curriculum/",
   "retrievedAt": "2026-08-25",
   "verifiedPages": "knowledge base 7.2, 7.5",
-  "objectives": [],
+  "objectives": [
+    {
+      "code": "AO1",
+      "name": "Use accurate, detailed historical knowledge and show that you understand the concepts, context and sources relevant to your question.",
+      "weightingMin": null,
+      "weightingMax": null
+    },
+    {
+      "code": "AO2",
+      "name": "Build a clear argument supported by relevant historical knowledge, and analyse and interpret different kinds of sources.",
+      "weightingMin": null,
+      "weightingMax": null
+    },
+    {
+      "code": "AO3",
+      "name": "Bring evidence and analysis together into a coherent answer. Weigh different historical perspectives, assess sources for their value and limitations, and combine information from relevant sources.",
+      "weightingMin": null,
+      "weightingMax": null
+    },
+    {
+      "code": "AO4",
+      "name": "Develop focused essays and research questions, choose and reference suitable sources, and organise your research. Reflect on historians’ methods and the difficulties they face.",
+      "weightingMin": null,
+      "weightingMax": null
+    }
+  ],
   "components": [
     {
       "code": "IA_SL",
@@ -92,7 +117,7 @@
     "Figures taken from the Albus IB knowledge base v1.0 (compiled August 2026), which paraphrases the official IB subject guides rather than reproducing them. Verify against the current guide before quoting marks to a student.",
     "Guide currency RESOLVED. The replacement History guide is first taught August 2026 and first assessed May 2028, so the 2017 guide runs through May 2027 — the knowledge base was right and the official subject brief's 'last assessments 2025' was a stale projection from a 2015-vintage document that IB later extended. The published criteria (A 6 / B 15 / C 4 = 25, 2,200 words) are confirmed current by multiple 2025-26 sources. A candidate sitting May 2028 or later will need the new guide; nobody in the app today does.",
     "The public outline matches this record’s 2017 guide and last-assessment-2027 course, not the separately linked first-assessment-2028 replacement. Headings retain the choice structure: these are options, not a requirement to study every listed topic. The page does not specify which options a student’s school chose.",
-    "Assessment objectives remain unverified for First assessment 2017 (new guide first assessed 2028): the complete numbered objective set and its scope have not been confirmed from a matching official publication plus an independent agreeing source. The public curriculum overview and assessment component labels do not establish that set; no AO codes, descriptions or weightings are inferred."
+    "The 2017-guide AO1-AO4 list agrees in the IB briefs hosted independently by Nord Anglia and Linz International School Auhof; Nord Anglia includes matching SL and HL objective sets. The briefs’ projected last-assessment-2025 label is stale for the already established extension through 2027, not evidence of a different objective set. These objectives are for the 2017 guide only; no 2028 objectives or separate per-AO weightings are inferred."
   ],
   "lastAssessment": 2027,
   "supersededBy": "First assessment 2028",
@@ -196,5 +221,6 @@
   ],
   "syllabusTopicsSource": "https://www.ibo.org/programmes/diploma-programme/curriculum/individuals-and-societies/history/ (retrieved 2026-09-07, page states 'last assessment in 2027')",
   "syllabusTopicsConfidence": "official",
-  "objectivesConfidence": "unverified"
+  "objectivesConfidence": "corroborated",
+  "objectivesSource": "https://img.nordangliaeducation.com/resources/asia/_filecache/524/fd1/237920-group-3--individuals-and-societies.pdf (retrieved 2026-09-09, IB History briefs for first assessment 2017, HL pp. 17-18 and SL pp. 19-20); https://lisa.europagym.at/wp-content/uploads/2019/09/brief_history_HL.pdf (retrieved 2026-09-09, IB History HL brief states 'First assessments 2017', pp. 1-2)."
 }

@@ -6,7 +6,32 @@
   "source": "https://www.ibo.org/programmes/diploma-programme/curriculum/",
   "retrievedAt": "2026-09-04",
   "verifiedPages": "knowledge base 7.7",
-  "objectives": [],
+  "objectives": [
+    {
+      "code": "AO1",
+      "name": "Show that you understand business tools, theories and course concepts, and can explain the problems and choices businesses face; include extension topics only if you take HL.",
+      "weightingMin": null,
+      "weightingMax": null
+    },
+    {
+      "code": "AO2",
+      "name": "Use business tools and concepts to analyse a problem or decision, choosing data that help you examine the issue; apply HL extensions only at HL.",
+      "weightingMin": null,
+      "weightingMax": null
+    },
+    {
+      "code": "AO3",
+      "name": "Bring business ideas and evidence together, weigh stakeholder interests and judge decisions; at HL, also compare competing strategic directions and justify your recommendation.",
+      "weightingMin": null,
+      "weightingMax": null
+    },
+    {
+      "code": "AO4",
+      "name": "Choose suitable tools and concepts to investigate a business problem, examine evidence from original and existing sources, and present organised work using precise business terminology.",
+      "weightingMin": null,
+      "weightingMax": null
+    }
+  ],
   "components": [
     {
       "code": "IA_SL",
@@ -59,15 +84,190 @@
     "The per-criterion SPLIT is still not publishable. The one source that lists all seven marks sums them to 27, not its own stated 25, and sources disagree on whether criterion A is the key concept or the context. Corroborated fragments only: key concept 5, supporting documents 4, presentation 2.",
     "The official IB subject brief confirms the component (20 hours, 20% at HL) but carries no per-criterion marks, as subject briefs never do.",
     "The public ibo.org subject page still describes the pre-2024 structure despite a 2026 'last updated' date — do not source from it.",
-    "Syllabus topics remain unverified: the public business-and-management page describes the pre-2024 structure despite its 06 March 2026 update date, which conflicts with this record’s first-assessment-2024 specification. No topics are taken from that page. Business criteria remain deliberately empty.",
-    "Assessment objectives remain unverified for First assessment 2024: the complete numbered objective set and its scope have not been confirmed from a matching official publication plus an independent agreeing source. The public curriculum overview and assessment component labels do not establish that set; no AO codes, descriptions or weightings are inferred."
+    "Topic and objective coverage comes from matching first-assessment-2024 IB briefs in two independent school collections, not the public Business page that still describes the preceding structure. HL-only topic labels and objective scope are retained; research-time and assessment-time allocations are not syllabus topics.",
+    "The briefs publish AO1–AO4 but no per-objective percentage ranges, so objective weightings remain null. These objectives do not establish per-criterion marks; the deliberately empty criteria and their documented contradictions remain unchanged."
   ],
   "firstAssessment": 2024,
   "lastAssessment": null,
   "guideStatus": "current",
   "supersededBy": null,
   "group": "Individuals and societies",
-  "syllabusTopics": [],
-  "syllabusTopicsConfidence": "unverified",
-  "objectivesConfidence": "unverified"
+  "syllabusTopics": [
+    {
+      "name": "Unit 1: Introduction to business management",
+      "ordinal": 0
+    },
+    {
+      "name": "1.1 What is a business?",
+      "ordinal": 1
+    },
+    {
+      "name": "1.2 Types of business entities",
+      "ordinal": 2
+    },
+    {
+      "name": "1.3 Business objectives",
+      "ordinal": 3
+    },
+    {
+      "name": "1.4 Stakeholders",
+      "ordinal": 4
+    },
+    {
+      "name": "1.5 Growth and evolution",
+      "ordinal": 5
+    },
+    {
+      "name": "1.6 Multinational companies (MNCs)",
+      "ordinal": 6
+    },
+    {
+      "name": "Unit 2: Human resource management",
+      "ordinal": 7
+    },
+    {
+      "name": "2.1 Introduction to human resource management",
+      "ordinal": 8
+    },
+    {
+      "name": "2.2 Organizational structure",
+      "ordinal": 9
+    },
+    {
+      "name": "2.3 Leadership and management",
+      "ordinal": 10
+    },
+    {
+      "name": "2.4 Motivation and demotivation",
+      "ordinal": 11
+    },
+    {
+      "name": "2.5 Organizational (corporate) culture (HL only)",
+      "ordinal": 12
+    },
+    {
+      "name": "2.6 Communication",
+      "ordinal": 13
+    },
+    {
+      "name": "2.7 Industrial/employee relations (HL only)",
+      "ordinal": 14
+    },
+    {
+      "name": "Unit 3: Finance and accounts",
+      "ordinal": 15
+    },
+    {
+      "name": "3.1 Introduction to finance",
+      "ordinal": 16
+    },
+    {
+      "name": "3.2 Sources of finance",
+      "ordinal": 17
+    },
+    {
+      "name": "3.3 Costs and revenues",
+      "ordinal": 18
+    },
+    {
+      "name": "3.4 Final accounts",
+      "ordinal": 19
+    },
+    {
+      "name": "3.5 Profitability and liquidity ratio analysis",
+      "ordinal": 20
+    },
+    {
+      "name": "3.6 Debt/equity ratio analysis (HL only)",
+      "ordinal": 21
+    },
+    {
+      "name": "3.7 Cash flow",
+      "ordinal": 22
+    },
+    {
+      "name": "3.8 Investment appraisal",
+      "ordinal": 23
+    },
+    {
+      "name": "3.9 Budgets (HL only)",
+      "ordinal": 24
+    },
+    {
+      "name": "Unit 4: Marketing",
+      "ordinal": 25
+    },
+    {
+      "name": "4.1 Introduction to marketing",
+      "ordinal": 26
+    },
+    {
+      "name": "4.2 Marketing planning",
+      "ordinal": 27
+    },
+    {
+      "name": "4.3 Sales forecasting (HL only)",
+      "ordinal": 28
+    },
+    {
+      "name": "4.4 Market research",
+      "ordinal": 29
+    },
+    {
+      "name": "4.5 The seven Ps of the marketing mix",
+      "ordinal": 30
+    },
+    {
+      "name": "4.6 International marketing (HL only)",
+      "ordinal": 31
+    },
+    {
+      "name": "Unit 5: Operations management",
+      "ordinal": 32
+    },
+    {
+      "name": "5.1 Introduction to operations management",
+      "ordinal": 33
+    },
+    {
+      "name": "5.2 Operations methods",
+      "ordinal": 34
+    },
+    {
+      "name": "5.3 Lean production and quality management (HL only)",
+      "ordinal": 35
+    },
+    {
+      "name": "5.4 Location",
+      "ordinal": 36
+    },
+    {
+      "name": "5.5 Break-even analysis",
+      "ordinal": 37
+    },
+    {
+      "name": "5.6 Production planning (HL only)",
+      "ordinal": 38
+    },
+    {
+      "name": "5.7 Crisis management and contingency planning (HL only)",
+      "ordinal": 39
+    },
+    {
+      "name": "5.8 Research and development (HL only)",
+      "ordinal": 40
+    },
+    {
+      "name": "5.9 Management information systems (HL only)",
+      "ordinal": 41
+    },
+    {
+      "name": "Business management toolkit",
+      "ordinal": 42
+    }
+  ],
+  "syllabusTopicsConfidence": "corroborated",
+  "objectivesConfidence": "corroborated",
+  "objectivesSource": "https://podarinternationalschool.com/wp-content/uploads/2023/02/Podar-International-School-IB-Santacruz-Curriculum-Overview-IBDP.pdf and https://www.isdcounselling.org/uploads/1/0/6/2/10624989/class_of_2028_dp_subject_briefs.pdf (retrieved 2026-09-09; independently hosted IB SL and HL subject briefs all state first assessments 2024; Podar PDF pp. 26 and 30, ISD PDF pp. 14 and 18; complete AO1–AO4 sections agree)",
+  "syllabusTopicsSource": "https://podarinternationalschool.com/wp-content/uploads/2023/02/Podar-International-School-IB-Santacruz-Curriculum-Overview-IBDP.pdf and https://www.isdcounselling.org/uploads/1/0/6/2/10624989/class_of_2028_dp_subject_briefs.pdf (retrieved 2026-09-09; independently hosted IB SL and HL subject briefs all state first assessments 2024; Podar PDF pp. 25–26 and 29–30, ISD PDF pp. 13–14 and 17–18; unit, numbered topic and toolkit labels agree)"
 }

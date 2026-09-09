@@ -192,10 +192,37 @@ def validate(name, s):
     elif confidence not in (None, "unverified"):
         errs.append("empty syllabusTopics cannot claim verified confidence")
 
-    for o in s.get("objectives", []):
+    objectives = s.get("objectives", [])
+    # Objective prose reaches the model as assessment authority just as criteria
+    # do. A populated list must not outlive the evidence that justified it.
+    if s.get("qualification") == "IB_DP":
+        source = s.get("objectivesSource")
+        confidence = s.get("objectivesConfidence")
+        if bool(objectives) != bool(source):
+            errs.append("objectives and objectivesSource must be supplied together")
+        if objectives and confidence not in ("official", "corroborated"):
+            errs.append("published objectives need official or corroborated confidence")
+        elif not objectives and confidence not in (None, "unverified"):
+            errs.append("empty objectives cannot claim verified confidence")
+
+    objective_codes = set()
+    for o in objectives:
+        code = o.get("code")
+        if not isinstance(code, str) or not code.strip():
+            errs.append("every objective needs a non-empty code")
+        elif code in objective_codes:
+            errs.append(f"duplicate objective code '{code}'")
+        objective_codes.add(code)
+        if not isinstance(o.get("name"), str) or not o["name"].strip():
+            errs.append(f"{code}: every objective needs a non-empty name")
         lo, hi = o.get("weightingMin"), o.get("weightingMax")
-        if lo is not None and hi is not None and lo > hi:
-            errs.append(f"{o.get('code')}: weightingMin > weightingMax")
+        if (lo is None) != (hi is None):
+            errs.append(f"{code}: objective weighting needs both bounds or neither")
+        elif lo is not None:
+            if any(type(n) not in (int, float) or not 0 <= n <= 100 for n in (lo, hi)):
+                errs.append(f"{code}: objective weightings must be numbers from 0 to 100")
+            elif lo > hi:
+                errs.append(f"{code}: weightingMin > weightingMax")
 
     if errs:
         raise DataError(name + ":\n  - " + "\n  - ".join(errs))

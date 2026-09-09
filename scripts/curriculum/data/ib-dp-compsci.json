@@ -6,7 +6,32 @@
   "source": "https://www.ibo.org/programmes/diploma-programme/curriculum/",
   "retrievedAt": "2026-09-04",
   "verifiedPages": "knowledge base 7.12",
-  "objectives": [],
+  "objectives": [
+    {
+      "code": "AO1",
+      "weightingMin": null,
+      "weightingMax": null,
+      "name": "Show that you understand computing facts, concepts, principles and vocabulary, and the methods and skills used to solve problems through computational thinking."
+    },
+    {
+      "code": "AO2",
+      "weightingMin": null,
+      "weightingMax": null,
+      "name": "Use your computing knowledge and computational thinking methods to solve problems, and choose suitable ways to present computing information."
+    },
+    {
+      "code": "AO3",
+      "weightingMin": null,
+      "weightingMax": null,
+      "name": "Develop and assess problem specifications, system requirements, success criteria, test strategies and programs. Analyse the techniques, evidence and technical explanations supporting your solution."
+    },
+    {
+      "code": "AO4",
+      "weightingMin": null,
+      "weightingMax": null,
+      "name": "Apply computational thinking to build computing solutions for problems in the real world."
+    }
+  ],
   "components": [
     {
       "code": "IA_SL",
@@ -118,7 +143,7 @@
     "Scoping is the dominant failure: a modest system that demonstrably runs outscores an ambitious one that does not.",
     "The 2027 guide does not require a named client.",
     "The main subject page explicitly describes last assessment 2026 and must not supply topics for this record. The linked 2027 curriculum update supplies these headings; its assessment prose and table disagree on SL weighting, so no assessment figures are taken from it.",
-    "Assessment objectives remain unverified for First assessment 2027: the complete numbered objective set and its scope have not been confirmed from a matching official publication plus an independent agreeing source. The public curriculum overview and assessment component labels do not establish that set; no AO codes, descriptions or weightings are inferred."
+    "AO1-AO4 are paraphrased from the first-assessment-2027 IB subject brief hosted by Mickiewicz Katowice and independently matched against Heidelberg International School’s 2026-28 handbook. Only the agreeing objective text is used from the handbook; its adjacent examination-duration table contains inconsistencies and is not a source for timing or weighting. Neither source publishes separate per-AO weightings, so these remain unknown."
   ],
   "firstAssessment": 2027,
   "lastAssessment": null,
@@ -169,5 +194,6 @@
   ],
   "syllabusTopicsSource": "https://www.ibo.org/university-admission/latest-curriculum-updates/computer-science-updates/ (retrieved 2026-09-07, page states 'First assessment will take place in May 2027')",
   "syllabusTopicsConfidence": "official",
-  "objectivesConfidence": "unverified"
+  "objectivesConfidence": "corroborated",
+  "objectivesSource": "https://cloud-0.edupage.org/cloud/comp_sci_first_assessment_2027.pdf?z%3AFjKYrWWjJ%2B9t%2F65%2BUk0KqEY0H%2FbBSatcQ%2Bzoc6zmUnFDqmCOB3oIvHCRHt1NHhp43nZ8xFIcXUZSx%2BBJyjqDoA%3D%3D= (retrieved 2026-09-09, IB subject brief states 'First assessment 2027', p. 3); https://www.hischool.de/fileadmin/Content/H.I.S/02-Downloads/Curriculum/H.I.S._Diploma_Programme_2026_28.pdf (retrieved 2026-09-09, Computer science section states 'First assessment 2027', pp. 55-57)."
 }

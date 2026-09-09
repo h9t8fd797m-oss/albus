@@ -1,0 +1,10 @@
+Command: xcodebuild build-for-testing -project ios/Albus.xcodeproj -scheme Albus -destination id=7962BB5F-E237-4225-9736-C4284C987221 -derivedDataPath /tmp/albus-verify-derived
+
+    
+    Signing Identity:     "Sign to Run Locally"
+    
+    /usr/bin/codesign --force --sign - --timestamp\=none --generate-entitlement-der /tmp/albus-verify-derived/Build/Products/Debug-iphonesimulator/AlbusUITests-Runner.app
+/tmp/albus-verify-derived/Build/Products/Debug-iphonesimulator/AlbusUITests-Runner.app: replacing existing signature
+
+** TEST BUILD SUCCEEDED **
+

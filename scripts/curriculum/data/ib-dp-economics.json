@@ -6,7 +6,32 @@
   "source": "https://www.ibo.org/programmes/diploma-programme/curriculum/",
   "retrievedAt": "2026-09-04",
   "verifiedPages": "knowledge base 7.6",
-  "objectives": [],
+  "objectives": [
+    {
+      "code": "AO1",
+      "name": "Show that you understand the economics you have studied and current economic evidence; include extension content if you take HL.",
+      "weightingMin": null,
+      "weightingMax": null
+    },
+    {
+      "code": "AO2",
+      "name": "Apply economic ideas to actual situations, interpret the evidence and explain how it is being used. In your IA, connect each commentary to its key concept; at HL, also apply and analyse extension content.",
+      "weightingMin": null,
+      "weightingMax": null
+    },
+    {
+      "code": "AO3",
+      "name": "Build and evaluate an economic argument using theory and examples. At HL, also evaluate extension content and use economic evidence to recommend policy.",
+      "weightingMin": null,
+      "weightingMax": null
+    },
+    {
+      "code": "AO4",
+      "name": "Organize your writing with accurate economic terminology. Use diagrams, news extracts, data and calculations to explain and analyse economic relationships.",
+      "weightingMin": null,
+      "weightingMax": null
+    }
+  ],
   "components": [
     {
       "code": "IA_SL",
@@ -119,15 +144,34 @@
     "Criterion NAMES are corroborated; the per-criterion mark split is NOT — sources disagree, so no marks are published.",
     "Articles must be from different sources and published within a year of the commentary.",
     "At SL this is 30% of the subject — the highest-weighted IA in group 3.",
-    "Syllabus topics remain unverified: the public economics page names broad fields but supplies neither a complete unit outline nor an explicit matching first-assessment-2022 label. The full matching outline is not confirmed.",
-    "Assessment objectives remain unverified for First assessment 2022: the complete numbered objective set and its scope have not been confirmed from a matching official publication plus an independent agreeing source. The public curriculum overview and assessment component labels do not establish that set; no AO codes, descriptions or weightings are inferred."
+    "Two independent school hosts of the matching IB briefs confirm four shared unit headings and AO1–AO4. The outline stops at units because the SL and HL subtopic lists differ; it does not imply identical depth at both levels.",
+    "Objective descriptions are Albus’s own second-person paraphrases. HL extensions and policy recommendations retain their HL restriction, and the commentary requirement retains its IA scope. The briefs publish assessment-component percentages, not whole-subject per-AO ranges, so objective weights remain null."
   ],
   "firstAssessment": 2022,
   "lastAssessment": null,
   "guideStatus": "current",
   "supersededBy": null,
   "group": "Individuals and societies",
-  "syllabusTopics": [],
-  "syllabusTopicsConfidence": "unverified",
-  "objectivesConfidence": "unverified"
+  "syllabusTopics": [
+    {
+      "name": "Unit 1: Introduction to economics",
+      "ordinal": 0
+    },
+    {
+      "name": "Unit 2: Microeconomics",
+      "ordinal": 1
+    },
+    {
+      "name": "Unit 3: Macroeconomics",
+      "ordinal": 2
+    },
+    {
+      "name": "Unit 4: The global economy",
+      "ordinal": 3
+    }
+  ],
+  "syllabusTopicsConfidence": "corroborated",
+  "objectivesConfidence": "corroborated",
+  "objectivesSource": "https://www.didzdvaris.lt/wp-content/uploads/2020/12/sl-economics-en.pdf; https://www.didzdvaris.lt/wp-content/uploads/2020/12/hl-economics-en.pdf; https://img.nordangliaeducation.com/resources/asia/_filecache/524/fd1/237920-group-3--individuals-and-societies.pdf (retrieved 2026-09-09; First assessments 2022—last assessments 2029; SL/HL curriculum overview and assessment model, compilation pages 5–8)",
+  "syllabusTopicsSource": "https://www.didzdvaris.lt/wp-content/uploads/2020/12/sl-economics-en.pdf; https://www.didzdvaris.lt/wp-content/uploads/2020/12/hl-economics-en.pdf; https://img.nordangliaeducation.com/resources/asia/_filecache/524/fd1/237920-group-3--individuals-and-societies.pdf (retrieved 2026-09-09; First assessments 2022—last assessments 2029; SL/HL curriculum overview and assessment model, compilation pages 5–8)"
 }

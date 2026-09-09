@@ -1,0 +1,42 @@
+✓ 19 subjects valid
+    A_LEVEL [AQA] Biology: 3 components, 3 objectives
+    A_LEVEL [AQA] Chemistry: 3 components, 3 objectives
+    A_LEVEL [AQA] Physics: 3 components, 3 objectives
+    IB_DP Biology: 4 components, 4 objectives
+    IB_DP Business management: 4 components, 4 objectives
+    IB_DP Chemistry: 4 components, 4 objectives
+    IB_DP Computer science: 4 components, 4 objectives
+    IB_DP Economics: 4 components, 4 objectives
+    IB_DP Environmental systems and societies: 4 components, 4 objectives
+    IB_DP Extended essay: 1 components, 4 objectives
+    IB_DP Geography: 4 components, 4 objectives
+    IB_DP History: 4 components, 4 objectives
+    IB_DP Language A: language and literature: 4 components, 3 objectives
+    IB_DP Language A: literature: 4 components, 3 objectives
+    IB_DP Language B: 4 components, 5 objectives
+    IB_DP Mathematics: analysis and approaches: 4 components, 6 objectives
+    IB_DP Mathematics: applications and interpretation: 4 components, 6 objectives
+    IB_DP Physics: 4 components, 4 objectives
+    IB_DP Theory of knowledge: 2 components, 7 objectives
+✓ 19 subjects valid
+    A_LEVEL [AQA] Biology: 3 components, 3 objectives
+    A_LEVEL [AQA] Chemistry: 3 components, 3 objectives
+    A_LEVEL [AQA] Physics: 3 components, 3 objectives
+    IB_DP Biology: 4 components, 4 objectives
+    IB_DP Business management: 4 components, 4 objectives
+    IB_DP Chemistry: 4 components, 4 objectives
+    IB_DP Computer science: 4 components, 4 objectives
+    IB_DP Economics: 4 components, 4 objectives
+    IB_DP Environmental systems and societies: 4 components, 4 objectives
+    IB_DP Extended essay: 1 components, 4 objectives
+    IB_DP Geography: 4 components, 4 objectives
+    IB_DP History: 4 components, 4 objectives
+    IB_DP Language A: language and literature: 4 components, 3 objectives
+    IB_DP Language A: literature: 4 components, 3 objectives
+    IB_DP Language B: 4 components, 5 objectives
+    IB_DP Mathematics: analysis and approaches: 4 components, 6 objectives
+    IB_DP Mathematics: applications and interpretation: 4 components, 6 objectives
+    IB_DP Physics: 4 components, 4 objectives
+    IB_DP Theory of knowledge: 2 components, 7 objectives
+→ ios/App/Albus/Models/Curriculum.swift
+→ scripts/curriculum/seed.sql
