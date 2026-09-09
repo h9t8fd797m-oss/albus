@@ -358,8 +358,8 @@ extension CurriculumSubject {
 ''']
 
     for _, s in subjects:
-        objectives = ", ".join(
-            "        .init(code: {}, name: {}, weightingMin: {}, weightingMax: {})".format(
+        objectives = ",\n".join(
+            "            .init(code: {}, name: {}, weightingMin: {}, weightingMax: {})".format(
                 swift_literal(o["code"]), swift_literal(o["name"]),
                 swift_literal(o.get("weightingMin")), swift_literal(o.get("weightingMax")),
             )

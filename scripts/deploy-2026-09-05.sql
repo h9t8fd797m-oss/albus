@@ -10,7 +10,7 @@
 --
 -- So this repairs the history AND applies all three migrations AND records them
 -- under their real filename versions, in a single transaction. Afterwards the
--- the repaired entries use their filename versions. Compare the complete
+-- repaired entries use their filename versions. Compare the complete
 -- history with the repository before using `supabase db push` in a later deploy.
 --
 -- ALL OR NOTHING. Any failure rolls the whole thing back and production is
