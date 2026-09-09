@@ -1,17 +1,17 @@
--- One-shot production deploy: history repair + the two pending migrations.
+-- One-shot production deploy: history repair + the three pending migrations.
 --
 -- WHY THIS IS ONE FILE. Applying a migration through the dashboard (or the
 -- MCP apply_migration tool) stamps the *moment of application* as its version,
 -- not the version in its filename. That is not a hypothesis: production records
 -- `production_financial_safety` as 20260901192220 while its file is
 -- 20260830104329, because that is exactly how it was applied. Repairing the
--- history and then hand-applying two more migrations the same way would fix
--- twelve rows and immediately create two more wrong ones.
+-- history and then hand-applying three more migrations the same way would fix
+-- twelve rows and immediately create three more wrong ones.
 --
--- So this repairs the history AND applies both migrations AND records them
+-- So this repairs the history AND applies all three migrations AND records them
 -- under their real filename versions, in a single transaction. Afterwards the
--- recorded history matches supabase/migrations/ exactly, and `supabase db push`
--- becomes safe to use for the first time.
+-- the repaired entries use their filename versions. Compare the complete
+-- history with the repository before using `supabase db push` in a later deploy.
 --
 -- ALL OR NOTHING. Any failure rolls the whole thing back and production is
 -- exactly as it was. The verification block at the end raises rather than
@@ -42,8 +42,32 @@ update supabase_migrations.schema_migrations set version = '20260830104329' wher
 update supabase_migrations.schema_migrations set version = '20260830114547' where version = '20260901192432' and name = 'close_direct_write_and_request_abuse';
 update supabase_migrations.schema_migrations set version = '20260831174227' where version = '20260901225530' and name = 'drop_scaffold_course_templates';
 
--- Applied but never recorded at all. Its DDL is demonstrably live:
--- profiles.exam_session, courses.level, dp_year_for_session(), set_ib_context().
+-- A missing history row does not establish that its migration ran. Refuse to
+-- stamp this version unless the student-context columns and RPCs are present.
+do $$
+begin
+  if exists (
+    select 1 from (values
+      ('profiles', 'exam_session', 'text'),
+      ('profiles', 'target_points', 'smallint'),
+      ('courses', 'level', 'text'),
+      ('courses', 'target_grade', 'smallint')
+    ) as expected(table_name, column_name, data_type)
+    where not exists (
+      select 1 from information_schema.columns c
+       where c.table_schema = 'public'
+         and c.table_name = expected.table_name
+         and c.column_name = expected.column_name
+         and c.data_type = expected.data_type
+    )
+  ) or to_regprocedure('public.dp_year_for_session(text,timestamp with time zone)') is null
+    or to_regprocedure('public.create_course(text,text,text,text,smallint)') is null
+    or to_regprocedure('public.update_course(uuid,text,smallint,boolean,boolean)') is null
+    or to_regprocedure('public.set_ib_context(text,smallint,boolean,boolean)') is null then
+    raise exception 'ib_student_context schema is incomplete; refusing to record an unapplied migration';
+  end if;
+end $$;
+
 insert into supabase_migrations.schema_migrations (version, name)
   select '20260901200000', 'ib_student_context'
    where not exists (select 1 from supabase_migrations.schema_migrations where version = '20260901200000');
@@ -96,7 +120,8 @@ insert into supabase_migrations.schema_migrations (version, name)
 -- once-only migration but fails the second time a re-runnable script executes
 -- it. Dropping the new signatures first keeps the embedded copy verbatim --
 -- a deploy script that paraphrases its own migrations is one that drifts from
--- them -- while letting the whole file stay safe to run twice.
+-- them -- while letting the whole file stay safe to run twice. A rerun
+-- restores the same logical state; it still recreates constraints and functions.
 drop function if exists private.ai_metered_cost(text, integer, integer, integer, integer);
 drop function if exists public.finalize_ai_usage(uuid, text, integer, integer, text, integer, integer);
 
@@ -298,16 +323,32 @@ declare
   v_notnull boolean;
   v_types   boolean;
 begin
-  -- Every migration file must now be recorded under its filename version.
-  select array_agg(v order by v) into v_missing
-    from unnest(array[
-      '0030','0031','0032','0033','0034','0035','0036','0037',
-      '20260830104329','20260830114547','20260831174227','20260901200000',
-      '20260903204500','20260903223000','20260907120000'
-    ]) as v
-   where not exists (select 1 from supabase_migrations.schema_migrations m where m.version = v);
+  -- A correct version attached to the wrong name is still false history.
+  select array_agg(expected.version || '_' || expected.name order by expected.version)
+    into v_missing
+    from (values
+      ('0030', 'grading_free_quota'),
+      ('0031', 'grading_basis_and_allowance'),
+      ('0032', 'grading_reuse'),
+      ('0033', 'final_grade_and_usage_truth'),
+      ('0034', 'three_plans'),
+      ('0035', 'account_risk'),
+      ('0036', 'close_two_bypasses'),
+      ('0037', 'chat_becomes_pro_only'),
+      ('20260830104329', 'production_financial_safety'),
+      ('20260830114547', 'close_direct_write_and_request_abuse'),
+      ('20260831174227', 'drop_scaffold_course_templates'),
+      ('20260901200000', 'ib_student_context'),
+      ('20260903204500', 'ib_task_types'),
+      ('20260903223000', 'preserve_ai_cost_history'),
+      ('20260907120000', 'bill_cached_tokens')
+    ) as expected(version, name)
+   where not exists (
+     select 1 from supabase_migrations.schema_migrations m
+      where m.version = expected.version and m.name = expected.name
+   );
   if v_missing is not null then
-    raise exception 'history still missing: %', v_missing;
+    raise exception 'history missing expected version/name pairs: %', v_missing;
   end if;
 
   -- And none of the old, wrongly-stamped versions may survive.
@@ -320,8 +361,15 @@ begin
     raise exception 'a wrongly-stamped version survived the repair';
   end if;
 
-  select pg_get_constraintdef(oid) like '%internal_assessment%' into v_types
-    from pg_constraint where conname = 'assignments_task_type_check';
+  select pg_get_constraintdef(oid) like all (array[
+      '%''internal_assessment''%', '%''extended_essay''%',
+      '%''tok_essay''%', '%''tok_exhibition''%',
+      '%''mock_exam''%', '%''final_exam''%'
+    ]) into v_types
+    from pg_constraint
+   where conrelid = 'public.assignments'::regclass
+     and conname = 'assignments_task_type_check'
+     and contype = 'c';
   if not coalesce(v_types, false) then
     raise exception 'assignments_task_type_check does not include the IB types';
   end if;
@@ -342,14 +390,18 @@ begin
     raise exception 'ai_usage.user_id is still NOT NULL; SET NULL could never fire';
   end if;
 
-  if not exists (
-    select 1 from information_schema.columns
-     where table_schema='public' and table_name='ai_usage' and column_name='cache_write_tokens'
+  if exists (
+    select 1 from unnest(array['cache_write_tokens', 'cache_read_tokens']) as expected(column_name)
+     where not exists (
+       select 1 from information_schema.columns c
+        where c.table_schema = 'public' and c.table_name = 'ai_usage'
+          and c.column_name = expected.column_name and c.data_type = 'integer'
+     )
   ) then
-    raise exception 'ai_usage.cache_write_tokens is missing; cached spend would still be invisible';
+    raise exception 'ai_usage cache token columns must both exist as integer; cached spend would be unreliable';
   end if;
 
-  raise notice 'deploy verified: history matches supabase/migrations/, all three migrations applied';
+  raise notice 'deploy verified: repaired version/name pairs match, all three migrations applied';
 end $$;
 
 commit;
