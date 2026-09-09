@@ -197,7 +197,9 @@ def emit(sections: list[Section], corpus: str, source: str) -> str:
         "",
     ]
     for s in sections:
-        keywords = KEYWORDS.get(s.number, "")
+        # A split table still answers the original questions. Losing its hints
+        # lets unrelated sections outrank the continuation containing the answer.
+        keywords = KEYWORDS.get(re.sub(r"p\d+$", "", s.number), "")
         always = "true" if s.number in ALWAYS else "false"
         lines.append(
             "insert into public.knowledge_sections "

@@ -1,0 +1,144 @@
+[
+  {
+    "name": "science IA",
+    "variant": "before",
+    "sections": [
+      "0.3",
+      "14.1",
+      "7.3",
+      "7.2",
+      "5.8"
+    ],
+    "bodyChars": 10007,
+    "result": {
+      "status": 401,
+      "response": {
+        "type": "error",
+        "error": {
+          "type": "authentication_error",
+          "message": "API key is invalid."
+        },
+        "request_id": null
+      }
+    }
+  },
+  {
+    "name": "science IA",
+    "variant": "lossless table separator removal",
+    "sections": [
+      "0.3",
+      "14.1",
+      "7.3",
+      "7.2",
+      "5.8"
+    ],
+    "bodyChars": 10007,
+    "result": {
+      "status": 401,
+      "response": {
+        "type": "error",
+        "error": {
+          "type": "authentication_error",
+          "message": "API key is invalid."
+        },
+        "request_id": null
+      }
+    }
+  },
+  {
+    "name": "command terms",
+    "variant": "before",
+    "sections": [
+      "0.3",
+      "14.1",
+      "4.2",
+      "4.2p2",
+      "4.3",
+      "8.1"
+    ],
+    "bodyChars": 11915,
+    "result": {
+      "status": 401,
+      "response": {
+        "type": "error",
+        "error": {
+          "type": "authentication_error",
+          "message": "API key is invalid."
+        },
+        "request_id": null
+      }
+    }
+  },
+  {
+    "name": "command terms",
+    "variant": "lossless table separator removal",
+    "sections": [
+      "0.3",
+      "14.1",
+      "4.2",
+      "4.2p2",
+      "4.3",
+      "8.1"
+    ],
+    "bodyChars": 11915,
+    "result": {
+      "status": 401,
+      "response": {
+        "type": "error",
+        "error": {
+          "type": "authentication_error",
+          "message": "API key is invalid."
+        },
+        "request_id": null
+      }
+    }
+  },
+  {
+    "name": "diploma rules",
+    "variant": "before",
+    "sections": [
+      "0.3",
+      "14.1",
+      "2.3",
+      "2.2",
+      "6.2.4",
+      "10.6"
+    ],
+    "bodyChars": 7552,
+    "result": {
+      "status": 401,
+      "response": {
+        "type": "error",
+        "error": {
+          "type": "authentication_error",
+          "message": "API key is invalid."
+        },
+        "request_id": null
+      }
+    }
+  },
+  {
+    "name": "diploma rules",
+    "variant": "lossless table separator removal",
+    "sections": [
+      "0.3",
+      "14.1",
+      "2.3",
+      "2.2",
+      "6.2.4",
+      "10.6"
+    ],
+    "bodyChars": 7552,
+    "result": {
+      "status": 401,
+      "response": {
+        "type": "error",
+        "error": {
+          "type": "authentication_error",
+          "message": "API key is invalid."
+        },
+        "request_id": null
+      }
+    }
+  }
+]
