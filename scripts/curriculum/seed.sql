@@ -213,7 +213,101 @@ begin
   returning id into v_template;
 
   delete from public.assessment_objectives where course_template_id = v_template;
+  insert into public.assessment_objectives (course_template_id, code, name, weighting_min, weighting_max, ordinal)
+  values (v_template, 'AO1', 'Show that you understand business tools, theories and course concepts, and can explain the problems and choices businesses face; include extension topics only if you take HL.', null, null, 0);
+  insert into public.assessment_objectives (course_template_id, code, name, weighting_min, weighting_max, ordinal)
+  values (v_template, 'AO2', 'Use business tools and concepts to analyse a problem or decision, choosing data that help you examine the issue; apply HL extensions only at HL.', null, null, 1);
+  insert into public.assessment_objectives (course_template_id, code, name, weighting_min, weighting_max, ordinal)
+  values (v_template, 'AO3', 'Bring business ideas and evidence together, weigh stakeholder interests and judge decisions; at HL, also compare competing strategic directions and justify your recommendation.', null, null, 2);
+  insert into public.assessment_objectives (course_template_id, code, name, weighting_min, weighting_max, ordinal)
+  values (v_template, 'AO4', 'Choose suitable tools and concepts to investigate a business problem, examine evidence from original and existing sources, and present organised work using precise business terminology.', null, null, 3);
   delete from public.syllabus_topics where course_template_id = v_template;
+  insert into public.syllabus_topics (course_template_id, name, ordinal)
+  values (v_template, 'Unit 1: Introduction to business management', 0);
+  insert into public.syllabus_topics (course_template_id, name, ordinal)
+  values (v_template, '1.1 What is a business?', 1);
+  insert into public.syllabus_topics (course_template_id, name, ordinal)
+  values (v_template, '1.2 Types of business entities', 2);
+  insert into public.syllabus_topics (course_template_id, name, ordinal)
+  values (v_template, '1.3 Business objectives', 3);
+  insert into public.syllabus_topics (course_template_id, name, ordinal)
+  values (v_template, '1.4 Stakeholders', 4);
+  insert into public.syllabus_topics (course_template_id, name, ordinal)
+  values (v_template, '1.5 Growth and evolution', 5);
+  insert into public.syllabus_topics (course_template_id, name, ordinal)
+  values (v_template, '1.6 Multinational companies (MNCs)', 6);
+  insert into public.syllabus_topics (course_template_id, name, ordinal)
+  values (v_template, 'Unit 2: Human resource management', 7);
+  insert into public.syllabus_topics (course_template_id, name, ordinal)
+  values (v_template, '2.1 Introduction to human resource management', 8);
+  insert into public.syllabus_topics (course_template_id, name, ordinal)
+  values (v_template, '2.2 Organizational structure', 9);
+  insert into public.syllabus_topics (course_template_id, name, ordinal)
+  values (v_template, '2.3 Leadership and management', 10);
+  insert into public.syllabus_topics (course_template_id, name, ordinal)
+  values (v_template, '2.4 Motivation and demotivation', 11);
+  insert into public.syllabus_topics (course_template_id, name, ordinal)
+  values (v_template, '2.5 Organizational (corporate) culture (HL only)', 12);
+  insert into public.syllabus_topics (course_template_id, name, ordinal)
+  values (v_template, '2.6 Communication', 13);
+  insert into public.syllabus_topics (course_template_id, name, ordinal)
+  values (v_template, '2.7 Industrial/employee relations (HL only)', 14);
+  insert into public.syllabus_topics (course_template_id, name, ordinal)
+  values (v_template, 'Unit 3: Finance and accounts', 15);
+  insert into public.syllabus_topics (course_template_id, name, ordinal)
+  values (v_template, '3.1 Introduction to finance', 16);
+  insert into public.syllabus_topics (course_template_id, name, ordinal)
+  values (v_template, '3.2 Sources of finance', 17);
+  insert into public.syllabus_topics (course_template_id, name, ordinal)
+  values (v_template, '3.3 Costs and revenues', 18);
+  insert into public.syllabus_topics (course_template_id, name, ordinal)
+  values (v_template, '3.4 Final accounts', 19);
+  insert into public.syllabus_topics (course_template_id, name, ordinal)
+  values (v_template, '3.5 Profitability and liquidity ratio analysis', 20);
+  insert into public.syllabus_topics (course_template_id, name, ordinal)
+  values (v_template, '3.6 Debt/equity ratio analysis (HL only)', 21);
+  insert into public.syllabus_topics (course_template_id, name, ordinal)
+  values (v_template, '3.7 Cash flow', 22);
+  insert into public.syllabus_topics (course_template_id, name, ordinal)
+  values (v_template, '3.8 Investment appraisal', 23);
+  insert into public.syllabus_topics (course_template_id, name, ordinal)
+  values (v_template, '3.9 Budgets (HL only)', 24);
+  insert into public.syllabus_topics (course_template_id, name, ordinal)
+  values (v_template, 'Unit 4: Marketing', 25);
+  insert into public.syllabus_topics (course_template_id, name, ordinal)
+  values (v_template, '4.1 Introduction to marketing', 26);
+  insert into public.syllabus_topics (course_template_id, name, ordinal)
+  values (v_template, '4.2 Marketing planning', 27);
+  insert into public.syllabus_topics (course_template_id, name, ordinal)
+  values (v_template, '4.3 Sales forecasting (HL only)', 28);
+  insert into public.syllabus_topics (course_template_id, name, ordinal)
+  values (v_template, '4.4 Market research', 29);
+  insert into public.syllabus_topics (course_template_id, name, ordinal)
+  values (v_template, '4.5 The seven Ps of the marketing mix', 30);
+  insert into public.syllabus_topics (course_template_id, name, ordinal)
+  values (v_template, '4.6 International marketing (HL only)', 31);
+  insert into public.syllabus_topics (course_template_id, name, ordinal)
+  values (v_template, 'Unit 5: Operations management', 32);
+  insert into public.syllabus_topics (course_template_id, name, ordinal)
+  values (v_template, '5.1 Introduction to operations management', 33);
+  insert into public.syllabus_topics (course_template_id, name, ordinal)
+  values (v_template, '5.2 Operations methods', 34);
+  insert into public.syllabus_topics (course_template_id, name, ordinal)
+  values (v_template, '5.3 Lean production and quality management (HL only)', 35);
+  insert into public.syllabus_topics (course_template_id, name, ordinal)
+  values (v_template, '5.4 Location', 36);
+  insert into public.syllabus_topics (course_template_id, name, ordinal)
+  values (v_template, '5.5 Break-even analysis', 37);
+  insert into public.syllabus_topics (course_template_id, name, ordinal)
+  values (v_template, '5.6 Production planning (HL only)', 38);
+  insert into public.syllabus_topics (course_template_id, name, ordinal)
+  values (v_template, '5.7 Crisis management and contingency planning (HL only)', 39);
+  insert into public.syllabus_topics (course_template_id, name, ordinal)
+  values (v_template, '5.8 Research and development (HL only)', 40);
+  insert into public.syllabus_topics (course_template_id, name, ordinal)
+  values (v_template, '5.9 Management information systems (HL only)', 41);
+  insert into public.syllabus_topics (course_template_id, name, ordinal)
+  values (v_template, 'Business management toolkit', 42);
 
   insert into public.assessment_types (course_template_id, code, name, typical_minutes)
   values (v_template, 'IA_SL', 'Business research project (SL)', 1200)
@@ -327,6 +421,14 @@ begin
   returning id into v_template;
 
   delete from public.assessment_objectives where course_template_id = v_template;
+  insert into public.assessment_objectives (course_template_id, code, name, weighting_min, weighting_max, ordinal)
+  values (v_template, 'AO1', 'Show that you understand computing facts, concepts, principles and vocabulary, and the methods and skills used to solve problems through computational thinking.', null, null, 0);
+  insert into public.assessment_objectives (course_template_id, code, name, weighting_min, weighting_max, ordinal)
+  values (v_template, 'AO2', 'Use your computing knowledge and computational thinking methods to solve problems, and choose suitable ways to present computing information.', null, null, 1);
+  insert into public.assessment_objectives (course_template_id, code, name, weighting_min, weighting_max, ordinal)
+  values (v_template, 'AO3', 'Develop and assess problem specifications, system requirements, success criteria, test strategies and programs. Analyse the techniques, evidence and technical explanations supporting your solution.', null, null, 2);
+  insert into public.assessment_objectives (course_template_id, code, name, weighting_min, weighting_max, ordinal)
+  values (v_template, 'AO4', 'Apply computational thinking to build computing solutions for problems in the real world.', null, null, 3);
   delete from public.syllabus_topics where course_template_id = v_template;
   insert into public.syllabus_topics (course_template_id, name, ordinal)
   values (v_template, 'A: Concepts of computer science', 0);
@@ -405,7 +507,23 @@ begin
   returning id into v_template;
 
   delete from public.assessment_objectives where course_template_id = v_template;
+  insert into public.assessment_objectives (course_template_id, code, name, weighting_min, weighting_max, ordinal)
+  values (v_template, 'AO1', 'Show that you understand the economics you have studied and current economic evidence; include extension content if you take HL.', null, null, 0);
+  insert into public.assessment_objectives (course_template_id, code, name, weighting_min, weighting_max, ordinal)
+  values (v_template, 'AO2', 'Apply economic ideas to actual situations, interpret the evidence and explain how it is being used. In your IA, connect each commentary to its key concept; at HL, also apply and analyse extension content.', null, null, 1);
+  insert into public.assessment_objectives (course_template_id, code, name, weighting_min, weighting_max, ordinal)
+  values (v_template, 'AO3', 'Build and evaluate an economic argument using theory and examples. At HL, also evaluate extension content and use economic evidence to recommend policy.', null, null, 2);
+  insert into public.assessment_objectives (course_template_id, code, name, weighting_min, weighting_max, ordinal)
+  values (v_template, 'AO4', 'Organize your writing with accurate economic terminology. Use diagrams, news extracts, data and calculations to explain and analyse economic relationships.', null, null, 3);
   delete from public.syllabus_topics where course_template_id = v_template;
+  insert into public.syllabus_topics (course_template_id, name, ordinal)
+  values (v_template, 'Unit 1: Introduction to economics', 0);
+  insert into public.syllabus_topics (course_template_id, name, ordinal)
+  values (v_template, 'Unit 2: Microeconomics', 1);
+  insert into public.syllabus_topics (course_template_id, name, ordinal)
+  values (v_template, 'Unit 3: Macroeconomics', 2);
+  insert into public.syllabus_topics (course_template_id, name, ordinal)
+  values (v_template, 'Unit 4: The global economy', 3);
 
   insert into public.assessment_types (course_template_id, code, name, typical_minutes)
   values (v_template, 'IA_SL', 'Portfolio of three commentaries (SL)', 1200)
@@ -463,7 +581,43 @@ begin
   returning id into v_template;
 
   delete from public.assessment_objectives where course_template_id = v_template;
+  insert into public.assessment_objectives (course_template_id, code, name, weighting_min, weighting_max, ordinal)
+  values (v_template, 'AO1', 'Show that you understand environmental concepts, methods and terminology, including the different perspectives people bring to an issue.', null, null, 0);
+  insert into public.assessment_objectives (course_template_id, code, name, weighting_min, weighting_max, ordinal)
+  values (v_template, 'AO2', 'Use your understanding to analyse explanations, evidence, models and case studies, including the arguments and values involved.', null, null, 1);
+  insert into public.assessment_objectives (course_template_id, code, name, weighting_min, weighting_max, ordinal)
+  values (v_template, 'AO3', 'Evaluate explanations, proposed solutions and investigation methods; justify your judgments and connect the political, economic, ethical and social contexts.', null, null, 2);
+  insert into public.assessment_objectives (course_template_id, code, name, weighting_min, weighting_max, ordinal)
+  values (v_template, 'AO4', 'Investigate a sustainability issue by defining a workable environmental research question and using suitable methods ethically.', null, null, 3);
   delete from public.syllabus_topics where course_template_id = v_template;
+  insert into public.syllabus_topics (course_template_id, name, ordinal)
+  values (v_template, 'Topic 1: Foundation', 0);
+  insert into public.syllabus_topics (course_template_id, name, ordinal)
+  values (v_template, '1.1 Perspectives', 1);
+  insert into public.syllabus_topics (course_template_id, name, ordinal)
+  values (v_template, '1.2 Systems', 2);
+  insert into public.syllabus_topics (course_template_id, name, ordinal)
+  values (v_template, '1.3 Sustainability', 3);
+  insert into public.syllabus_topics (course_template_id, name, ordinal)
+  values (v_template, 'Topic 2: Ecology', 4);
+  insert into public.syllabus_topics (course_template_id, name, ordinal)
+  values (v_template, 'Topic 3: Biodiversity and conservation', 5);
+  insert into public.syllabus_topics (course_template_id, name, ordinal)
+  values (v_template, 'Topic 4: Water', 6);
+  insert into public.syllabus_topics (course_template_id, name, ordinal)
+  values (v_template, 'Topic 5: Land', 7);
+  insert into public.syllabus_topics (course_template_id, name, ordinal)
+  values (v_template, 'Topic 6: Atmosphere and climate change', 8);
+  insert into public.syllabus_topics (course_template_id, name, ordinal)
+  values (v_template, 'Topic 7: Natural resources', 9);
+  insert into public.syllabus_topics (course_template_id, name, ordinal)
+  values (v_template, 'Topic 8: Human populations and urban systems', 10);
+  insert into public.syllabus_topics (course_template_id, name, ordinal)
+  values (v_template, 'HL.a Environmental law (HL only)', 11);
+  insert into public.syllabus_topics (course_template_id, name, ordinal)
+  values (v_template, 'HL.b Environmental and ecological economics (HL only)', 12);
+  insert into public.syllabus_topics (course_template_id, name, ordinal)
+  values (v_template, 'HL.c Environmental ethics (HL only)', 13);
 
   insert into public.assessment_types (course_template_id, code, name, typical_minutes)
   values (v_template, 'IA_SL', 'Individual investigation (SL)', 600)
@@ -525,6 +679,14 @@ begin
   returning id into v_template;
 
   delete from public.assessment_objectives where course_template_id = v_template;
+  insert into public.assessment_objectives (course_template_id, code, name, weighting_min, weighting_max, ordinal)
+  values (v_template, 'Albus 1', 'Show that you understand your chosen topic and research question, the relevant terminology and concepts, and the research methods you use.', null, null, 0);
+  insert into public.assessment_objectives (course_template_id, code, name, weighting_min, weighting_max, ordinal)
+  values (v_template, 'Albus 2', 'Apply suitable research methods to answer your question and analyse what your research reveals.', null, null, 1);
+  insert into public.assessment_objectives (course_template_id, code, name, weighting_min, weighting_max, ordinal)
+  values (v_template, 'Albus 3', 'Weigh the significance of your findings and connect your question, findings and conclusions through a clear argument. Evaluate your essay and reflect on what the research experience has taught you as a learner.', null, null, 2);
+  insert into public.assessment_objectives (course_template_id, code, name, weighting_min, weighting_max, ordinal)
+  values (v_template, 'Albus 4', 'Present your research using the appropriate structure and conventions, and show academic integrity throughout.', null, null, 3);
   delete from public.syllabus_topics where course_template_id = v_template;
 
   insert into public.assessment_types (course_template_id, code, name, typical_minutes)
@@ -563,6 +725,38 @@ begin
   insert into public.assessment_objectives (course_template_id, code, name, weighting_min, weighting_max, ordinal)
   values (v_template, 'AO4', 'Selection, use and application of a variety of appropriate skills and techniques', null, null, 3);
   delete from public.syllabus_topics where course_template_id = v_template;
+  insert into public.syllabus_topics (course_template_id, name, ordinal)
+  values (v_template, 'Geographic themes: seven options (choose two at SL, three at HL)', 0);
+  insert into public.syllabus_topics (course_template_id, name, ordinal)
+  values (v_template, 'Freshwater', 1);
+  insert into public.syllabus_topics (course_template_id, name, ordinal)
+  values (v_template, 'Oceans and coastal margins', 2);
+  insert into public.syllabus_topics (course_template_id, name, ordinal)
+  values (v_template, 'Extreme environments', 3);
+  insert into public.syllabus_topics (course_template_id, name, ordinal)
+  values (v_template, 'Geophysical hazards', 4);
+  insert into public.syllabus_topics (course_template_id, name, ordinal)
+  values (v_template, 'Leisure, tourism and sport', 5);
+  insert into public.syllabus_topics (course_template_id, name, ordinal)
+  values (v_template, 'Food and health', 6);
+  insert into public.syllabus_topics (course_template_id, name, ordinal)
+  values (v_template, 'Urban environments', 7);
+  insert into public.syllabus_topics (course_template_id, name, ordinal)
+  values (v_template, 'Geographic perspectives: global change (SL and HL core)', 8);
+  insert into public.syllabus_topics (course_template_id, name, ordinal)
+  values (v_template, 'Population distribution—changing population', 9);
+  insert into public.syllabus_topics (course_template_id, name, ordinal)
+  values (v_template, 'Global climate—vulnerability and resilience', 10);
+  insert into public.syllabus_topics (course_template_id, name, ordinal)
+  values (v_template, 'Global resource consumption and security', 11);
+  insert into public.syllabus_topics (course_template_id, name, ordinal)
+  values (v_template, 'Geographic perspectives: global interactions (HL only)', 12);
+  insert into public.syllabus_topics (course_template_id, name, ordinal)
+  values (v_template, 'Power, places and networks (HL only)', 13);
+  insert into public.syllabus_topics (course_template_id, name, ordinal)
+  values (v_template, 'Human development and diversity (HL only)', 14);
+  insert into public.syllabus_topics (course_template_id, name, ordinal)
+  values (v_template, 'Global risks and resilience (HL only)', 15);
 
   insert into public.assessment_types (course_template_id, code, name, typical_minutes)
   values (v_template, 'IA_SL', 'Fieldwork report (SL)', 1200)
@@ -624,6 +818,14 @@ begin
   returning id into v_template;
 
   delete from public.assessment_objectives where course_template_id = v_template;
+  insert into public.assessment_objectives (course_template_id, code, name, weighting_min, weighting_max, ordinal)
+  values (v_template, 'AO1', 'Use accurate, detailed historical knowledge and show that you understand the concepts, context and sources relevant to your question.', null, null, 0);
+  insert into public.assessment_objectives (course_template_id, code, name, weighting_min, weighting_max, ordinal)
+  values (v_template, 'AO2', 'Build a clear argument supported by relevant historical knowledge, and analyse and interpret different kinds of sources.', null, null, 1);
+  insert into public.assessment_objectives (course_template_id, code, name, weighting_min, weighting_max, ordinal)
+  values (v_template, 'AO3', 'Bring evidence and analysis together into a coherent answer. Weigh different historical perspectives, assess sources for their value and limitations, and combine information from relevant sources.', null, null, 2);
+  insert into public.assessment_objectives (course_template_id, code, name, weighting_min, weighting_max, ordinal)
+  values (v_template, 'AO4', 'Develop focused essays and research questions, choose and reference suitable sources, and organise your research. Reflect on historians’ methods and the difficulties they face.', null, null, 3);
   delete from public.syllabus_topics where course_template_id = v_template;
   insert into public.syllabus_topics (course_template_id, name, ordinal)
   values (v_template, 'Prescribed subjects (choose one; SL and HL)', 0);
@@ -722,7 +924,19 @@ begin
   returning id into v_template;
 
   delete from public.assessment_objectives where course_template_id = v_template;
+  insert into public.assessment_objectives (course_template_id, code, name, weighting_min, weighting_max, ordinal)
+  values (v_template, 'AO1', 'Explain what the texts and works mean, including their implications; connect your interpretation to their writing and reception contexts, the craft used and the features of their forms.', null, null, 0);
+  insert into public.assessment_objectives (course_template_id, code, name, weighting_min, weighting_max, ordinal)
+  values (v_template, 'AO2', 'Judge how language and artistic choices shape meaning and effects; compare texts and examine the views they offer on human concerns.', null, null, 1);
+  insert into public.assessment_objectives (course_template_id, code, name, weighting_min, weighting_max, ordinal)
+  values (v_template, 'AO3', 'Present your ideas so your reader or listener can follow and assess a persuasive argument; adapt your style and register to the purpose and situation.', null, null, 2);
   delete from public.syllabus_topics where course_template_id = v_template;
+  insert into public.syllabus_topics (course_template_id, name, ordinal)
+  values (v_template, 'Readers, writers and texts', 0);
+  insert into public.syllabus_topics (course_template_id, name, ordinal)
+  values (v_template, 'Time and space', 1);
+  insert into public.syllabus_topics (course_template_id, name, ordinal)
+  values (v_template, 'Intertextuality: connecting texts', 2);
 
   insert into public.assessment_types (course_template_id, code, name, typical_minutes)
   values (v_template, 'IA_SL', 'Individual oral (SL)', 15)
@@ -776,7 +990,19 @@ begin
   returning id into v_template;
 
   delete from public.assessment_objectives where course_template_id = v_template;
+  insert into public.assessment_objectives (course_template_id, code, name, weighting_min, weighting_max, ordinal)
+  values (v_template, 'AO1', 'Explain what the texts and works mean, including their implications; connect your interpretation to their writing and reception contexts, the craft used and the features of their forms.', null, null, 0);
+  insert into public.assessment_objectives (course_template_id, code, name, weighting_min, weighting_max, ordinal)
+  values (v_template, 'AO2', 'Judge how language and artistic choices shape meaning and effects; compare texts and examine the views they offer on human concerns.', null, null, 1);
+  insert into public.assessment_objectives (course_template_id, code, name, weighting_min, weighting_max, ordinal)
+  values (v_template, 'AO3', 'Present your ideas so your reader or listener can follow and assess a persuasive argument; adapt your style and register to the purpose and situation.', null, null, 2);
   delete from public.syllabus_topics where course_template_id = v_template;
+  insert into public.syllabus_topics (course_template_id, name, ordinal)
+  values (v_template, 'Readers, writers and texts', 0);
+  insert into public.syllabus_topics (course_template_id, name, ordinal)
+  values (v_template, 'Time and space', 1);
+  insert into public.syllabus_topics (course_template_id, name, ordinal)
+  values (v_template, 'Intertextuality: connecting texts', 2);
 
   insert into public.assessment_types (course_template_id, code, name, typical_minutes)
   values (v_template, 'IA_SL', 'Individual oral (SL)', 15)
@@ -830,7 +1056,27 @@ begin
   returning id into v_template;
 
   delete from public.assessment_objectives where course_template_id = v_template;
+  insert into public.assessment_objectives (course_template_id, code, name, weighting_min, weighting_max, ordinal)
+  values (v_template, 'AO1', 'Get your message across clearly, adjusting how you communicate to the setting and what you want to achieve.', null, null, 0);
+  insert into public.assessment_objectives (course_template_id, code, name, weighting_min, weighting_max, ordinal)
+  values (v_template, 'AO2', 'Recognise the language a situation and audience call for, and choose expressions that fit personal exchanges and communication across cultures.', null, null, 1);
+  insert into public.assessment_objectives (course_template_id, code, name, weighting_min, weighting_max, ordinal)
+  values (v_template, 'AO3', 'Express your ideas and respond to other people’s ideas with accurate language and a smooth flow.', null, null, 2);
+  insert into public.assessment_objectives (course_template_id, code, name, weighting_min, weighting_max, ordinal)
+  values (v_template, 'AO4', 'Select the ideas you need for a topic, arrange them coherently and present them to your audience.', null, null, 3);
+  insert into public.assessment_objectives (course_template_id, code, name, weighting_min, weighting_max, ordinal)
+  values (v_template, 'AO5', 'Work out what written, spoken, visual and combined sound-and-image texts convey; examine their choices and reflect on what you understand.', null, null, 4);
   delete from public.syllabus_topics where course_template_id = v_template;
+  insert into public.syllabus_topics (course_template_id, name, ordinal)
+  values (v_template, 'Identities', 0);
+  insert into public.syllabus_topics (course_template_id, name, ordinal)
+  values (v_template, 'Experiences', 1);
+  insert into public.syllabus_topics (course_template_id, name, ordinal)
+  values (v_template, 'Human ingenuity', 2);
+  insert into public.syllabus_topics (course_template_id, name, ordinal)
+  values (v_template, 'Social organization', 3);
+  insert into public.syllabus_topics (course_template_id, name, ordinal)
+  values (v_template, 'Sharing the planet', 4);
 
   insert into public.assessment_types (course_template_id, code, name, typical_minutes)
   values (v_template, 'IA_SL', 'Individual oral (SL)', 15)
@@ -880,7 +1126,29 @@ begin
   returning id into v_template;
 
   delete from public.assessment_objectives where course_template_id = v_template;
+  insert into public.assessment_objectives (course_template_id, code, name, weighting_min, weighting_max, ordinal)
+  values (v_template, 'AO1', 'Choose and use the mathematical facts and methods you need, including in unfamiliar settings.', null, null, 0);
+  insert into public.assessment_objectives (course_template_id, code, name, weighting_min, weighting_max, ordinal)
+  values (v_template, 'AO2', 'Solve abstract and practical problems with suitable mathematical models, results and techniques.', null, null, 1);
+  insert into public.assessment_objectives (course_template_id, code, name, weighting_min, weighting_max, ordinal)
+  values (v_template, 'AO3', 'Turn a situation into mathematics, explain what your result means, and present your working with clear diagrams and notation.', null, null, 2);
+  insert into public.assessment_objectives (course_template_id, code, name, weighting_min, weighting_max, ordinal)
+  values (v_template, 'AO4', 'Use suitable technology accurately to investigate ideas and solve problems.', null, null, 3);
+  insert into public.assessment_objectives (course_template_id, code, name, weighting_min, weighting_max, ordinal)
+  values (v_template, 'AO5', 'Justify your conclusions through precise statements, logical steps and algebraic reasoning.', null, null, 4);
+  insert into public.assessment_objectives (course_template_id, code, name, weighting_min, weighting_max, ordinal)
+  values (v_template, 'AO6', 'Investigate unfamiliar problems: organize evidence, propose a conjecture, test it and assess your conclusion.', null, null, 5);
   delete from public.syllabus_topics where course_template_id = v_template;
+  insert into public.syllabus_topics (course_template_id, name, ordinal)
+  values (v_template, 'Number and algebra', 0);
+  insert into public.syllabus_topics (course_template_id, name, ordinal)
+  values (v_template, 'Functions', 1);
+  insert into public.syllabus_topics (course_template_id, name, ordinal)
+  values (v_template, 'Geometry and trigonometry', 2);
+  insert into public.syllabus_topics (course_template_id, name, ordinal)
+  values (v_template, 'Statistics and probability', 3);
+  insert into public.syllabus_topics (course_template_id, name, ordinal)
+  values (v_template, 'Calculus', 4);
 
   insert into public.assessment_types (course_template_id, code, name, typical_minutes)
   values (v_template, 'IA_SL', 'Mathematical exploration (SL)', 750)
@@ -938,7 +1206,29 @@ begin
   returning id into v_template;
 
   delete from public.assessment_objectives where course_template_id = v_template;
+  insert into public.assessment_objectives (course_template_id, code, name, weighting_min, weighting_max, ordinal)
+  values (v_template, 'AO1', 'Choose and use the mathematical facts and methods you need, including in unfamiliar settings.', null, null, 0);
+  insert into public.assessment_objectives (course_template_id, code, name, weighting_min, weighting_max, ordinal)
+  values (v_template, 'AO2', 'Solve abstract and practical problems with suitable mathematical models, results and techniques.', null, null, 1);
+  insert into public.assessment_objectives (course_template_id, code, name, weighting_min, weighting_max, ordinal)
+  values (v_template, 'AO3', 'Turn a situation into mathematics, explain what your result means, and present your working with clear diagrams and notation.', null, null, 2);
+  insert into public.assessment_objectives (course_template_id, code, name, weighting_min, weighting_max, ordinal)
+  values (v_template, 'AO4', 'Use suitable technology accurately to investigate ideas and solve problems.', null, null, 3);
+  insert into public.assessment_objectives (course_template_id, code, name, weighting_min, weighting_max, ordinal)
+  values (v_template, 'AO5', 'Justify your conclusions through precise statements, logical steps and algebraic reasoning.', null, null, 4);
+  insert into public.assessment_objectives (course_template_id, code, name, weighting_min, weighting_max, ordinal)
+  values (v_template, 'AO6', 'Investigate unfamiliar problems: organize evidence, propose a conjecture, test it and assess your conclusion.', null, null, 5);
   delete from public.syllabus_topics where course_template_id = v_template;
+  insert into public.syllabus_topics (course_template_id, name, ordinal)
+  values (v_template, 'Number and algebra', 0);
+  insert into public.syllabus_topics (course_template_id, name, ordinal)
+  values (v_template, 'Functions', 1);
+  insert into public.syllabus_topics (course_template_id, name, ordinal)
+  values (v_template, 'Geometry and trigonometry', 2);
+  insert into public.syllabus_topics (course_template_id, name, ordinal)
+  values (v_template, 'Statistics and probability', 3);
+  insert into public.syllabus_topics (course_template_id, name, ordinal)
+  values (v_template, 'Calculus', 4);
 
   insert into public.assessment_types (course_template_id, code, name, typical_minutes)
   values (v_template, 'IA_SL', 'Mathematical exploration (SL)', 750)
@@ -1116,7 +1406,47 @@ begin
   returning id into v_template;
 
   delete from public.assessment_objectives where course_template_id = v_template;
+  insert into public.assessment_objectives (course_template_id, code, name, weighting_min, weighting_max, ordinal)
+  values (v_template, 'Albus 1', 'Examine questions about knowledge critically to show how you think about knowing.', null, null, 0);
+  insert into public.assessment_objectives (course_template_id, code, name, weighting_min, weighting_max, ordinal)
+  values (v_template, 'Albus 2', 'Connect questions about knowledge with situations in the world around you.', null, null, 1);
+  insert into public.assessment_objectives (course_template_id, code, name, weighting_min, weighting_max, ordinal)
+  values (v_template, 'Albus 3', 'Explore how questions about knowledge connect with different areas of knowledge.', null, null, 2);
+  insert into public.assessment_objectives (course_template_id, code, name, weighting_min, weighting_max, ordinal)
+  values (v_template, 'Albus 4', 'Build arguments that stay relevant, make your reasoning clear and hold together.', null, null, 3);
+  insert into public.assessment_objectives (course_template_id, code, name, weighting_min, weighting_max, ordinal)
+  values (v_template, 'Albus 5', 'Support your discussion with examples and evidence that advance your argument.', null, null, 4);
+  insert into public.assessment_objectives (course_template_id, code, name, weighting_min, weighting_max, ordinal)
+  values (v_template, 'Albus 6', 'Consider different viewpoints and assess their strengths and limitations.', null, null, 5);
+  insert into public.assessment_objectives (course_template_id, code, name, weighting_min, weighting_max, ordinal)
+  values (v_template, 'Albus 7', 'Work through what your arguments and conclusions imply.', null, null, 6);
   delete from public.syllabus_topics where course_template_id = v_template;
+  insert into public.syllabus_topics (course_template_id, name, ordinal)
+  values (v_template, 'Core theme: Knowledge and the knower', 0);
+  insert into public.syllabus_topics (course_template_id, name, ordinal)
+  values (v_template, 'Optional themes (choose two)', 1);
+  insert into public.syllabus_topics (course_template_id, name, ordinal)
+  values (v_template, 'Knowledge and technology', 2);
+  insert into public.syllabus_topics (course_template_id, name, ordinal)
+  values (v_template, 'Knowledge and language', 3);
+  insert into public.syllabus_topics (course_template_id, name, ordinal)
+  values (v_template, 'Knowledge and politics', 4);
+  insert into public.syllabus_topics (course_template_id, name, ordinal)
+  values (v_template, 'Knowledge and religion', 5);
+  insert into public.syllabus_topics (course_template_id, name, ordinal)
+  values (v_template, 'Knowledge and indigenous societies', 6);
+  insert into public.syllabus_topics (course_template_id, name, ordinal)
+  values (v_template, 'Areas of knowledge (all five)', 7);
+  insert into public.syllabus_topics (course_template_id, name, ordinal)
+  values (v_template, 'History', 8);
+  insert into public.syllabus_topics (course_template_id, name, ordinal)
+  values (v_template, 'The human sciences', 9);
+  insert into public.syllabus_topics (course_template_id, name, ordinal)
+  values (v_template, 'The natural sciences', 10);
+  insert into public.syllabus_topics (course_template_id, name, ordinal)
+  values (v_template, 'The arts', 11);
+  insert into public.syllabus_topics (course_template_id, name, ordinal)
+  values (v_template, 'Mathematics', 12);
 
   insert into public.assessment_types (course_template_id, code, name, typical_minutes)
   values (v_template, 'ESSAY', 'TOK essay', 1200)

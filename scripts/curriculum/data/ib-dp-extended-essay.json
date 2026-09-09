@@ -6,7 +6,32 @@
   "source": "https://www.ibo.org/programmes/diploma-programme/curriculum/",
   "retrievedAt": "2026-08-25",
   "verifiedPages": "knowledge base 6.1.3",
-  "objectives": [],
+  "objectives": [
+    {
+      "code": "Albus 1",
+      "name": "Show that you understand your chosen topic and research question, the relevant terminology and concepts, and the research methods you use.",
+      "weightingMin": null,
+      "weightingMax": null
+    },
+    {
+      "code": "Albus 2",
+      "name": "Apply suitable research methods to answer your question and analyse what your research reveals.",
+      "weightingMin": null,
+      "weightingMax": null
+    },
+    {
+      "code": "Albus 3",
+      "name": "Weigh the significance of your findings and connect your question, findings and conclusions through a clear argument. Evaluate your essay and reflect on what the research experience has taught you as a learner.",
+      "weightingMin": null,
+      "weightingMax": null
+    },
+    {
+      "code": "Albus 4",
+      "name": "Present your research using the appropriate structure and conventions, and show academic integrity throughout.",
+      "weightingMin": null,
+      "weightingMax": null
+    }
+  ],
   "components": [
     {
       "code": "ESSAY",
@@ -57,10 +82,10 @@
     "Criterion D alone is 8 of 30 marks.",
     "An E in the extended essay is a failing condition for the diploma regardless of total points.",
     "Figures taken from the Albus IB knowledge base v1.0 (compiled August 2026), which paraphrases the official IB subject guides rather than reproducing them. Verify against the current guide before quoting marks to a student.",
-    "Syllabus topics remain unverified: the public extended-essay page describes independent research rather than a dated first-assessment-2027 syllabus topic list. Essay examples are not prescribed topics.",
-    "Assessment objectives remain unverified for First assessment 2027: the complete numbered objective set and its scope have not been confirmed from a matching official publication plus an independent agreeing source. The public curriculum overview and assessment component labels do not establish that set; no AO codes, descriptions or weightings are inferred."
+    "The first-assessment-2027 IB brief hosted by the American International School in Cyprus and Heidelberg International School’s 2026-28 handbook agree on four named objective groups and their full scope. “Albus 1” through “Albus 4” are local identifiers preserving the source order, not official IB AO codes. No separate objective weightings are published. The brief describes a student-selected research topic and research process, not a prescribed syllabus topic list; syllabus topics remain empty and unverified rather than turning research stages or essay examples into a syllabus."
   ],
   "syllabusTopics": [],
   "syllabusTopicsConfidence": "unverified",
-  "objectivesConfidence": "unverified"
+  "objectivesConfidence": "corroborated",
+  "objectivesSource": "https://www.aisc.ac.cy/wp-content/uploads/Extended-Essay-First-Assessment-2027_compressed.pdf (retrieved 2026-09-09, IB subject brief states 'First assessment 2027', pp. 1-3); https://www.hischool.de/fileadmin/Content/H.I.S/02-Downloads/Curriculum/H.I.S._Diploma_Programme_2026_28.pdf (retrieved 2026-09-09, matching subject-focused/interdisciplinary model and objective groups, pp. 75-77)."
 }

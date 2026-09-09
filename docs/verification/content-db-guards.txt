@@ -1,0 +1,66 @@
+Expected failure: blank objective name
+Connecting to local database...
+psql:/var/folders/w7/7j39h3551ggfng6cs7sbfhsc0000gn/T/tmp_htq17nx/objective_guard_test.sql:2: NOTICE:  extension "pgtap" already exists, skipping
+/var/folders/w7/7j39h3551ggfng6cs7sbfhsc0000gn/T/tmp_htq17nx/objective_guard_test.sql .. 
+# Failed test 5: "objective codes and names cannot be blank in the seeded corpus"
+#         have: 1
+#         want: 0
+# Looks like you failed 1 test of 7
+Failed 1/7 subtests 
+
+Test Summary Report
+-------------------
+/var/folders/w7/7j39h3551ggfng6cs7sbfhsc0000gn/T/tmp_htq17nx/objective_guard_test.sql (Wstat: 0 Tests: 7 Failed: 1)
+  Failed test:  5
+Files=1, Tests=7,  0 wallclock secs ( 0.01 usr  0.01 sys +  0.00 cusr  0.01 csys =  0.03 CPU)
+Result: FAIL
+error running container: exit 1
+Try rerunning the command with --debug to troubleshoot the error.
+
+Expected failure: partial weighting
+Connecting to local database...
+psql:/var/folders/w7/7j39h3551ggfng6cs7sbfhsc0000gn/T/tmpvflkvqme/objective_guard_test.sql:2: NOTICE:  extension "pgtap" already exists, skipping
+/var/folders/w7/7j39h3551ggfng6cs7sbfhsc0000gn/T/tmpvflkvqme/objective_guard_test.sql .. 
+# Failed test 6: "objective weighting ranges have both bounds or neither"
+#         have: 1
+#         want: 0
+# Looks like you failed 1 test of 7
+Failed 1/7 subtests 
+
+Test Summary Report
+-------------------
+/var/folders/w7/7j39h3551ggfng6cs7sbfhsc0000gn/T/tmpvflkvqme/objective_guard_test.sql (Wstat: 0 Tests: 7 Failed: 1)
+  Failed test:  6
+Files=1, Tests=7,  0 wallclock secs ( 0.02 usr +  0.00 sys =  0.02 CPU)
+Result: FAIL
+error running container: exit 1
+Try rerunning the command with --debug to troubleshoot the error.
+
+Expected failure: missing mathematics objective
+Connecting to local database...
+psql:/var/folders/w7/7j39h3551ggfng6cs7sbfhsc0000gn/T/tmp4drr8r25/objective_guard_test.sql:2: NOTICE:  extension "pgtap" already exists, skipping
+/var/folders/w7/7j39h3551ggfng6cs7sbfhsc0000gn/T/tmp4drr8r25/objective_guard_test.sql .. 
+# Failed test 7: "both mathematics courses retain all six objectives"
+#         have: 1
+#         want: 2
+# Looks like you failed 1 test of 7
+Failed 1/7 subtests 
+
+Test Summary Report
+-------------------
+/var/folders/w7/7j39h3551ggfng6cs7sbfhsc0000gn/T/tmp4drr8r25/objective_guard_test.sql (Wstat: 0 Tests: 7 Failed: 1)
+  Failed test:  7
+Files=1, Tests=7,  0 wallclock secs ( 0.02 usr  0.00 sys +  0.01 cusr  0.00 csys =  0.03 CPU)
+Result: FAIL
+error running container: exit 1
+Try rerunning the command with --debug to troubleshoot the error.
+
+Connecting to local database...
+psql:/Users/felipegutierrez/Claude/albus-content-finish/supabase/tests/curriculum_objectives_test.sql:2: NOTICE:  extension "pgtap" already exists, skipping
+/Users/felipegutierrez/Claude/albus-content-finish/supabase/tests/curriculum_objectives_test.sql .. ok
+All tests successful.
+Files=1, Tests=7,  0 wallclock secs ( 0.01 usr +  0.00 sys =  0.01 CPU)
+Result: PASS
+A new version of Supabase CLI is available: v2.117.0 (currently installed v2.98.2)
+We recommend updating regularly for new features and bug fixes: https://supabase.com/docs/guides/cli/getting-started#updating-the-supabase-cli
+All three violating transactions rolled back; clean corpus passes.

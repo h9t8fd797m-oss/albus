@@ -1,0 +1,43 @@
+blank topic name:
+  - every syllabus topic needs a non-empty name
+duplicate ordinal:
+  - syllabus topic ordinals must be unique and contiguous from zero
+gap in ordinals:
+  - syllabus topic ordinals must be unique and contiguous from zero
+source without topics:
+  - syllabusTopics and syllabusTopicsSource must be supplied together
+  - empty syllabusTopics cannot claim verified confidence
+topics without source:
+  - syllabusTopics and syllabusTopicsSource must be supplied together
+unverified topics:
+  - published syllabusTopics need official or corroborated confidence
+one topic:
+  - a one-topic outline is incomplete
+confidence without topics:
+  - empty syllabusTopics cannot claim verified confidence
+reversed AO weighting:
+  - AO1: weightingMin > weightingMax
+objectives without source:
+  - objectives and objectivesSource must be supplied together
+source without objectives:
+  - objectives and objectivesSource must be supplied together
+  - empty objectives cannot claim verified confidence
+unverified objectives:
+  - published objectives need official or corroborated confidence
+confidence without objectives:
+  - empty objectives cannot claim verified confidence
+blank objective code:
+  - every objective needs a non-empty code
+duplicate objective code:
+  - duplicate objective code 'AO1'
+blank objective name:
+  - AO1: every objective needs a non-empty name
+missing weighting bound:
+  - AO1: objective weighting needs both bounds or neither
+negative weighting:
+  - AO1: objective weightings must be numbers from 0 to 100
+over-100 weighting:
+  - AO1: objective weightings must be numbers from 0 to 100
+nonnumeric weighting:
+  - AO1: objective weightings must be numbers from 0 to 100
+All 20 violating fixtures rejected; clean fixture accepted. No fixture persisted.

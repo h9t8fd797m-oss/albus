@@ -1,0 +1,13 @@
+Connecting to local database...
+psql:/Users/felipegutierrez/Claude/albus-content-finish/supabase/tests/curriculum_objectives_test.sql:2: NOTICE:  extension "pgtap" already exists, skipping
+/Users/felipegutierrez/Claude/albus-content-finish/supabase/tests/curriculum_objectives_test.sql .. ok
+psql:/Users/felipegutierrez/Claude/albus-content-finish/supabase/tests/curriculum_topics_test.sql:2: NOTICE:  extension "pgtap" already exists, skipping
+/Users/felipegutierrez/Claude/albus-content-finish/supabase/tests/curriculum_topics_test.sql ...... ok
+psql:/Users/felipegutierrez/Claude/albus-content-finish/supabase/tests/production_safety_test.sql:3: NOTICE:  extension "pgtap" already exists, skipping
+psql:/Users/felipegutierrez/Claude/albus-content-finish/supabase/tests/production_safety_test.sql:413: WARNING:  AI model "claude-unpriced-test" has no configured token price; using fallback input=50/output=100 micro-USD per token
+/Users/felipegutierrez/Claude/albus-content-finish/supabase/tests/production_safety_test.sql ...... ok
+All tests successful.
+Files=3, Tests=115,  1 wallclock secs ( 0.02 usr  0.03 sys +  0.02 cusr  0.02 csys =  0.09 CPU)
+Result: PASS
+A new version of Supabase CLI is available: v2.117.0 (currently installed v2.98.2)
+We recommend updating regularly for new features and bug fixes: https://supabase.com/docs/guides/cli/getting-started#updating-the-supabase-cli

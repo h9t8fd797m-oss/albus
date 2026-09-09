@@ -6,7 +6,44 @@
   "source": "https://www.ibo.org/programmes/diploma-programme/curriculum/",
   "retrievedAt": "2026-08-25",
   "verifiedPages": "knowledge base 7.2, 7.4",
-  "objectives": [],
+  "objectives": [
+    {
+      "code": "AO1",
+      "name": "Choose and use the mathematical facts and methods you need, including in unfamiliar settings.",
+      "weightingMin": null,
+      "weightingMax": null
+    },
+    {
+      "code": "AO2",
+      "name": "Solve abstract and practical problems with suitable mathematical models, results and techniques.",
+      "weightingMin": null,
+      "weightingMax": null
+    },
+    {
+      "code": "AO3",
+      "name": "Turn a situation into mathematics, explain what your result means, and present your working with clear diagrams and notation.",
+      "weightingMin": null,
+      "weightingMax": null
+    },
+    {
+      "code": "AO4",
+      "name": "Use suitable technology accurately to investigate ideas and solve problems.",
+      "weightingMin": null,
+      "weightingMax": null
+    },
+    {
+      "code": "AO5",
+      "name": "Justify your conclusions through precise statements, logical steps and algebraic reasoning.",
+      "weightingMin": null,
+      "weightingMax": null
+    },
+    {
+      "code": "AO6",
+      "name": "Investigate unfamiliar problems: organize evidence, propose a conjecture, test it and assess your conclusion.",
+      "weightingMin": null,
+      "weightingMax": null
+    }
+  ],
   "components": [
     {
       "code": "IA_SL",
@@ -113,10 +150,33 @@
     "No word limit; 12 to 20 pages recommended.",
     "HL expects greater sophistication and rigour in Use of mathematics.",
     "Figures taken from the Albus IB knowledge base v1.0 (compiled August 2026), which paraphrases the official IB subject guides rather than reproducing them. Verify against the current guide before quoting marks to a student.",
-    "Syllabus topics remain unverified: the public mathematics page distinguishes first assessment 2021 from the new 2029 briefs but does not list the 2021 syllabus units. Do not substitute the newer outline.",
-    "Assessment objectives remain unverified for First assessment 2021: the complete numbered objective set and its scope have not been confirmed from a matching official publication plus an independent agreeing source. The public curriculum overview and assessment component labels do not establish that set; no AO codes, descriptions or weightings are inferred."
+    "The two independently hosted IB briefs agree on five syllabus topic headings and six subject-wide objectives, common to AA and AI at SL and HL. These are the 2021 courses, not the separately published 2029 replacements. The exploration is an assessment activity, not a sixth topic.",
+    "Objective descriptions are Albus’s own second-person paraphrases. The matching AA guide numbers the common objectives 1–6; the briefs explicitly confirm the same objectives for AI. Per-paper ranges in that guide are not whole-subject weights, so weightingMin/Max remain null. Numbering cross-check: https://www.cygnusinternational.org/uploads/pdf/HIW0a2e9G5GwAkAecvc1GoP3TfPesY9oKvaot4gC.pdf (retrieved 2026-09-09; First assessment 2021, printed pages 23–24)."
   ],
-  "syllabusTopics": [],
-  "syllabusTopicsConfidence": "unverified",
-  "objectivesConfidence": "unverified"
+  "syllabusTopics": [
+    {
+      "name": "Number and algebra",
+      "ordinal": 0
+    },
+    {
+      "name": "Functions",
+      "ordinal": 1
+    },
+    {
+      "name": "Geometry and trigonometry",
+      "ordinal": 2
+    },
+    {
+      "name": "Statistics and probability",
+      "ordinal": 3
+    },
+    {
+      "name": "Calculus",
+      "ordinal": 4
+    }
+  ],
+  "syllabusTopicsConfidence": "corroborated",
+  "objectivesConfidence": "corroborated",
+  "objectivesSource": "https://resources.finalsite.net/images/v1747417284/palmbeachschoolsorg/oud9laymllr7bl9tr1iz/Mathapplicationsandinterpretationssubjectbrief.pdf; https://kjjg.lt/wp-content/uploads/2026/03/subject-brief-dp-math-applications-and-interpretations-en.pdf (retrieved 2026-09-09; both state First assessments for SL and HL—2021; curriculum overview and assessment model)",
+  "syllabusTopicsSource": "https://resources.finalsite.net/images/v1747417284/palmbeachschoolsorg/oud9laymllr7bl9tr1iz/Mathapplicationsandinterpretationssubjectbrief.pdf; https://kjjg.lt/wp-content/uploads/2026/03/subject-brief-dp-math-applications-and-interpretations-en.pdf (retrieved 2026-09-09; both state First assessments for SL and HL—2021; curriculum overview and assessment model)"
 }

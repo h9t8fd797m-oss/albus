@@ -6,7 +6,38 @@
   "source": "https://www.ibo.org/programmes/diploma-programme/curriculum/",
   "retrievedAt": "2026-09-04",
   "verifiedPages": "knowledge base 7.10",
-  "objectives": [],
+  "objectives": [
+    {
+      "code": "AO1",
+      "name": "Get your message across clearly, adjusting how you communicate to the setting and what you want to achieve.",
+      "weightingMin": null,
+      "weightingMax": null
+    },
+    {
+      "code": "AO2",
+      "name": "Recognise the language a situation and audience call for, and choose expressions that fit personal exchanges and communication across cultures.",
+      "weightingMin": null,
+      "weightingMax": null
+    },
+    {
+      "code": "AO3",
+      "name": "Express your ideas and respond to other people’s ideas with accurate language and a smooth flow.",
+      "weightingMin": null,
+      "weightingMax": null
+    },
+    {
+      "code": "AO4",
+      "name": "Select the ideas you need for a topic, arrange them coherently and present them to your audience.",
+      "weightingMin": null,
+      "weightingMax": null
+    },
+    {
+      "code": "AO5",
+      "name": "Work out what written, spoken, visual and combined sound-and-image texts convey; examine their choices and reflect on what you understand.",
+      "weightingMin": null,
+      "weightingMax": null
+    }
+  ],
   "components": [
     {
       "code": "IA_SL",
@@ -53,7 +84,7 @@
       "kind": "internal_assessment",
       "minutes": 15,
       "marks": 30,
-      "weighting": 20,
+      "weighting": 25,
       "level": "HL",
       "criteria": [
         {
@@ -83,7 +114,7 @@
       "code": "EXTERNAL_HL",
       "name": "Examinations (HL)",
       "kind": "exam",
-      "weighting": 80,
+      "weighting": 75,
       "level": "HL"
     }
   ],
@@ -92,15 +123,39 @@
     "Three criteria: Language 12, Message 12, Interactive skills 6 — total 30.",
     "On paper 1, ignoring context, purpose and audience can score zero for message and conceptual understanding even with strong language.",
     "Language acquisition is the exception to IB's general position on spelling and grammar; language-improvement software is not permitted.",
-    "Syllabus topics remain unverified: the public language-b page names five themes but links both current and first-assessment-2029 briefs without explicitly dating its inline outline to this record’s 2020 specification.",
-    "Assessment objectives remain unverified for First assessment 2020: the complete numbered objective set and its scope have not been confirmed from a matching official publication plus an independent agreeing source. The public curriculum overview and assessment component labels do not establish that set; no AO codes, descriptions or weightings are inferred."
+    "The five prescribed themes apply to both SL and HL. The briefs distinguish these from optional recommended topics, which are not presented here as compulsory syllabus content. The first-assessment-2029 replacement is not used for this 2020 record.",
+    "The five objectives are paraphrased from two independently hosted matching IB briefs; the matching guide confirms their numbering. Neither brief publishes per-objective weightings, so those ranges remain null.",
+    "Both matching first-assessment-2020 briefs explicitly give the same assessment split at SL and HL: external 75% and individual oral 25% (p. 2 assessment table; https://www.didzdvaris.lt/wp-content/uploads/2020/12/lang-b-2018-en.pdf and https://www.purcellmarian.org/wp-content/uploads/2024/09/lang-b-2018-en.pdf). HL changes the task demands, not these component percentages."
   ],
   "firstAssessment": 2020,
   "lastAssessment": null,
   "guideStatus": "current",
   "supersededBy": null,
   "group": "Language acquisition",
-  "syllabusTopics": [],
-  "syllabusTopicsConfidence": "unverified",
-  "objectivesConfidence": "unverified"
+  "syllabusTopics": [
+    {
+      "name": "Identities",
+      "ordinal": 0
+    },
+    {
+      "name": "Experiences",
+      "ordinal": 1
+    },
+    {
+      "name": "Human ingenuity",
+      "ordinal": 2
+    },
+    {
+      "name": "Social organization",
+      "ordinal": 3
+    },
+    {
+      "name": "Sharing the planet",
+      "ordinal": 4
+    }
+  ],
+  "syllabusTopicsConfidence": "corroborated",
+  "objectivesConfidence": "corroborated",
+  "objectivesSource": "https://www.didzdvaris.lt/wp-content/uploads/2020/12/lang-b-2018-en.pdf and https://www.purcellmarian.org/wp-content/uploads/2024/09/lang-b-2018-en.pdf (retrieved 2026-09-09; both IB briefs state first assessment 2020, p. 2 section III gives the same five objectives); numbering confirmed in https://cygnusinternational.org/uploads/pdf/jkCbbUR4H9edjL9M5mZZYPIyMwK9sPxmfWWs1xOE.pdf (retrieved 2026-09-09, Language B guide first assessment 2020, printed p. 14 / PDF p. 24, objectives 1–5)",
+  "syllabusTopicsSource": "https://www.didzdvaris.lt/wp-content/uploads/2020/12/lang-b-2018-en.pdf and https://www.purcellmarian.org/wp-content/uploads/2024/09/lang-b-2018-en.pdf (retrieved 2026-09-09; both IB briefs state first assessment 2020; p. 2 section IV lists the five prescribed themes)"
 }

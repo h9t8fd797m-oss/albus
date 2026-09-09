@@ -156,13 +156,82 @@
     "Appendices should hold representative examples only, never every questionnaire and never secondary information.",
     "Superseded 2011 guide used 30 marks across seven criteria A-G; sources describing that split do not apply.",
     "Assessment objectives added from the official IB subject brief (no per-AO weighting is published there, so weightingMin/Max are left null; only Paper-level weightings are given and are already recorded above).",
-    "Syllabus topics remain unverified: the public geography page links geography-sl-hl-2017-en.pdf but has no inline syllabus outline. The complete first-assessment-2019 topic list is not confirmed here."
+    "The matching independently hosted IB briefs agree on seven optional themes, three common-core headings and three HL extension headings. Retain the choice structure: a student studies two optional themes at SL or three at HL, not all seven. These sources do not establish which options their school selected.",
+    "The four existing objective names agree in both matching briefs and now carry explicit provenance. Their full descriptor prose is not expanded: the older Nord Anglia copy contains an unrelated film bullet under AO1 that is absent from the Living Academy copy. That discrepancy does not affect the four headings or the syllabus outline; no film content is used. Whole-subject objective weights remain unconfirmed and null."
   ],
   "firstAssessment": 2019,
   "lastAssessment": null,
   "guideStatus": "current",
   "supersededBy": null,
   "group": "Individuals and societies",
-  "syllabusTopics": [],
-  "syllabusTopicsConfidence": "unverified"
+  "syllabusTopics": [
+    {
+      "name": "Geographic themes: seven options (choose two at SL, three at HL)",
+      "ordinal": 0
+    },
+    {
+      "name": "Freshwater",
+      "ordinal": 1
+    },
+    {
+      "name": "Oceans and coastal margins",
+      "ordinal": 2
+    },
+    {
+      "name": "Extreme environments",
+      "ordinal": 3
+    },
+    {
+      "name": "Geophysical hazards",
+      "ordinal": 4
+    },
+    {
+      "name": "Leisure, tourism and sport",
+      "ordinal": 5
+    },
+    {
+      "name": "Food and health",
+      "ordinal": 6
+    },
+    {
+      "name": "Urban environments",
+      "ordinal": 7
+    },
+    {
+      "name": "Geographic perspectives: global change (SL and HL core)",
+      "ordinal": 8
+    },
+    {
+      "name": "Population distribution—changing population",
+      "ordinal": 9
+    },
+    {
+      "name": "Global climate—vulnerability and resilience",
+      "ordinal": 10
+    },
+    {
+      "name": "Global resource consumption and security",
+      "ordinal": 11
+    },
+    {
+      "name": "Geographic perspectives: global interactions (HL only)",
+      "ordinal": 12
+    },
+    {
+      "name": "Power, places and networks (HL only)",
+      "ordinal": 13
+    },
+    {
+      "name": "Human development and diversity (HL only)",
+      "ordinal": 14
+    },
+    {
+      "name": "Global risks and resilience (HL only)",
+      "ordinal": 15
+    }
+  ],
+  "syllabusTopicsConfidence": "corroborated",
+  "objectivesSource": "https://www.nordangliaeducation.com/nais-hong-kong/-/media/nais-hong-kong/academic-excellence/ib-diploma-programme/184417-geography-sl-hl-2017-en.pdf?hash=0C4AB77E6C86087A341A677CAD510A1B&rev=b20eec42bc6748b7bf8a0e89cf3078b2; https://living.academy/wp-content/uploads/2025/08/25.Living-Academy-IB-handbook.pdf (retrieved 2026-09-09; both state First assessments 2019; standalone brief pages 1–2 and handbook pages 16–17)",
+  "objectivesConfidence": "corroborated",
+  "syllabusTopicsSource": "https://www.nordangliaeducation.com/nais-hong-kong/-/media/nais-hong-kong/academic-excellence/ib-diploma-programme/184417-geography-sl-hl-2017-en.pdf?hash=0C4AB77E6C86087A341A677CAD510A1B&rev=b20eec42bc6748b7bf8a0e89cf3078b2; https://living.academy/wp-content/uploads/2025/08/25.Living-Academy-IB-handbook.pdf (retrieved 2026-09-09; both state First assessments 2019; standalone brief pages 1–2 and handbook pages 16–17)"
 }

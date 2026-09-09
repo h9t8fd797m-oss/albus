@@ -6,7 +6,50 @@
   "source": "https://www.ibo.org/programmes/diploma-programme/curriculum/",
   "retrievedAt": "2026-09-04",
   "verifiedPages": "knowledge base 6.2.1, 6.2.2, 6.2.3",
-  "objectives": [],
+  "objectives": [
+    {
+      "code": "Albus 1",
+      "name": "Examine questions about knowledge critically to show how you think about knowing.",
+      "weightingMin": null,
+      "weightingMax": null
+    },
+    {
+      "code": "Albus 2",
+      "name": "Connect questions about knowledge with situations in the world around you.",
+      "weightingMin": null,
+      "weightingMax": null
+    },
+    {
+      "code": "Albus 3",
+      "name": "Explore how questions about knowledge connect with different areas of knowledge.",
+      "weightingMin": null,
+      "weightingMax": null
+    },
+    {
+      "code": "Albus 4",
+      "name": "Build arguments that stay relevant, make your reasoning clear and hold together.",
+      "weightingMin": null,
+      "weightingMax": null
+    },
+    {
+      "code": "Albus 5",
+      "name": "Support your discussion with examples and evidence that advance your argument.",
+      "weightingMin": null,
+      "weightingMax": null
+    },
+    {
+      "code": "Albus 6",
+      "name": "Consider different viewpoints and assess their strengths and limitations.",
+      "weightingMin": null,
+      "weightingMax": null
+    },
+    {
+      "code": "Albus 7",
+      "name": "Work through what your arguments and conclusions imply.",
+      "weightingMin": null,
+      "weightingMax": null
+    }
+  ],
   "components": [
     {
       "code": "ESSAY",
@@ -57,15 +100,69 @@
     "An exhibition not based on one of the 35 prescribed prompts scores zero.",
     "The essay counts twice in the aggregate, so it is worth exactly twice the exhibition.",
     "An E in TOK is a failing condition for the diploma regardless of total points.",
-    "Syllabus topics remain unverified: the public theory-of-knowledge page describes assessment formats but supplies no dated first-assessment-2022 theme or area-of-knowledge outline.",
-    "Assessment objectives remain unverified for First assessment 2022: the complete numbered objective set and its scope have not been confirmed from a matching official publication plus an independent agreeing source. The public curriculum overview and assessment component labels do not establish that set; no AO codes, descriptions or weightings are inferred."
+    "The first-assessment-2022 IB subject brief hosted by Palm Beach County and Heidelberg International School’s 2026-28 handbook agree on the full TOK outline and seven assessment objectives. The objectives are unnumbered in both sources: “Albus 1” through “Albus 7” are local identifiers preserving their order, not official IB AO codes. No separate objective weightings are published. The optional themes are a choice of two, while all five areas of knowledge are required; the outline does not identify the school’s two choices."
   ],
   "firstAssessment": 2022,
   "lastAssessment": null,
   "guideStatus": "current",
   "supersededBy": null,
   "group": "Core",
-  "syllabusTopics": [],
-  "syllabusTopicsConfidence": "unverified",
-  "objectivesConfidence": "unverified"
+  "syllabusTopics": [
+    {
+      "name": "Core theme: Knowledge and the knower",
+      "ordinal": 0
+    },
+    {
+      "name": "Optional themes (choose two)",
+      "ordinal": 1
+    },
+    {
+      "name": "Knowledge and technology",
+      "ordinal": 2
+    },
+    {
+      "name": "Knowledge and language",
+      "ordinal": 3
+    },
+    {
+      "name": "Knowledge and politics",
+      "ordinal": 4
+    },
+    {
+      "name": "Knowledge and religion",
+      "ordinal": 5
+    },
+    {
+      "name": "Knowledge and indigenous societies",
+      "ordinal": 6
+    },
+    {
+      "name": "Areas of knowledge (all five)",
+      "ordinal": 7
+    },
+    {
+      "name": "History",
+      "ordinal": 8
+    },
+    {
+      "name": "The human sciences",
+      "ordinal": 9
+    },
+    {
+      "name": "The natural sciences",
+      "ordinal": 10
+    },
+    {
+      "name": "The arts",
+      "ordinal": 11
+    },
+    {
+      "name": "Mathematics",
+      "ordinal": 12
+    }
+  ],
+  "syllabusTopicsConfidence": "corroborated",
+  "objectivesConfidence": "corroborated",
+  "objectivesSource": "https://resources.finalsite.net/images/v1747416916/palmbeachschoolsorg/nhlqz0502uldxovbgd1c/TOKsubjectbrief.pdf (retrieved 2026-09-09, IB subject brief states 'First assessment 2022', pp. 1-2); https://www.hischool.de/fileadmin/Content/H.I.S/02-Downloads/Curriculum/H.I.S._Diploma_Programme_2026_28.pdf (retrieved 2026-09-09, 2026-28 school handbook, matching TOK course outline and complete objective list, pp. 72-73).",
+  "syllabusTopicsSource": "https://resources.finalsite.net/images/v1747416916/palmbeachschoolsorg/nhlqz0502uldxovbgd1c/TOKsubjectbrief.pdf (retrieved 2026-09-09, IB subject brief states 'First assessment 2022', pp. 1-2); https://www.hischool.de/fileadmin/Content/H.I.S/02-Downloads/Curriculum/H.I.S._Diploma_Programme_2026_28.pdf (retrieved 2026-09-09, 2026-28 school handbook, matching TOK course outline and complete objective list, pp. 72-73)."
 }

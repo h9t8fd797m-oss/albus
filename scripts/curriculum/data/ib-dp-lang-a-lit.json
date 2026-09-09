@@ -6,7 +6,26 @@
   "source": "https://www.ibo.org/programmes/diploma-programme/curriculum/",
   "retrievedAt": "2026-09-04",
   "verifiedPages": "knowledge base 7.9",
-  "objectives": [],
+  "objectives": [
+    {
+      "code": "AO1",
+      "name": "Explain what the texts and works mean, including their implications; connect your interpretation to their writing and reception contexts, the craft used and the features of their forms.",
+      "weightingMin": null,
+      "weightingMax": null
+    },
+    {
+      "code": "AO2",
+      "name": "Judge how language and artistic choices shape meaning and effects; compare texts and examine the views they offer on human concerns.",
+      "weightingMin": null,
+      "weightingMax": null
+    },
+    {
+      "code": "AO3",
+      "name": "Present your ideas so your reader or listener can follow and assess a persuasive argument; adapt your style and register to the purpose and situation.",
+      "weightingMin": null,
+      "weightingMax": null
+    }
+  ],
   "components": [
     {
       "code": "IA_SL",
@@ -104,15 +123,30 @@
     "A global issue must be significant at scale, transnational, and visible in everyday local contexts.",
     "Works used for the individual oral may NOT be reused for the HL essay or for paper 2.",
     "Four criteria A-D at 10 marks each, total 40.",
-    "Syllabus topics remain unverified: the public language-a-literature page describes three areas of exploration but does not name them or date the outline to first assessment 2021.",
-    "Assessment objectives remain unverified for First assessment 2021: the complete numbered objective set and its scope have not been confirmed from a matching official publication plus an independent agreeing source. The public curriculum overview and assessment component labels do not establish that set; no AO codes, descriptions or weightings are inferred."
+    "The three syllabus headings are areas of exploration shared by SL and HL, not a prescribed reading list; the briefs do not identify the works selected by a school.",
+    "Objectives 1–3 are paraphrased from matching 2021 IB briefs hosted independently by two schools. The communication bullet expressly limited to literature and performance is excluded because this record is a different course. The briefs give assessment-component percentages, not per-objective weights; objective weightings remain null."
   ],
   "firstAssessment": 2021,
   "lastAssessment": null,
   "guideStatus": "current",
   "supersededBy": null,
   "group": "Studies in language and literature",
-  "syllabusTopics": [],
-  "syllabusTopicsConfidence": "unverified",
-  "objectivesConfidence": "unverified"
+  "syllabusTopics": [
+    {
+      "name": "Readers, writers and texts",
+      "ordinal": 0
+    },
+    {
+      "name": "Time and space",
+      "ordinal": 1
+    },
+    {
+      "name": "Intertextuality: connecting texts",
+      "ordinal": 2
+    }
+  ],
+  "syllabusTopicsConfidence": "corroborated",
+  "objectivesConfidence": "corroborated",
+  "objectivesSource": "https://anderson.austinschools.org/sites/anderson.austinschools.org/files/inline-files/LanguageALiteratureHLSubjectBrief.pdf and https://www.isdcounselling.org/uploads/1/0/6/2/10624989/class_of_2028_dp_subject_briefs.pdf (retrieved 2026-09-09; two independently hosted IB subject briefs, both state first assessments for SL and HL 2021; pp. 1–2; second mirror pp. 2–3; section III numbers objectives 1–3)",
+  "syllabusTopicsSource": "https://anderson.austinschools.org/sites/anderson.austinschools.org/files/inline-files/LanguageALiteratureHLSubjectBrief.pdf and https://www.isdcounselling.org/uploads/1/0/6/2/10624989/class_of_2028_dp_subject_briefs.pdf (retrieved 2026-09-09; both state first assessments for SL and HL 2021; pp. 1–2; second mirror pp. 2–3; section II lists all three syllabus components)"
 }
