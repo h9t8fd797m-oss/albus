@@ -1,8 +1,8 @@
 # Albus
 
-iOS study planner for IB, AP and university students. An on-device adaptive
-scheduler, a rubric-grounded breakdown engine, and an authored curriculum
-corpus.
+iOS study-hour planner for any student. An on-device adaptive scheduler, a
+library of rubrics the student saves, and AI that breaks work down and marks it
+against those rubrics.
 
 Designs, business plan and build plan live in `~/Desktop/Albus AI/`.
 This repo is code and infrastructure only.
@@ -20,11 +20,11 @@ ios/
 
 supabase/
   migrations/       Append-only SQL. The schema and every security rule.
-  functions/        Edge Functions — breakdown, assignment chat, grader, RevenueCat
+  functions/        Edge Functions — breakdown, grader, RevenueCat webhook
   config.toml       Auth and session configuration
 
 docs/               architecture, database, security model, backend
-scripts/            local CI, adversarial concurrency tests, data generators
+scripts/            local CI, adversarial concurrency tests, deploy
 .github/workflows/  CI and migration deploy
 ```
 
@@ -35,11 +35,9 @@ scripts/            local CI, adversarial concurrency tests, data generators
 | Database, RLS, financial controls | **built** — local adversarial suite; live deployment pending |
 | Accounts (anonymous-first) | **done** |
 | `POST /breakdown` — study plans | **done**, deployed |
-| `POST /chat` — Ask Albus | **done**, deployed |
 | Rate/cost limiting | **built** — request, attempt, allowance, per-account and global USD fuses |
 | Scheduler, estimator, notifications | **built** and unit-tested |
-| Albus Grader | **built** — rubric-backed history and blind-reading fallback |
-| Ask Albus | **built** — Pro-only inside an assignment |
+| Albus Grader | **built** — marks against a saved rubric, or blind |
 | Payments | server path fails closed; RevenueCat SDK/products still pending |
 
 ## Getting set up

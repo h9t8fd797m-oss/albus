@@ -12,48 +12,23 @@ import AlbusCore
 /// in this app, and they were three round trips away the whole time.
 struct ProfileService {
 
-    struct IBContextSnapshot: Equatable, Sendable {
-        let examSession: ExamSession?
-        let targetPoints: Int?
-    }
-
     private let client: SupabaseClient?
 
     init(client: SupabaseClient? = Backend.shared) {
         self.client = client
     }
 
-    /// Records which curriculum the student follows.
-    ///
-    /// Best-effort by design: a student whose profile did not sync still gets a
-    /// working app, just slightly less specific answers. Failing onboarding over
-    /// it would be the wrong trade.
-    func syncCurriculum(_ code: String) async {
-        guard let client else { return }
-        do {
-            try await client.from("profiles")
-                .update(["curriculum_code": code])
-                .eq("id", value: currentUserID(client)?.uuidString.lowercased() ?? "")
-                .execute()
-        } catch {
-            print("[Albus] curriculum sync failed: \(error)")
-        }
-    }
-
     /// Creates a subject server-side and returns its id.
     ///
-    /// Through an RPC rather than a plain insert, so the subject is linked to its
-    /// specification in the same statement. `curriculumSubjectCode` is the
-    /// bundled code (`IB_DP_HISTORY`); the server resolves it to a
-    /// `course_templates` row, which is what lets Ask Albus know that this
-    /// student's History IA is 25% at SL and marked out of 25.
+    /// Through an RPC rather than a plain insert. The template and level
+    /// arguments are sent as null: the RPC still declares them, because it
+    /// belongs to a migration that has not been deployed yet and changing its
+    /// signature would change what production is waiting to receive.
     ///
     /// `user_id` is set from the verified session inside the function rather
     /// than passed in, and RLS would reject anything else regardless — the row
     /// cannot be attributed to another student even if this code were wrong.
     func createCourse(displayName: String, colorKey: String,
-                      curriculumSubjectCode: String? = nil,
-                      level: CourseLevel? = nil,
                       targetGrade: Int? = nil) async -> UUID? {
         guard let client else { return nil }
 
@@ -70,8 +45,8 @@ struct ProfileService {
                 "create_course",
                 params: Params(p_display_name: displayName,
                                p_color_key: colorKey,
-                               p_template_code: curriculumSubjectCode,
-                               p_level: level?.rawValue,
+                               p_template_code: nil,
+                               p_level: nil,
                                p_target_grade: targetGrade)
             )
             .execute()
@@ -91,9 +66,7 @@ struct ProfileService {
     /// nil": a partial update must not silently erase the field it omits.
     @discardableResult
     func updateCourse(remoteID: UUID,
-                      level: CourseLevel? = nil,
                       targetGrade: Int? = nil,
-                      clearLevel: Bool = false,
                       clearTargetGrade: Bool = false) async -> Bool {
         guard let client else { return false }
 
@@ -109,9 +82,9 @@ struct ProfileService {
             return try await client.rpc(
                 "update_course",
                 params: Params(p_course_id: remoteID,
-                               p_level: level?.rawValue,
+                               p_level: nil,
                                p_target_grade: targetGrade,
-                               p_clear_level: clearLevel,
+                               p_clear_level: false,
                                p_clear_target_grade: clearTargetGrade)
             )
             .execute()
@@ -122,76 +95,4 @@ struct ProfileService {
         }
     }
 
-    /// Reads only the caller's profile context. The explicit id filter keeps
-    /// the query single-row even before RLS; the owner policy remains the
-    /// authorization boundary if a modified client changes that filter.
-    func ibContext() async -> IBContextSnapshot? {
-        guard let client, let userID = currentUserID(client) else { return nil }
-
-        struct Row: Decodable {
-            let examSession: String?
-            let targetPoints: Int?
-
-            enum CodingKeys: String, CodingKey {
-                case examSession = "exam_session"
-                case targetPoints = "target_points"
-            }
-        }
-
-        do {
-            let row: Row = try await client.from("profiles")
-                .select("exam_session,target_points")
-                .eq("id", value: userID.uuidString.lowercased())
-                .single()
-                .execute()
-                .value
-            return IBContextSnapshot(
-                examSession: row.examSession.flatMap(ExamSession.init(rawValue:)),
-                targetPoints: row.targetPoints
-            )
-        } catch {
-            print("[Albus] IB context read failed: \(error)")
-            return nil
-        }
-    }
-
-    /// Record which examination session the student is sitting, and what they
-    /// are aiming for overall.
-    ///
-    /// The session rather than the DP year, deliberately: "DP1" stops being
-    /// true after twelve months and nothing would ever correct it. The server
-    /// derives the year from this whenever it needs one.
-    @discardableResult
-    func setIBContext(examSession: ExamSession? = nil,
-                      targetPoints: Int? = nil,
-                      clearExamSession: Bool = false,
-                      clearTargetPoints: Bool = false) async -> Bool {
-        guard let client else { return false }
-
-        struct Params: Encodable {
-            let p_exam_session: String?
-            let p_target_points: Int?
-            let p_clear_exam_session: Bool
-            let p_clear_target_points: Bool
-        }
-
-        do {
-            return try await client.rpc(
-                "set_ib_context",
-                params: Params(p_exam_session: examSession?.rawValue,
-                               p_target_points: targetPoints,
-                               p_clear_exam_session: clearExamSession,
-                               p_clear_target_points: clearTargetPoints)
-            )
-            .execute()
-            .value
-        } catch {
-            print("[Albus] IB context sync failed: \(error)")
-            return false
-        }
-    }
-
-    private func currentUserID(_ client: SupabaseClient) -> UUID? {
-        client.auth.currentUser?.id
-    }
 }

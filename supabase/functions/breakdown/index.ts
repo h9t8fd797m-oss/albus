@@ -14,8 +14,7 @@ import {
   usageFailureCode,
 } from "../_shared/quota.ts";
 import { noteRefusal, recordSignals, type Signals } from "../_shared/signals.ts";
-import { loadCurriculumComponent, loadPersonalRubric } from "../_shared/curriculum.ts";
-import { curriculumCode } from "../_shared/codes.ts";
+import { loadPersonalRubric } from "../_shared/rubric.ts";
 import { generateBreakdown } from "../_shared/anthropic.ts";
 import {
   type BreakdownInput,
@@ -57,8 +56,6 @@ interface RequestBody {
   deadline?: unknown;
   estimated_minutes?: unknown;
   course_id?: unknown;
-  course_template_code?: unknown;
-  assessment_code?: unknown;
   notes?: unknown;
   rubric_id?: unknown;
   priority?: unknown;
@@ -103,8 +100,6 @@ function parseBody(body: RequestBody) {
     courseId: uuid(body.course_id),
     // Dropped rather than rejected when malformed: an unrecognised code costs
     // the student their grounding, which is a worse plan, not a failed one.
-    courseTemplateCode: curriculumCode(body.course_template_code),
-    assessmentCode: curriculumCode(body.assessment_code),
     notes: typeof body.notes === "string" ? body.notes.slice(0, 2000) : null,
     // Bounded, not trusted. It only sizes a sitting, so a hostile value costs
     // the sender their own plan's shape and nothing else — but an unbounded
@@ -149,12 +144,7 @@ Deno.serve(async (req) => {
     // links before a model call. The database trigger is authoritative; this
     // early check exists so an attacker cannot deliberately buy a generation
     // and make persistence fail afterwards by naming somebody else's ids.
-    const [component, personalRubric, ownedCourse] = await Promise.all([
-      loadCurriculumComponent(
-        caller.db,
-        input.courseTemplateCode,
-        input.assessmentCode,
-      ),
+    const [personalRubric, ownedCourse] = await Promise.all([
       loadPersonalRubric(caller.db, input.rubricId),
       input.courseId
         ? caller.db.from("courses").select("id").eq("id", input.courseId).maybeSingle()
@@ -168,9 +158,9 @@ Deno.serve(async (req) => {
       throw new HttpError(404, "RUBRIC_NOT_FOUND", "That rubric isn't available.");
     }
 
-    // The student's own rubric wins over the curriculum default: they pasted it
-    // off the sheet they are actually being marked against.
-    const rubric = personalRubric ?? component?.rubric ?? null;
+    // The only rubric there is: the sheet the student pasted off their own
+    // assignment.
+    const rubric = personalRubric;
 
     const promptInput: BreakdownInput = {
       title: input.title,
@@ -213,23 +203,15 @@ Deno.serve(async (req) => {
         throw e;
       }
 
-      // Map criterion codes back to real ids. The model only ever sees codes,
-      // so it cannot fabricate a foreign key into another course's rubric.
-      //
-      // Only curriculum rubrics map: subtasks.rubric_criterion_id references the
-      // shared rubric_criteria table, and a personal rubric's criteria do not live
-      // there. Personal codes still reach the client on the response and are shown
-      // against the step — the link is by code, which is all any screen reads.
-      const codeToId = new Map(
-        rubric?.kind === "curriculum" ? rubric.criteria.map((c) => [c.code, c.id]) : [],
-      );
+      // Steps still carry the rubric code the model chose, and every screen
+      // reads the code. `subtasks.rubric_criterion_id` pointed into the shared
+      // curriculum table, which no longer holds rows -- a personal rubric's
+      // criteria live in `rubric_items` and were never valid there.
       const subtasks = plan.steps.map((s) => ({
         title: s.title,
         guidance: s.guidance,
         estimated_minutes: s.estimated_minutes,
-        rubric_criterion_id: s.rubric_criterion_code
-          ? codeToId.get(s.rubric_criterion_code) ?? null
-          : null,
+        rubric_criterion_id: null,
         // Already validated against the shared vocabulary; the column's check
         // constraint is the second line of defence, not the first.
         tool_need: s.tool_need,
@@ -244,7 +226,7 @@ Deno.serve(async (req) => {
           p_estimated_minutes: input.estimatedMinutes,
           p_subtasks: subtasks,
           p_course_id: input.courseId,
-          p_assessment_type_id: component?.assessmentTypeId ?? null,
+          p_assessment_type_id: null,
           p_notes: input.notes,
           p_rubric_id: input.rubricId,
           p_priority: input.priority,
@@ -266,7 +248,7 @@ Deno.serve(async (req) => {
         assignment_id: assignmentId,
         model: generated.model,
         rubric_grounded: rubric !== null,
-        rubric_source: rubric?.kind ?? null,
+        rubric_source: rubric ? "personal" : null,
         cache_read_tokens: generated.cacheReadTokens,
         steps: plan.steps,
       }, 201);

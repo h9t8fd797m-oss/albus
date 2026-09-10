@@ -90,8 +90,6 @@ struct PlanService {
         /// Which curriculum subject and which of its components, by code. The
         /// server resolves the pair against its own copy of the specification;
         /// nothing about how the work is assessed is taken from the client.
-        let course_template_code: String?
-        let assessment_code: String?
         let course_id: String?
         /// What the student typed about the assignment. Reaches the model
         /// fenced as data; the server caps it at 2000 characters.
@@ -116,7 +114,6 @@ struct PlanService {
 
     func breakdown(title: String, taskType: String, deadline: Date,
                    estimatedMinutes: Int,
-                   courseTemplateCode: String? = nil, assessmentCode: String? = nil,
                    courseID: UUID? = nil, notes: String? = nil,
                    rubricID: UUID? = nil,
                    priority: AssignmentPriority = .normal,
@@ -128,8 +125,6 @@ struct PlanService {
             task_type: taskType,
             deadline: ISO8601DateFormatter().string(from: deadline),
             estimated_minutes: estimatedMinutes,
-            course_template_code: courseTemplateCode,
-            assessment_code: assessmentCode,
             course_id: courseID?.uuidString,
             notes: (trimmedNotes?.isEmpty ?? true) ? nil : trimmedNotes,
             rubric_id: rubricID?.uuidString,

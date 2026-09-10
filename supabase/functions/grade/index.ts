@@ -26,7 +26,7 @@ import {
   usageFailureCode,
 } from "../_shared/quota.ts";
 import { noteRefusal, recordSignals, type Signals } from "../_shared/signals.ts";
-import { loadPersonalRubric, resolveGradingRubric } from "../_shared/curriculum.ts";
+import { loadPersonalRubric, resolveGradingRubric } from "../_shared/rubric.ts";
 import { gradeWork } from "../_shared/anthropic.ts";
 import {
   buildGradeSystemPrompt,
@@ -200,7 +200,7 @@ Deno.serve(async (req) => {
       // and must not share one answer.
       title,
       taskType,
-      rubric?.assessmentName ?? "",
+      rubric?.name ?? "",
       (rubric?.criteria ?? []).map((c) => `${c.code}:${c.name}:${c.marks}`).join("|"),
       input.presentation ?? "",
     ].join("\u0000"));
@@ -236,7 +236,7 @@ Deno.serve(async (req) => {
         improvements: existing.improvements,
         model: existing.model,
         basis: existing.basis,
-        rubric_name: rubric?.assessmentName ?? null,
+        rubric_name: rubric?.name ?? null,
         // So the client can say "you already marked this" rather than silently
         // showing a result with a stale timestamp.
         reused: true,
@@ -382,10 +382,10 @@ Deno.serve(async (req) => {
       improvements: grade.improvements,
       model: generated.model,
       // The client must never infer this from whether marks came back. A
-      // curriculum rubric with no marks and a blind reading both return nulls,
+      // A rubric with no marks and a blind reading both return nulls,
       // and only one of them is allowed to call itself a grade.
       basis,
-      rubric_name: rubric?.assessmentName ?? null,
+      rubric_name: rubric?.name ?? null,
       reused: false,
     }, 201);
   } catch (e) {

@@ -122,10 +122,10 @@ isolate therefore cannot erase cost, and one manipulated account cannot consume
 an unbounded share of the project budget. This backstop is separate from, and
 checked after, product entitlement so its refusal is never presented as a plan.
 
-Current paid allowances are server rows, not UI literals: Free gets no chat or
-grading; Plus gets two gradings per rolling seven days; Pro gets five and 300
-assignment-grounded Ask Albus turns per rolling 30 days. "Unlimited tasks" has
-a 500-active/2,000-total abuse ceiling that no honest student should encounter.
+Current paid allowances are server rows, not UI literals: Free gets no grading;
+Plus gets two gradings per rolling seven days; Pro gets five. "Unlimited tasks"
+has a 500-active/2,000-total abuse ceiling that no honest student should
+encounter.
 
 ## 5. Account farming and privacy
 

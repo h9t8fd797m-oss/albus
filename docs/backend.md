@@ -8,8 +8,7 @@ are configured.
 | Endpoint | Auth | Job |
 |---|---|---|
 | `POST /breakdown` | user JWT | Assignment → rubric-grounded, startable steps, persisted atomically |
-| `POST /chat` | user JWT | Ask Albus, grounded in one assignment the caller owns |
-| `POST /grade` | user JWT | Work + owned rubric → persisted grading; blind reading when no rubric exists |
+| `POST /grade` | user JWT | Work + the student's saved rubric → persisted grading; blind reading when there is none |
 | `POST /revenuecat-webhook` | RevenueCat auth + body HMAC | Purchase events → server entitlement |
 
 Almost everything else in the app runs on-device. Scheduling, re-planning,
@@ -26,10 +25,8 @@ decomposition, not reasoning, and is roughly two thirds of real volume.
 
 | Case | Model | Safety-ledger rate /MTok |
 |---|---|---|
-| Breakdown with rubric/criteria | `claude-sonnet-5` | $2 in / $10 out |
+| Breakdown with a saved rubric | `claude-sonnet-5` | $2 in / $10 out |
 | Generic breakdown | `claude-haiku-4-5` | $1 in / $5 out |
-| Ask Albus with rubric/retrieved reference | `claude-sonnet-5` | $2 in / $10 out |
-| Plain assignment question | `claude-haiku-4-5` | $1 in / $5 out |
 | Grader with a rubric | `claude-opus-5` | $5 in / $25 out |
 | Blind Grader reading | `claude-sonnet-5` | $2 in / $10 out |
 
@@ -84,10 +81,9 @@ the gate, the meter and the paywall alike:
 | | Free (€0) | Plus (€7.99/mo) | Pro (€14.99/mo) |
 |---|---|---|---|
 | Active tasks | 5 | 10 | unlimited |
-| Ask Albus | — | — | 300 / month, inside a task |
 | Albus Grader | — | 2 / week | 5 / week |
 | Saved rubrics | 3 | 5 | unlimited |
-| Tools | basic | expanded | all + curriculum intelligence |
+| Tools | basic | expanded | all |
 
 **`NULL` is unlimited. `0` is not included.** This is the load-bearing
 convention in the whole feature and it *reverses* what migration 0031 did, where
@@ -119,7 +115,7 @@ lock. Never in the Edge Function and never on the device.
 
 | limit | enforced by |
 |---|---|
-| Ask Albus, Grader | `check_and_record_ai_usage()` |
+| Breakdown, Grader | `check_and_record_ai_usage()` |
 | Active tasks | `assignments_active_limit` trigger |
 | Saved rubrics | `rubrics_limit` trigger |
 | Steps per plan | `subtasks_limit` trigger |
@@ -196,23 +192,6 @@ connections and races the final task, rubric and grading slots.
 
 
 ---
-
-## Ask Albus
-
-Grounded in exactly one assignment, loaded through the **caller-scoped** client
-so RLS decides what can enter the context window. The id is mandatory. Missing,
-unknown and foreign assignments are refused before retrieval, quota reservation
-or Anthropic; unknown and foreign ids receive the same public response.
-
-Routing mirrors breakdown: rubric present → `claude-sonnet-5`, otherwise
-`claude-haiku-4-5`. `max_tokens` is held at 700; this answers questions about a
-plan, and an essay-length reply means the model has wandered.
-
-`sanitiseHistory()` is a security boundary, not a formatting helper. It drops
-anything that is not a `user`/`assistant` turn — a client sending
-`{"role":"system"}` is attempting to rewrite the instructions — truncates each
-turn, caps the number of turns, and forces the sequence to start with a user
-message.
 
 ## Payments
 

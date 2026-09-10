@@ -28,15 +28,12 @@ struct ToolSelectionTests {
         need: StudyTool.Need?,
         title: String = "Do the thing",
         subject: String? = nil,
-        curriculumCode: String? = nil,
         taskType: String = "essay",
         daysToDeadline: Int = 14,
         stepMinutes: Int = 60,
         now: Date = Date(timeIntervalSince1970: 1_770_000_000)
     ) -> Subtask {
-        let course = subject.map {
-            Course(displayName: $0, curriculumSubjectCode: curriculumCode)
-        }
+        let course = subject.map { Course(displayName: $0) }
         if let course { context.insert(course) }
         let assignment = Assignment(
             title: "Assignment", taskType: taskType,
@@ -306,16 +303,15 @@ struct ToolSelectionTests {
     func mostOfTheCatalogueIsReachable() throws {
         let ctx = ModelContext(try container())
         var reached: Set<StudyTool> = []
-        let subjects: [(String, String?)] = [
-            ("History", nil), ("Biology", nil), ("Mathematics", nil), ("Spanish B", nil),
-            ("Computer Science", nil), ("Visual Arts", nil), ("Economics", nil), ("Physics", nil),
+        let subjects = [
+            "History", "Biology", "Mathematics", "Spanish B",
+            "Computer Science", "Visual Arts", "Economics", "Physics",
         ]
-        for (subject, code) in subjects {
+        for subject in subjects {
             for need in StudyTool.Need.allCases {
                 for days in [1, 3, 21] {
                     reached.formUnion(StudyTool.suggested(
-                        for: step(ctx, need: need, subject: subject, curriculumCode: code,
-                                  daysToDeadline: days),
+                        for: step(ctx, need: need, subject: subject, daysToDeadline: days),
                         now: now))
                 }
             }

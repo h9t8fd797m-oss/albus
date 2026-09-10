@@ -14,47 +14,15 @@ export interface RubricCriterion {
 
 export interface RubricContext {
   /**
-   * `curriculum` rubrics are the shared IB/AP reference data. They are identical
-   * for every student sitting the same assessment, which is what makes the
-   * system prompt worth caching.
-   *
-   * `personal` rubrics were pasted by one student off their own assignment
-   * sheet. They are volatile and unshareable, so they go in the *user* prompt —
-   * putting them above the cache breakpoint would give every student their own
-   * cache entry and destroy the hit rate for everyone.
+   * A rubric the student pasted off their own assignment sheet. Volatile and
+   * unshareable, so it goes in the *user* prompt -- putting it above the cache
+   * breakpoint would give every student their own cache entry and destroy the
+   * hit rate for everyone.
    */
-  kind: "curriculum" | "personal";
-  curriculumName: string;
-  courseName: string;
-  assessmentName: string;
+  name: string;
   criteria: RubricCriterion[];
-  /**
-   * Assessment objectives — AO1/AO2/AO3 and their weightings. Belong to the
-   * subject, not the component, and are what a paper with no per-criterion
-   * marks is actually assessed against.
-   */
-  objectives?: AssessmentObjective[];
-  syllabusTopics?: string[];
-  /** Scheduled length of the component, where the board publishes one. */
-  componentMinutes?: number | null;
   /** The pasted sheet, when the student did not break it into criteria. */
   body: string | null;
-}
-
-export interface AssessmentObjective {
-  code: string;
-  name: string;
-  weightingMin: number | null;
-  weightingMax: number | null;
-}
-
-/** "30-35%", or "30%" where a board publishes a single figure. */
-export function objectiveWeighting(o: AssessmentObjective): string {
-  if (o.weightingMin == null && o.weightingMax == null) return "";
-  if (o.weightingMin != null && o.weightingMax != null && o.weightingMin !== o.weightingMax) {
-    return ` (${o.weightingMin}-${o.weightingMax}%)`;
-  }
-  return ` (${o.weightingMin ?? o.weightingMax}%)`;
 }
 
 export interface BreakdownInput {
@@ -88,10 +56,7 @@ export const MODEL_GENERIC = "claude-haiku-4-5";
  */
 export function hasRubricContent(r: RubricContext | null): boolean {
   return r != null && (
-    r.criteria.length > 0 ||
-    (r.objectives?.length ?? 0) > 0 ||
-    (r.syllabusTopics?.length ?? 0) > 0 ||
-    (r.body ?? "").trim().length > 0
+    r.criteria.length > 0 || (r.body ?? "").trim().length > 0
   );
 }
 
@@ -201,10 +166,9 @@ assignment as written.`;
 export function buildSystemPrompt(rubric: RubricContext | null): string {
   if (!hasRubricContent(rubric)) return VOICE;
 
-  // A personal rubric is per-student, so it cannot live here. This block is
-  // static across every student who pasted one, which keeps it cacheable.
-  if (rubric!.kind === "personal") {
-    return `${VOICE}
+  // Static across every student who pasted a rubric, which keeps it cacheable.
+  // The rubric itself is per-student and lives in the user prompt.
+  return `${VOICE}
 
 This assignment is marked against a rubric the student supplied, which appears
 in <student_rubric> tags in the message.
@@ -212,68 +176,11 @@ in <student_rubric> tags in the message.
 Shape the steps around that rubric in the order a student would actually work
 through them. Where the rubric names criteria with codes or letters, set
 rubric_criterion_code to the matching one and null for genuinely general steps
-such as proofreading or submitting. Use only codes that appear in the rubric —
+such as proofreading or submitting. Use only codes that appear in the rubric --
 never invent one. If the rubric has no codes, set rubric_criterion_code to null
 on every step.`;
-  }
-
-  const rubricCtx = rubric!;
-
-  const criteria = rubricCtx.criteria
-    .map((c) => {
-      const marks = c.marks != null ? ` (${c.marks} marks)` : "";
-      const note = c.guidance ? ` — ${c.guidance}` : "";
-      return `- ${c.code}: ${c.name}${marks}${note}`;
-    })
-    .join("\n");
-
-  const objectives = (rubricCtx.objectives ?? [])
-    .map((o) => `- ${o.code}: ${o.name}${objectiveWeighting(o)}`)
-    .join("\n");
-
-  // Reference outlines can be large; only a bounded prefix belongs in a paid prompt.
-  const topics = (rubricCtx.syllabusTopics ?? []).slice(0, 40);
-  const topicBlock = topics.length
-    ? `\n\nSyllabus topics (select only those relevant to this task):\n${topics.map((name) => `- ${name}`).join("\n")}`
-    : "";
-
-  const length = rubricCtx.componentMinutes
-    ? `\nIt is a ${rubricCtx.componentMinutes}-minute component.`
-    : "";
-
-  // Two shapes, because two things are being described. A component with marked
-  // criteria (an IB internal assessment) gets steps mapped onto those criteria.
-  // A component with only assessment objectives (an A-level paper) has no
-  // per-criterion marks to map onto — steps there are revision and practice
-  // shaped by what the paper rewards, and telling the model to emit criterion
-  // codes would invite it to invent them.
-  if (criteria.length === 0) {
-    return `${VOICE}
-
-This is assessed work: ${rubricCtx.assessmentName}, ${rubricCtx.courseName} (${rubricCtx.curriculumName}).${length}
-
-${objectives ? `It is assessed against these objectives:\n${objectives}` : "No assessment objectives or per-criterion marks are confirmed for this component."}${topicBlock}
-
-${objectives
-  ? "Where a published weighting is higher, that objective deserves more of the student's time. Never infer missing weightings."
-  : "Use the topics to keep revision relevant, without inferring assessment weights from their order."} Set
-rubric_criterion_code to null on every step: no per-criterion marks are supplied for this component, and inventing a code would be worse than leaving it empty.`;
-  }
-
-  return `${VOICE}
-
-This assignment is assessed work: ${rubricCtx.assessmentName}, ${rubricCtx.courseName} (${rubricCtx.curriculumName}).${length}
-
-It is marked against these criteria:
-${criteria}${objectives ? `\n\nAnd assessed against these objectives:\n${objectives}` : ""}${topicBlock}
-
-Shape the steps around these criteria in the order a student would actually
-work through them. Set rubric_criterion_code to the matching code for steps
-that serve one criterion, and null for genuinely general steps such as
-proofreading or submitting. Use only the codes listed above — never invent one.`;
 }
 
-/** The volatile half: everything specific to this task, after the breakpoint. */
 export function buildUserPrompt(input: BreakdownInput): string {
   const days = daysUntil(input.deadlineISO, input.nowISO);
   const when = days === 0 ? "due today" : days === 1 ? "due tomorrow" : `due in ${days} days`;
@@ -325,7 +232,7 @@ export function buildUserPrompt(input: BreakdownInput): string {
   }
 
   const rubric = input.rubric;
-  if (rubric?.kind === "personal") {
+  if (rubric) {
     const criteria = rubric.criteria
       .map((c) => {
         const marks = c.marks != null ? ` (${c.marks} marks)` : "";
