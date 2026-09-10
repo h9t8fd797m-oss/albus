@@ -13,10 +13,7 @@ import {
 } from "../_shared/prompt.ts";
 
 const RUBRIC: RubricContext = {
-  kind: "curriculum",
-  curriculumName: "International Baccalaureate Diploma Programme",
-  courseName: "History HL",
-  assessmentName: "Internal Assessment",
+  name: "Internal Assessment",
   criteria: [
     {
       id: "id-a",
@@ -52,13 +49,6 @@ Deno.test("routes generic work to the cheap model", () => {
 
 Deno.test("a rubric with no criteria is treated as generic", () => {
   assertEquals(selectModel({ ...base, rubric: { ...RUBRIC, criteria: [] } }), MODEL_GENERIC);
-});
-
-Deno.test("system prompt embeds every criterion code", () => {
-  const p = buildSystemPrompt(RUBRIC);
-  assertStringIncludes(p, "A: Identifying and evaluating sources (6 marks)");
-  assertStringIncludes(p, "B: Investigation (15 marks)");
-  assertStringIncludes(p, "History HL");
 });
 
 Deno.test("system prompt is stable across tasks — the cache depends on it", () => {
@@ -97,10 +87,7 @@ Deno.test("hours render without a trailing .0", () => {
 // MARK: - Personal rubrics, notes, priority
 
 const PERSONAL: RubricContext = {
-  kind: "personal",
-  curriculumName: "the student's own rubric",
-  courseName: "",
-  assessmentName: "Mr Hall's essay rubric",
+  name: "Mr Hall's essay rubric",
   criteria: [
     { id: "p-a", code: "A", name: "Thesis", marks: 8, guidance: "One arguable claim." },
   ],
@@ -130,7 +117,7 @@ Deno.test("a personal rubric stays out of the cacheable system prompt", () => {
   // ...and it must be identical for every student who pasted one.
   const other: RubricContext = {
     ...PERSONAL,
-    assessmentName: "Different rubric",
+    name: "Different rubric",
     criteria: [{ id: "x", code: "Z", name: "Other", marks: 1, guidance: null }],
     body: "Something else entirely.",
   };
@@ -178,67 +165,6 @@ Deno.test("priority colours the advice without inventing a schedule", () => {
   assertStringIncludes(buildUserPrompt({ ...base, priority: "low" }), "keep the plan lean");
   const normal = buildUserPrompt({ ...base, priority: "normal" });
   assert(!normal.includes("front-load") && !normal.includes("keep the plan lean"));
-});
-
-// MARK: - Curriculum grounding via assessment objectives
-
-const AQA_PAPER: RubricContext = {
-  kind: "curriculum",
-  curriculumName: "A-Level (AQA)",
-  courseName: "Biology",
-  assessmentName: "Paper 3",
-  criteria: [],
-  objectives: [
-    { code: "AO1", name: "Demonstrate knowledge and understanding", weightingMin: 30, weightingMax: 35 },
-    { code: "AO2", name: "Apply knowledge and understanding", weightingMin: 40, weightingMax: 45 },
-    { code: "AO3", name: "Analyse, interpret and evaluate", weightingMin: 25, weightingMax: 25 },
-  ],
-  componentMinutes: 120,
-  body: null,
-};
-
-Deno.test("an exam paper with only objectives still counts as grounded", () => {
-  // The regression this exists for: A-level components carry no per-criterion
-  // marks, so a criteria-only check returned null and every A-level plan
-  // silently fell back to generic.
-  assert(hasRubricContent(AQA_PAPER));
-  assertEquals(selectModel({ ...base, rubric: AQA_PAPER }), MODEL_RUBRIC);
-});
-
-Deno.test("objectives and their weightings reach the system prompt", () => {
-  const system = buildSystemPrompt(AQA_PAPER);
-  assertStringIncludes(system, "AO1");
-  assertStringIncludes(system, "(30-35%)");
-  assertStringIncludes(system, "(25%)");   // single figure, not "25-25%"
-  assertStringIncludes(system, "Paper 3");
-  assertStringIncludes(system, "120-minute");
-});
-
-Deno.test("a paper with no criteria is told not to invent criterion codes", () => {
-  // Left to itself the model will happily emit "Criterion A" for an AQA paper
-  // that has no criteria at all, and the client would render it.
-  const system = buildSystemPrompt(AQA_PAPER).replace(/\s+/g, " ");
-  assertStringIncludes(system, "rubric_criterion_code to null on every step");
-});
-
-Deno.test("weighting drives emphasis, not just decoration", () => {
-  const system = buildSystemPrompt(AQA_PAPER).replace(/\s+/g, " ");
-  assertStringIncludes(system, "deserves more of the student's time");
-});
-
-Deno.test("a criteria-bearing component still maps steps onto criteria", () => {
-  const withBoth: RubricContext = { ...RUBRIC, objectives: AQA_PAPER.objectives };
-  const system = buildSystemPrompt(withBoth);
-  assertStringIncludes(system, "A: Identifying and evaluating sources");
-  assertStringIncludes(system, "never invent one");
-  // Objectives are additive context, they must not replace the criteria.
-  assertStringIncludes(system, "AO2");
-});
-
-Deno.test("an empty curriculum context is still not grounded", () => {
-  const empty: RubricContext = { ...AQA_PAPER, objectives: [], criteria: [] };
-  assert(!hasRubricContent(empty));
-  assertEquals(selectModel({ ...base, rubric: empty }), MODEL_GENERIC);
 });
 
 // MARK: - Tool-need precedence
@@ -314,17 +240,3 @@ Deno.test("fencing protects a tag nobody has invented yet", () => {
   assert(!out.includes("</student_preferences>"));
 });
 
-Deno.test("syllabus grounding is bounded and absent when empty", () => {
-  const topics = Array.from({ length: 45 }, (_, i) => `Topic ${i + 1} end`);
-  for (const criteria of [RUBRIC.criteria, []]) {
-    const rubric = { ...RUBRIC, criteria, syllabusTopics: topics };
-    const prompt = buildSystemPrompt(rubric);
-    assertStringIncludes(prompt, "Topic 40 end");
-    assert(!prompt.includes("Topic 41 end"));
-    assert(hasRubricContent(rubric));
-  }
-  assert(!buildSystemPrompt({ ...RUBRIC, syllabusTopics: [] }).includes("Syllabus topics"));
-  const topicsOnly = buildSystemPrompt({ ...RUBRIC, criteria: [], syllabusTopics: topics });
-  assertStringIncludes(topicsOnly, "No assessment objectives or per-criterion marks are confirmed");
-  assert(!topicsOnly.includes("It is assessed against these objectives:"));
-});

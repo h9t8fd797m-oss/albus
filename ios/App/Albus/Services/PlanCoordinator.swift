@@ -78,7 +78,7 @@ final class PlanCoordinator {
         let assignment = Assignment(
             title: draft.title, notes: draft.notes, taskType: draft.taskType,
             deadline: draft.deadline, estimatedMinutes: draft.estimatedMinutes,
-            priority: draft.priority, assessmentCode: draft.assessmentCode,
+            priority: draft.priority,
             course: draft.course, rubric: draft.rubric
         )
         context.insert(assignment)
@@ -88,8 +88,6 @@ final class PlanCoordinator {
             let result = try await plans.breakdown(
                 title: draft.title, taskType: draft.taskType,
                 deadline: draft.deadline, estimatedMinutes: draft.estimatedMinutes,
-                courseTemplateCode: draft.course?.curriculumSubjectCode,
-                assessmentCode: draft.assessmentCode,
                 courseID: draft.course?.remoteID,
                 notes: draft.notes,
                 rubricID: draft.rubric?.id,

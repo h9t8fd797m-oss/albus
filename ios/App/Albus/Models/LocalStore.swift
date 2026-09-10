@@ -18,22 +18,9 @@ final class Course {
     /// error rather than silent data corruption.
     var colorKey: String
     var courseTemplateID: UUID?
-    /// Which bundled curriculum subject this is, by code — `AQA_ALEVEL_BIOLOGY`.
-    ///
-    /// A code rather than the server's uuid, because this has to work before the
-    /// device has ever reached the network: the subject list, its components and
-    /// their durations are all compiled in. The server resolves the code against
-    /// its own copy, so a modified client can pick a different subject's
-    /// structure but can never invent one.
-    var curriculumSubjectCode: String?
-    /// `CourseLevel.rawValue`, kept optional because TOK, the Extended Essay,
-    /// and a subject whose level is not known genuinely have no value here.
-    ///
-    /// Defaulted in the declaration so SwiftData can lightweight-migrate rows
-    /// written by builds that predate IB context.
-    var levelRawValue: String? = nil
-    /// The student's subject target, 1–7. Not collected by the current UI yet,
-    /// but stored alongside the server column so later sync cannot lose it.
+    /// What the student is aiming for in this subject, on whatever scale their
+    /// school uses. Stored alongside the server column so later sync cannot
+    /// lose it.
     var targetGrade: Int? = nil
     var createdAt: Date
 
@@ -42,36 +29,20 @@ final class Course {
 
     init(id: UUID = UUID(), remoteID: UUID? = nil, displayName: String,
          colorKey: Tokens.SubjectColor = .violet, courseTemplateID: UUID? = nil,
-         curriculumSubjectCode: String? = nil, level: CourseLevel? = nil,
          targetGrade: Int? = nil, createdAt: Date = .now) {
         self.id = id
         self.remoteID = remoteID
         self.displayName = displayName
         self.colorKey = colorKey.rawValue
         self.courseTemplateID = courseTemplateID
-        self.curriculumSubjectCode = curriculumSubjectCode
-        self.levelRawValue = level?.rawValue
         self.targetGrade = targetGrade
         self.createdAt = createdAt
-    }
-
-    /// What Albus knows about how this subject is assessed, or nil for a
-    /// subject the student named themselves.
-    var curriculum: CurriculumSubject? {
-        curriculumSubjectCode.flatMap(CurriculumSubject.find(code:))
     }
 
     /// Subject colour is a property of the course, never of the card showing
     /// it. Views read this and never pick a colour themselves.
     var subjectColor: Tokens.SubjectColor {
         Tokens.SubjectColor(rawValue: colorKey) ?? .violet
-    }
-
-    /// The closed-set view of the stored raw value. An unknown value from a
-    /// newer server is treated as unknown rather than reaching a prompt.
-    var level: CourseLevel? {
-        get { levelRawValue.flatMap(CourseLevel.init(rawValue:)) }
-        set { levelRawValue = newValue?.rawValue }
     }
 }
 
@@ -92,12 +63,6 @@ final class Assignment {
     /// Defaulted in the declaration, not just the initialiser: SwiftData needs a
     /// value for rows written before this column existed.
     var priority: String = AssignmentPriority.normal.rawValue
-    /// Which component of the course this is — `PAPER_3`, `IA` — or nil.
-    ///
-    /// Paired with the course's `curriculumSubjectCode`, this is what makes a
-    /// plan curriculum-grounded. It was a server uuid, which the device had no
-    /// way of knowing offline and no screen could therefore ever set.
-    var assessmentCode: String?
     var createdAt: Date
     var updatedAt: Date
 
@@ -119,7 +84,6 @@ final class Assignment {
          taskType: String = "other", deadline: Date, estimatedMinutes: Int,
          status: AssignmentStatus = .active,
          priority: AssignmentPriority = .normal,
-         assessmentCode: String? = nil,
          course: Course? = nil, rubric: Rubric? = nil, createdAt: Date = .now) {
         self.id = id
         self.remoteID = remoteID
@@ -130,7 +94,6 @@ final class Assignment {
         self.estimatedMinutes = estimatedMinutes
         self.status = status.rawValue
         self.priority = priority.rawValue
-        self.assessmentCode = assessmentCode
         self.course = course
         self.rubric = rubric
         self.createdAt = createdAt
@@ -468,14 +431,6 @@ struct NewAssignment {
     var priority: AssignmentPriority = .normal
     var course: Course?
     var rubric: Rubric?
-    /// Which component of the course this is — "Paper 3", "Internal assessment" —
-    /// by code.
-    ///
-    /// Only the *code* travels to the server, never the criteria. The server
-    /// reads its own copy of what that component is; a modified client can name
-    /// a different component but cannot put invented assessment criteria into
-    /// the model's context.
-    var assessmentCode: String?
     /// What the student typed about the assignment. Capped at what the server
     /// accepts, so a note that saves is a note that syncs.
     var notes: String?

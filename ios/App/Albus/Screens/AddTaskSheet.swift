@@ -22,7 +22,6 @@ struct AddTaskSheet: View {
     @State private var title = ""
     @State private var taskType = "essay"
     @State private var courseID: UUID?
-    @State private var assessmentCode: String?
     @State private var rubricID: UUID?
     @State private var notes = ""
     @State private var priority: AssignmentPriority = .normal
@@ -39,17 +38,6 @@ struct AddTaskSheet: View {
 
     private var selectedCourse: Course? { courses.first { $0.id == courseID } }
     private var selectedRubric: Rubric? { rubrics.first { $0.id == rubricID } }
-
-    /// The components of the chosen subject, when Albus knows how that subject
-    /// is assessed. Empty for a subject the student named themselves, which is
-    /// the normal case for any qualification not yet in the corpus.
-    private var components: [CurriculumSubject.Component] {
-        selectedCourse?.curriculum?.components ?? []
-    }
-
-    private var selectedComponent: CurriculumSubject.Component? {
-        components.first { $0.code == assessmentCode }
-    }
 
     private var canAdd: Bool {
         title.trimmed.count >= 2
@@ -93,30 +81,6 @@ struct AddTaskSheet: View {
                     .foregroundStyle(Tokens.Palette.accent)
             }
 
-            // Only for a subject Albus actually holds a specification for.
-            // Showing an empty "which paper" picker to a student whose
-            // qualification is not in the corpus would be worse than not asking.
-            if !components.isEmpty {
-                VStack(alignment: .leading, spacing: Tokens.Spacing.s) {
-                    SheetPicker(
-                        label: "Which part of the course",
-                        options: [(value: String?.none, title: "Not sure yet")]
-                            + components.map { (value: String?.some($0.code), title: $0.pickerTitle) },
-                        selection: $assessmentCode
-                    )
-                    if let detail = selectedComponent?.detailText {
-                        Text(detail)
-                            .font(Tokens.Typography.micro)
-                            .foregroundStyle(Tokens.Palette.inkMuted)
-                            .fixedSize(horizontal: false, vertical: true)
-                    } else {
-                        Text("Albus knows what this component is worth and how it's marked, and shapes the steps around that.")
-                            .font(Tokens.Typography.micro)
-                            .foregroundStyle(Tokens.Palette.inkMuted)
-                            .fixedSize(horizontal: false, vertical: true)
-                    }
-                }
-            }
 
             VStack(alignment: .leading, spacing: Tokens.Spacing.s) {
                 SheetPicker(
@@ -185,9 +149,8 @@ struct AddTaskSheet: View {
         // student switches from Biology to History would send a code that
         // resolves to nothing — a silently ungrounded plan rather than a
         // visible mistake.
-        .onChange(of: courseID) { assessmentCode = nil }
         .sheet(isPresented: $addingCourse) {
-            NewSubjectSheet(choices: unusedCurriculumSubjects, onAdd: addCourse)
+            NewSubjectSheet(onAdd: addCourse)
         }
         .sheet(item: $creatingRubric) { draft in
             RubricEditorSheet(draft: draft) { saved in
@@ -201,13 +164,6 @@ struct AddTaskSheet: View {
         }
     }
 
-    /// Subjects the student has not already added, so the picker does not offer
-    /// a second Biology.
-    private var unusedCurriculumSubjects: [CurriculumSubject] {
-        let taken = Set(courses.compactMap(\.curriculumSubjectCode))
-        return preferences.curriculumSubjects.filter { !taken.contains($0.code) }
-    }
-
     /// Colours cycle through the token set rather than being chosen: a subject's
     /// colour is a property of the course, and picking one per assignment is how
     /// HIST ends up red on one screen and green on another.
@@ -217,8 +173,7 @@ struct AddTaskSheet: View {
 
         let palette = Tokens.SubjectColor.allCases
         let colour = palette[courses.count % palette.count]
-        let course = Course(displayName: name, colorKey: colour,
-                            curriculumSubjectCode: choice.curriculumCode)
+        let course = Course(displayName: name, colorKey: colour)
         modelContext.insert(course)
         try? modelContext.save()
         courseID = course.id
@@ -228,8 +183,7 @@ struct AddTaskSheet: View {
             // assignment to a course. Without it the subject stays local, which
             // is worse but not broken.
             if let remote = await ProfileService().createCourse(
-                displayName: name, colorKey: colour.rawValue,
-                curriculumSubjectCode: choice.curriculumCode
+                displayName: name, colorKey: colour.rawValue
             ) {
                 course.remoteID = remote
                 try? modelContext.save()
@@ -246,7 +200,6 @@ struct AddTaskSheet: View {
             priority: priority,
             course: selectedCourse,
             rubric: selectedRubric,
-            assessmentCode: assessmentCode,
             notes: notes.trimmed.nilIfEmpty
         ))
         dismiss()
@@ -259,7 +212,6 @@ struct SubjectChoice {
     /// Nil for a subject Albus has no specification for. That is not a failure
     /// — it is most subjects today — and everything downstream has to keep
     /// working without it.
-    let curriculumCode: String?
 }
 
 /// Adding a subject.
@@ -275,23 +227,11 @@ struct SubjectChoice {
 /// field is the single most "default iPhone" control there is.
 private struct NewSubjectSheet: View {
     @Environment(\.dismiss) private var dismiss
-    let choices: [CurriculumSubject]
     let onAdd: (SubjectChoice) -> Void
 
-    /// The chosen subject's code, `Self.other` for the free-text case, or empty
-    /// for "has not chosen yet". Three states, because defaulting to the first
-    /// subject on the list lets a distracted tap add a course the student does
-    /// not take, and defaulting to free text hides the whole point of the list.
-    @State private var picked = ""
     @State private var name = ""
 
-    private static let other = "__OTHER__"
-
-    private var isTyping: Bool { choices.isEmpty || picked == Self.other }
-
-    private var canAdd: Bool {
-        isTyping ? !name.trimmed.isEmpty : !picked.isEmpty
-    }
+    private var canAdd: Bool { !name.trimmed.isEmpty }
 
     var body: some View {
         AlbusSheetScaffold(
@@ -301,31 +241,17 @@ private struct NewSubjectSheet: View {
             isPrimaryEnabled: canAdd,
             primaryAction: submit,
             onCancel: { dismiss() },
-            // A fixed height rather than .medium/.large: this is one or two
-            // fields and a footnote, and giving it half the screen would be
-            // mostly empty paper background under the keyboard.
-            detents: [.height(choices.isEmpty ? 340 : 420)]
+            // A fixed height rather than .medium/.large: this is one field and
+            // a footnote, and giving it half the screen would be mostly empty
+            // paper background under the keyboard.
+            detents: [.height(340)]
         ) {
-            if !choices.isEmpty {
-                SheetPicker(
-                    label: "Your course",
-                    options: [(value: "", title: "Choose\u{2026}")]
-                        + choices.map { (value: $0.code, title: $0.shortName) }
-                        + [(value: Self.other, title: "Something else\u{2026}")],
-                    selection: $picked
-                )
+            SheetField(label: nil) {
+                TextField("e.g. History", text: $name)
+                    .textInputAutocapitalization(.words)
             }
 
-            if isTyping {
-                SheetField(label: choices.isEmpty ? nil : "Name") {
-                    TextField("e.g. History HL", text: $name)
-                        .textInputAutocapitalization(.words)
-                }
-            }
-
-            Text(isTyping
-                 ? "Albus uses your subjects to pitch answers at the right level."
-                 : "Albus knows how this course is assessed, and plans your work around it.")
+            Text("Albus uses your subjects to pitch answers at the right level.")
                 .font(Tokens.Typography.micro)
                 .foregroundStyle(Tokens.Palette.inkMuted)
                 .fixedSize(horizontal: false, vertical: true)
@@ -333,11 +259,7 @@ private struct NewSubjectSheet: View {
     }
 
     private func submit() {
-        if !isTyping, let subject = CurriculumSubject.find(code: picked) {
-            onAdd(SubjectChoice(displayName: subject.shortName, curriculumCode: subject.code))
-        } else {
-            onAdd(SubjectChoice(displayName: name.trimmed, curriculumCode: nil))
-        }
+        onAdd(SubjectChoice(displayName: name.trimmed))
         dismiss()
     }
 }

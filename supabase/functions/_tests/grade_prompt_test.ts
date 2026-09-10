@@ -12,10 +12,7 @@ import {
 import type { RubricContext } from "../_shared/prompt.ts";
 
 const RUBRIC: RubricContext = {
-  kind: "personal",
-  curriculumName: "the student's own rubric",
-  courseName: "",
-  assessmentName: "Mr Hall's essay rubric",
+  name: "Mr Hall's essay rubric",
   criteria: [
     { id: "a", code: "A", name: "Thesis", marks: 8, guidance: "One arguable claim." },
     { id: "b", code: "B", name: "Evidence", marks: 12, guidance: null },
@@ -512,7 +509,7 @@ Deno.test("at most three improvements are returned", () => {
 // which is exactly the gap `grade_label` exists to close.
 const MYP: RubricContext = {
   ...RUBRIC,
-  assessmentName: "MYP Theatre, criterion A",
+  name: "MYP Theatre, criterion A",
   criteria: [{ id: "a", code: "A", name: "Investigating", marks: 8, guidance: null }],
 };
 

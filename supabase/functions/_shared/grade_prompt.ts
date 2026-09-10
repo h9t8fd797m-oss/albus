@@ -7,7 +7,7 @@
 import { fence, type RubricContext } from "./prompt.ts";
 
 /** What the marks were actually based on. Never inferred by the client. */
-export type GradeBasis = "personal" | "curriculum" | "blind";
+export type GradeBasis = "personal" | "blind";
 
 /** Longest submission accepted. Roughly 4,000 words — a full-length school assignment. */
 export const MAX_WORK_CHARS = 20_000;

@@ -14,26 +14,18 @@ struct OnboardingFlow: View {
     @Environment(PlanCoordinator.self) private var coordinator
     @Environment(Preferences.self) private var preferences
 
-    enum Step { case profile, subjects, deadline, building, meetAlbus }
+    enum Step { case profile, deadline, building, meetAlbus }
 
     @State private var step: Step = .profile
 
     // Screen 1
     @State private var name = ""
-    @State private var program: Preferences.Program = .ib
+    @State private var program: Preferences.Program = .other
     @State private var load: Preferences.StudyLoad = .standard
-    @State private var diplomaYear: DiplomaYearChoice = .dp2
-    @State private var targetPointsText = ""
 
-    // Screen 2 — only shown when Albus has verified data for the programme.
-    @State private var selectedSubjectCodes: Set<String> = []
-    @State private var subjectLevels: [String: CourseLevel] = [:]
-
-    // Screen 3
+    // Screen 2
     @State private var taskTitle = ""
     @State private var taskType = "essay"
-    @State private var subjectCode = ""
-    @State private var componentCode = ""
     @State private var deadline = Calendar.current.date(byAdding: .day, value: 3, to: .now) ?? .now
     @State private var hours = 2.0
 
@@ -49,7 +41,6 @@ struct OnboardingFlow: View {
             BackgroundGradient()
             switch step {
             case .profile:    profileStep
-            case .subjects:   subjectsStep
             case .deadline:   deadlineStep
             case .building:   buildingStep
             case .meetAlbus:  meetAlbusStep
@@ -67,19 +58,8 @@ struct OnboardingFlow: View {
 
     // MARK: - 1. Profile
 
-    /// The subjects Albus can actually plan against, for what the student has
-    /// picked so far. Read from the local choices rather than `Preferences`,
-    /// which is only written when the profile step is left.
-    private var offeredSubjects: [CurriculumSubject] {
-        guard let qualification = program.qualification else { return [] }
-        return CurriculumSubject.subjects(
-            qualification: qualification,
-            board: nil
-        )
-    }
-
-    /// Two form steps, or three when there are subjects to choose.
-    private var formStepCount: Double { offeredSubjects.isEmpty ? 2 : 3 }
+    /// Name and study hours, then the first deadline.
+    private var formStepCount: Double { 2 }
 
     private var profileStep: some View {
         OnboardingScaffold(
@@ -88,7 +68,7 @@ struct OnboardingFlow: View {
             subtitle: "So Albus can build your first plan.",
             actionTitle: "Next",
             isEnabled: true,
-            action: { step = offeredSubjects.isEmpty ? .deadline : .subjects }
+            action: { step = .deadline }
         ) {
             VStack(alignment: .leading, spacing: Tokens.Spacing.xl) {
                 field("Your name") {
@@ -114,33 +94,6 @@ struct OnboardingFlow: View {
                     }
                 }
 
-                field("Which year are you in?") {
-                    ChoiceGrid(columns: 2, options: DiplomaYearChoice.allCases,
-                               selection: $diplomaYear) { $0.title }
-                }
-
-                field("Target points · optional") {
-                    VStack(alignment: .leading, spacing: Tokens.Spacing.xs) {
-                        TextField("Out of 45", text: $targetPointsText)
-                            .keyboardType(.numberPad)
-                            .padding(Tokens.Spacing.m)
-                            .background(Tokens.Glass.fill,
-                                        in: RoundedRectangle(cornerRadius: Tokens.Radius.control,
-                                                             style: .continuous))
-                            .overlay {
-                                RoundedRectangle(cornerRadius: Tokens.Radius.control,
-                                                 style: .continuous)
-                                    .strokeBorder(Tokens.Palette.hairline, lineWidth: 0.5)
-                            }
-
-                        if !TargetPointsInput.isValidOrEmpty(targetPointsText) {
-                            Text("Use a number from 1 to 45, or leave it empty.")
-                                .font(Tokens.Typography.micro)
-                                .foregroundStyle(Tokens.Palette.danger)
-                        }
-                    }
-                }
-
                 field("Daily study hours") {
                     ChoiceGrid(columns: 3, options: Preferences.StudyLoad.allCases,
                                selection: $load) { $0.title }
@@ -149,87 +102,7 @@ struct OnboardingFlow: View {
         }
     }
 
-    // MARK: - 2. Subjects
-
-    /// Which of Albus's own subjects the student takes.
-    ///
-    /// Only reached when there are any — a student on a qualification whose
-    /// official documents are not in the corpus never sees an empty grid, they
-    /// simply go straight to their deadline and name subjects themselves later.
-    private var subjectsStep: some View {
-        OnboardingScaffold(
-            progress: 2 / formStepCount,
-            title: "Which of these do you take?",
-            subtitle: "Albus knows how each of these is assessed, and plans around it.",
-            actionTitle: selectedSubjectCodes.isEmpty ? "Skip for now" : "Next",
-            isEnabled: true,
-            action: { step = .deadline }
-        ) {
-            VStack(alignment: .leading, spacing: Tokens.Spacing.l) {
-                MultiChoiceGrid(
-                    columns: 2,
-                    options: offeredSubjects.map { (value: $0.code, title: $0.shortName) },
-                    selection: $selectedSubjectCodes
-                )
-
-                if !selectedLevelSubjects.isEmpty {
-                    VStack(alignment: .leading, spacing: Tokens.Spacing.s) {
-                        Text("LEVEL · OPTIONAL")
-                            .font(Tokens.Typography.overline)
-                            .tracking(Tokens.Tracking.overline)
-                            .foregroundStyle(Tokens.Palette.inkMuted)
-
-                        ForEach(selectedLevelSubjects) { subject in
-                            HStack(alignment: .center, spacing: Tokens.Spacing.m) {
-                                Text(subject.shortName)
-                                    .font(Tokens.Typography.body)
-                                    .foregroundStyle(Tokens.Palette.ink)
-                                    .frame(maxWidth: .infinity, alignment: .leading)
-                                CourseLevelSelector(
-                                    selection: levelBinding(for: subject.code),
-                                    accessibilityPrefix: "onboardingLevel.\(subject.code)"
-                                )
-                            }
-                            .padding(Tokens.Spacing.m)
-                            .background(Tokens.Glass.fill,
-                                        in: RoundedRectangle(cornerRadius: Tokens.Radius.control,
-                                                             style: .continuous))
-                        }
-                    }
-                }
-
-                Text("You can add any other subject later, whether or not Albus knows it.")
-                    .font(Tokens.Typography.micro)
-                    .foregroundStyle(Tokens.Palette.inkMuted)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-        }
-        .onChange(of: selectedSubjectCodes) { selected in
-            subjectLevels = subjectLevels.filter { selected.contains($0.key) }
-        }
-    }
-
-    // MARK: - 3. First deadline
-
-    /// The subjects the student picked, in a stable order.
-    private var chosenSubjects: [CurriculumSubject] {
-        offeredSubjects.filter { selectedSubjectCodes.contains($0.code) }
-    }
-
-    private var chosenSubject: CurriculumSubject? {
-        chosenSubjects.first { $0.code == subjectCode }
-    }
-
-    private var selectedLevelSubjects: [CurriculumSubject] {
-        chosenSubjects.filter { CourseLevel.applies(to: $0.code) }
-    }
-
-    private func levelBinding(for code: String) -> Binding<CourseLevel?> {
-        Binding(
-            get: { subjectLevels[code] },
-            set: { level in subjectLevels[code] = level }
-        )
-    }
+    // MARK: - 2. First deadline
 
     private var deadlineStep: some View {
         OnboardingScaffold(
@@ -266,33 +139,6 @@ struct OnboardingFlow: View {
                                 set: { taskType = $0.rawValue })) { $0.title }
                 }
 
-                // Asked here, on the very first plan, because this is the one
-                // plan every student sees — and it is the difference between a
-                // generic breakdown and one shaped by what the paper is worth.
-                // Absent entirely for a student with no curriculum subjects, so
-                // it costs them nothing.
-                if !chosenSubjects.isEmpty {
-                    field("Which subject") {
-                        CodeGrid(
-                            columns: 2,
-                            options: [(value: "", title: "Not a subject")]
-                                + chosenSubjects.map { (value: $0.code, title: $0.shortName) },
-                            selection: $subjectCode
-                        )
-                    }
-
-                    if let components = chosenSubject?.components, !components.isEmpty {
-                        field("Which part of the course") {
-                            CodeGrid(
-                                columns: 2,
-                                options: [(value: "", title: "Not sure yet")]
-                                    + components.map { (value: $0.code, title: $0.name) },
-                                selection: $componentCode
-                            )
-                        }
-                    }
-                }
-
                 field("Deadline") {
                     DatePicker("", selection: $deadline, in: Date.now...,
                                displayedComponents: [.date, .hourAndMinute])
@@ -315,10 +161,6 @@ struct OnboardingFlow: View {
                 }
             }
         }
-        // Paper 3 of a subject the student just switched away from would send a
-        // code that resolves to nothing — an ungrounded plan with no sign that
-        // anything went wrong.
-        .onChange(of: subjectCode) { componentCode = "" }
     }
 
     // `TaskKind` used to be declared here with six cases, while AddTaskSheet
@@ -461,28 +303,15 @@ struct OnboardingFlow: View {
             }
         }
 
-        // Now that there is an account, tell the server what the student is
-        // studying. Best-effort: a failed sync costs slightly less specific
-        // answers from Albus, never the assignment they are here to create.
-        let profiles = ProfileService()
-        await profiles.syncCurriculum(preferences.curriculumCode)
-        await profiles.setIBContext(
-            examSession: diplomaYear.examSession(),
-            targetPoints: TargetPointsInput.value(from: targetPointsText)
-        )
-
-        // Subjects are created here rather than when they were picked: a flow
-        // abandoned on the deadline screen should leave nothing behind.
-        let course = await createChosenSubjects(using: profiles)
-
+        // The student names their own subjects once they are in the app; the
+        // first assignment does not need one.
         await coordinator.addAssignment(
             NewAssignment(
                 title: taskTitle.trimmingCharacters(in: .whitespaces),
                 taskType: taskType,
                 deadline: deadline,
                 estimatedMinutes: Int(hours * 60),
-                course: course,
-                assessmentCode: componentCode.nilIfEmpty
+                course: nil
             ),
             context: context,
             availability: preferences.availability
@@ -491,48 +320,6 @@ struct OnboardingFlow: View {
         // A failed generation must not trap the student in onboarding: the
         // assignment is saved either way, and Task detail explains the gap.
         step = .meetAlbus
-    }
-
-    /// Creates every subject the student picked and returns the one their first
-    /// assignment belongs to, if any.
-    ///
-    /// The remote ids are awaited rather than fired off in the background: the
-    /// breakdown that runs immediately after this needs them to attach the
-    /// assignment to a course, and the whole step costs a handful of small
-    /// inserts against a call that already takes seconds.
-    private func createChosenSubjects(using profiles: ProfileService) async -> Course? {
-        guard !chosenSubjects.isEmpty else { return nil }
-
-        let palette = Tokens.SubjectColor.allCases
-        var created: [(subject: CurriculumSubject, course: Course)] = []
-
-        for (index, subject) in chosenSubjects.enumerated() {
-            let level = CourseLevel.applies(to: subject.code) ? subjectLevels[subject.code] : nil
-            let course = Course(displayName: subject.shortName,
-                                colorKey: palette[index % palette.count],
-                                curriculumSubjectCode: subject.code,
-                                level: level)
-            context.insert(course)
-            created.append((subject, course))
-        }
-        try? context.save()
-
-        // Best-effort, exactly as everywhere else: a subject that did not sync
-        // is still a working subject on the device, just not yet on the server.
-        for (subject, course) in created {
-            if let remote = await profiles.createCourse(
-                displayName: course.displayName,
-                colorKey: course.colorKey,
-                curriculumSubjectCode: subject.code,
-                level: course.level,
-                targetGrade: course.targetGrade
-            ) {
-                course.remoteID = remote
-            }
-        }
-        try? context.save()
-
-        return created.first { $0.subject.code == subjectCode }?.course
     }
 
     private func field<Content: View>(_ label: String,

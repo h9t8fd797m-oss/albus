@@ -105,14 +105,14 @@ struct PaywallScreen: View {
                  ("The core tools", "The study tools Albus picks for a step.")]
             case .plus:
                 [("10 active tasks", "For a term carrying more than one deadline."),
-                 ("5 saved rubrics", "And the expanded tool library."),
+                 ("5 saved rubrics", "Paste a mark scheme once and reuse it."),
                  ("2 markings a week", "Your work, your rubric, a real grade."),
-                 ("No Ask Albus", "Asking about an assignment is Pro.")]
+                 ("The expanded tools", "More of the library, picked per step.")]
             case .pro:
                 [("Unlimited tasks", "However much you are actually carrying."),
-                 ("Unlimited rubrics, every tool", "IB curriculum intelligence."),
+                 ("Unlimited rubrics", "However many mark schemes you carry."),
                  ("5 markings a week", "Mark a draft, revise it, mark it again."),
-                 ("Ask Albus, in any task", "It already knows the rubric and the deadline.")]
+                 ("Every study tool", "The whole library, picked per step.")]
             }
         }
     }

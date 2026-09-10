@@ -19,39 +19,10 @@ final class Preferences {
         case other = "Other"
         var id: String { rawValue }
 
-        /// Albus launches as an IB Diploma Programme product. Keep every case
-        /// decodable for existing installs, but offer only the programme the
-        /// current product is designed to support.
-        static let offered: [Program] = [.ib]
+        /// Albus plans for any student, so every programme is offered. It
+        /// colours the wording Albus uses; nothing depends on it.
+        static let offered: [Program] = allCases
 
-        /// The qualification in the bundled curriculum data, where there is one.
-        /// This is the join between "what the student says they do" and "what
-        /// Albus knows about how that is assessed".
-        var qualification: CurriculumSubject.Qualification? {
-            switch self {
-            case .ib: .ibDP
-            case .aLevel: .aLevel
-            case .ap: .ap
-            case .university, .other: nil
-            }
-        }
-
-        /// The `curricula.code` this maps to. Kept next to the cases so adding a
-        /// programme cannot silently produce a foreign key the server rejects.
-        /// Exhaustive on purpose — no default — for the same reason.
-        ///
-        /// A-level carries the board, because boards genuinely assess the same
-        /// subject differently and one code for all of them would be a lie the
-        /// planner would then act on. Every other programme has a single
-        /// authority and ignores the argument.
-        func curriculumCode(board: String?) -> String {
-            switch self {
-            case .ib: "IB_DP"
-            case .aLevel: "A_LEVEL_\(board ?? Preferences.defaultExamBoard)"
-            case .ap: "AP"
-            case .university, .other: "GENERIC"
-            }
-        }
     }
 
     /// The three buckets onboarding offers, mapped to real capacity.
@@ -101,12 +72,8 @@ final class Preferences {
         static let maxPerDay = "albus.notify.maxPerDay"
     }
 
-    /// Where the corpus currently starts. Not a favourite — it is the one board
-    /// whose specifications have actually been read and verified.
-    ///
-    /// `nonisolated` because `Program.curriculumCode(board:)` is a plain method
-    /// on a `Sendable` enum and has no business hopping to the main actor to
-    /// read a constant string.
+    /// Kept so a value written by an older build still decodes. Nothing reads
+    /// it now: exam boards only ever distinguished A-level specifications.
     nonisolated static let defaultExamBoard = "AQA"
 
 
@@ -115,7 +82,7 @@ final class Preferences {
     init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
         name = defaults.string(forKey: Key.name) ?? ""
-        program = Program(rawValue: defaults.string(forKey: Key.program) ?? "") ?? .ib
+        program = Program(rawValue: defaults.string(forKey: Key.program) ?? "") ?? .other
         examBoard = defaults.string(forKey: Key.board) ?? Self.defaultExamBoard
         load = StudyLoad(rawValue: defaults.string(forKey: Key.load) ?? "") ?? .standard
         hasOnboarded = defaults.bool(forKey: Key.onboarded)
@@ -248,26 +215,5 @@ final class Preferences {
     /// Used only for the greeting. Empty is fine and common.
     var firstName: String {
         name.split(separator: " ").first.map(String.init) ?? ""
-    }
-
-    /// What `profiles.curriculum_code` should say.
-    var curriculumCode: String { program.curriculumCode(board: examBoard) }
-
-    /// The subjects Albus has verified assessment data for, given what the
-    /// student says they study. Empty is the normal case for a programme whose
-    /// official documents are not in the corpus yet — every screen that reads
-    /// this has to stay useful when it is.
-    var curriculumSubjects: [CurriculumSubject] {
-        guard let qualification = program.qualification else { return [] }
-        return CurriculumSubject.subjects(
-            qualification: qualification,
-            board: qualification == .aLevel ? examBoard : nil
-        )
-    }
-
-    /// Boards worth offering. One board is not a choice, so the picker that
-    /// reads this hides itself rather than showing a list of length one.
-    var availableBoards: [String] {
-        program.qualification.map { CurriculumSubject.boards(for: $0) } ?? []
     }
 }

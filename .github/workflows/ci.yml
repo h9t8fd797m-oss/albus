@@ -146,12 +146,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Validate curriculum and generated outputs
-        run: |
-          python3 scripts/curriculum/check_guards.py
-          python3 scripts/curriculum/gen.py --check
-          python3 scripts/curriculum/gen.py
-          git diff --exit-code -- scripts/curriculum/seed.sql ios/App/Albus/Models/Curriculum.swift
       - uses: denoland/setup-deno@v2
         with: { deno-version: v2.x }
       - name: Type-check, lint and test the edge functions

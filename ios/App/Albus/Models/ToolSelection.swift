@@ -245,19 +245,13 @@ struct Runway {
 
 /// Which subject areas the student's course belongs to.
 ///
-/// Read from the curriculum subject when Albus knows it, and from the subject's
-/// name when it does not — a student who typed "Biology" gets the same tools as
-/// one who picked it from the corpus.
+/// Read from the name the student gave the subject.
 ///
 /// Returns a set, because subjects genuinely span areas: History is humanities
 /// and social science, and a source-research step in it should reach both JSTOR
 /// and SSRN.
 enum SubjectArea {
     static func of(_ assignment: Assignment) -> Set<StudyTool.Area> {
-        if let subject = assignment.course?.curriculum?.subject {
-            let areas = fromName(subject)
-            if !areas.isEmpty { return areas }
-        }
         if let name = assignment.course?.displayName {
             let areas = fromName(name)
             if !areas.isEmpty { return areas }

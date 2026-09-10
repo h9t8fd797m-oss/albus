@@ -16,9 +16,7 @@ import { generateBreakdown } from "../_shared/anthropic.ts";
 import { validateAndNormalise } from "../_shared/breakdown_schema.ts";
 
 const IB_HISTORY_IA: RubricContext = {
-  curriculumName: "International Baccalaureate Diploma Programme",
-  courseName: "History HL",
-  assessmentName: "Internal Assessment",
+  name: "Internal Assessment",
   criteria: [
     {
       id: "a",

@@ -111,16 +111,10 @@ extension TaskType {
 
     /// The types offered when a student is picking one themselves.
     ///
-    /// Everything, ordered so the IB assessments come first — for an IB-only
-    /// product they are the more likely answer, and burying them under
-    /// "Reading" would be organising the list by the app's history rather than
-    /// by what the student is looking for.
-    static var offered: [TaskType] {
-        allCases.sorted { lhs, rhs in
-            if lhs.isIBAssessment != rhs.isIBAssessment { return lhs.isIBAssessment }
-            return false          // otherwise keep declaration order
-        }
-    }
+    /// Declaration order: the everyday kinds of work first, then the named
+    /// assessments. The IB-specific ones stay on the list -- an IB student is
+    /// still a student, and the column accepts them either way.
+    static var offered: [TaskType] { allCases }
 
     /// Decoding a value the server accepted but this build does not know.
     ///
