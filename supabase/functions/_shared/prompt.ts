@@ -12,13 +12,13 @@ export interface RubricCriterion {
   guidance: string | null;
 }
 
+/**
+ * A rubric the student pasted off their own assignment sheet. Volatile and
+ * unshareable, so it goes in the *user* prompt -- putting it above the cache
+ * breakpoint would give every student their own cache entry and destroy the hit
+ * rate for everyone.
+ */
 export interface RubricContext {
-  /**
-   * A rubric the student pasted off their own assignment sheet. Volatile and
-   * unshareable, so it goes in the *user* prompt -- putting it above the cache
-   * breakpoint would give every student their own cache entry and destroy the
-   * hit rate for everyone.
-   */
   name: string;
   criteria: RubricCriterion[];
   /** The pasted sheet, when the student did not break it into criteria. */

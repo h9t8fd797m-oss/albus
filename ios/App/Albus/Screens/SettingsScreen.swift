@@ -5,10 +5,8 @@ import AlbusCore
 /// The fourth tab, and the answer to two questions a student could not ask
 /// before: *what am I on*, and *where do I change this*.
 ///
-/// It replaced Ask Albus in the tab bar. That was the right trade in both
-/// directions — a conversation belongs beside the work it is about, not in a
-/// tab of its own, and every setting in the app was previously reachable only
-/// by finding one small button on Home.
+/// Every setting in the app was previously reachable only by finding one small
+/// button on Home.
 struct SettingsScreen: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(EntitlementService.self) private var entitlements
@@ -17,12 +15,6 @@ struct SettingsScreen: View {
     @Query(sort: \Course.displayName) private var courses: [Course]
 
     @State private var showingPaywall = false
-    @State private var savedTargetPoints: Int?
-    @State private var contextFailure: String?
-    @State private var courseFailure: String?
-    @State private var savingSession = false
-    @State private var savingPoints = false
-    @State private var savingCourseIDs: Set<UUID> = []
 
     var body: some View {
         @Bindable var preferences = preferences
@@ -140,11 +132,8 @@ struct SettingsScreen: View {
 
     // MARK: - Profile
 
-    /// The answers onboarding asked for, editable afterwards.
-    ///
-    /// These were write-once until now: a student who picked the wrong exam
-    /// board on their first launch had no way to correct it, and the board is
-    /// what every curriculum lookup keys on.
+    /// The answers onboarding asked for, editable afterwards -- they were
+    /// write-once until now, so a wrong tap on first launch was permanent.
     private func profileSection(_ preferences: Bindable<Preferences>) -> some View {
         VStack(alignment: .leading, spacing: Tokens.Spacing.m) {
             SectionHeader(label: "You") { EmptyView() }
@@ -170,13 +159,6 @@ struct SettingsScreen: View {
                         label: "Work in a day",
                         options: Preferences.StudyLoad.allCases.map { (value: $0, title: $0.title) },
                         selection: preferences.load)
-
-                    if let contextFailure {
-                        Text(contextFailure)
-                            .font(Tokens.Typography.micro)
-                            .foregroundStyle(Tokens.Palette.danger)
-                            .fixedSize(horizontal: false, vertical: true)
-                    }
                 }
             }
         }
@@ -207,12 +189,6 @@ struct SettingsScreen: View {
                         }
                     }
 
-                    if let courseFailure {
-                        Text(courseFailure)
-                            .font(Tokens.Typography.micro)
-                            .foregroundStyle(Tokens.Palette.danger)
-                            .fixedSize(horizontal: false, vertical: true)
-                    }
                 }
             }
         }
