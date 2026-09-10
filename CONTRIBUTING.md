@@ -23,12 +23,17 @@ This is not ceremony. Merging to `main` is what deploys migrations to the live
 database, and a bad migration is the one class of mistake that is genuinely
 hard to undo.
 
-**Deploys need three repository secrets** — `SUPABASE_ACCESS_TOKEN`,
-`SUPABASE_PROJECT_REF` and `SUPABASE_DB_PASSWORD`, under Settings → Secrets and
-variables → Actions. Until they are set, the `Deploy migrations` workflow stops
-immediately and says which are missing, and migrations have to be applied by
-hand. It used to die further in with an opaque CLI error instead, which is how
-it went unnoticed that it had never once run.
+**Nothing deploys automatically, by design.** There is no deploy workflow.
+Migrations are applied by hand, with the owner's authorization, because
+`supabase db push` cannot be trusted until the recorded history is repaired
+(below) and because a migration is the one class of mistake that is genuinely
+hard to undo.
+
+A `Deploy migrations` workflow used to exist and failed on all twelve of its
+runs, since the three secrets it needed were never set. It was removed on
+10 Sep 2026: a permanently red check trains everyone to ignore CI, and the
+version of it that *worked* would have been worse than the version that did
+not — see the history section below.
 
 ## Branch names
 
@@ -108,12 +113,11 @@ The schema itself is fine — `supabase db reset --local` rebuilds it from these
 files and the pgTAP suite passes against the result, so the files are accurate.
 What is wrong is only the bookkeeping.
 
-**This is why `supabase db push` must not be run against production, and why the
-`Deploy migrations` secrets must not be added until it is repaired.** `db push`
-applies every migration whose version it does not recognise. It does not
-recognise thirteen of them. Setting those secrets today would, on the next merge
-that touches `supabase/migrations/**`, replay the entire security hardening
-against a database that already has it.
+**This is why `supabase db push` must not be run against production, and why
+there is no deploy workflow.** `db push` applies every migration whose version
+it does not recognise. It does not recognise thirteen of them. An automatic
+deploy would, on the next merge touching `supabase/migrations/**`, replay the
+entire security hardening against a database that already has it.
 
 Repair it by aligning the recorded versions with the filenames — bookkeeping
 only, no DDL — before enabling automated deploys.
